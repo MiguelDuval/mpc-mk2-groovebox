@@ -7393,6 +7393,13 @@ LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
 LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
 LOCAL_SAMPLE_DEVICE="/sdcard/Music/$LOCAL_SAMPLE_NAME"
 LOCAL_SAMPLE_HOST="/tmp/$LOCAL_SAMPLE_NAME"
+BROWSER_DRUMS_NAME="Browser-Smoke-Drum.wav"
+BROWSER_DRUMS_DEVICE="/sdcard/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DRUMS_CANONICAL="/storage/emulated/0/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DEMOS_NAME="Browser-Smoke-Demo.wav"
+BROWSER_DEMOS_DEVICE="/sdcard/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_DEMOS_CANONICAL="/storage/emulated/0/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=0
 BROWSER_LOCAL_XML="/tmp/mpc-groovebox-browser-local-results-uiautomator.xml"
 BROWSER_LOCAL_REMOTE="/sdcard/mpc-groovebox-browser-local-results-uiautomator.xml"
 
@@ -7472,6 +7479,59 @@ if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
   exit 1
 fi
 echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
+
+seed_browser_content_category_fixture() {
+  local name="$1" device_path="$2" canonical_path="$3" expected_relative_path="$4" label="$5"
+  local scan_log="/tmp/mpc-browser-category-$label-scan.txt"
+  local query_file="/tmp/mpc-browser-category-$label-query.txt"
+  local item_uri item_id collection_uri
+  if ! adb_bounded 10 shell mkdir -p "${device_path%/*}"; then
+    echo "ERROR: could not prepare MediaStore category folder for $label"
+    return 1
+  fi
+  if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$device_path"; then
+    echo "ERROR: could not copy WAV fixture into the $label category folder"
+    return 1
+  fi
+  if ! adb_bounded 15 shell content call --uri content://media --method scan_file \
+      --arg "$canonical_path" > "$scan_log" 2>&1; then
+    echo "ERROR: MediaStore scan_file failed for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  item_uri="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' "$scan_log" | head -n 1 || true)"
+  item_id="${item_uri##*/}"
+  collection_uri="${item_uri%/*}"
+  if [[ ! "$item_id" =~ ^[0-9]+$ || -z "$collection_uri" ]]; then
+    echo "ERROR: MediaStore did not return a usable URI for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  if ! adb_bounded 10 shell content query --uri "$collection_uri" \
+      --projection _id:_display_name:relative_path --where "_id=$item_id" \
+      > "$query_file" 2>&1; then
+    echo "ERROR: could not query the indexed $label category fixture"
+    cat "$query_file" || true
+    return 1
+  fi
+  if ! grep -Fq -- "$name" "$query_file" \
+      || ! grep -Fq -- "$expected_relative_path" "$query_file"; then
+    echo "ERROR: MediaStore category fixture path mismatch for $label"
+    cat "$query_file" || true
+    return 1
+  fi
+  echo "MediaStore category fixture indexed and path-verified: $name ($expected_relative_path)"
+}
+
+if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+  if ! seed_browser_content_category_fixture "$BROWSER_DRUMS_NAME" "$BROWSER_DRUMS_DEVICE" \
+      "$BROWSER_DRUMS_CANONICAL" "Music/Drums/" "drums"; then exit 1; fi
+  if ! seed_browser_content_category_fixture "$BROWSER_DEMOS_NAME" "$BROWSER_DEMOS_DEVICE" \
+      "$BROWSER_DEMOS_CANONICAL" "Music/Demos/" "demos"; then exit 1; fi
+  BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=1
+else
+  echo "Android API below 29: MediaStore path-based Drums/Demos categories remain explicitly unavailable."
+fi
 
 
 
@@ -7812,10 +7872,25 @@ PY
 
 wait_for_ui_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3"
-  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining hierarchy_failures=0
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget hierarchy_failures=0
+  local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then hierarchy_failures=$((hierarchy_failures + 1)); continue; fi
+    # Bound each dump so a transient UiAutomator stall cannot consume the
+    # entire wait, and capture into scratch so a timeout never erases the last
+    # validated hierarchy needed to diagnose a missing target.
+    dump_budget="$remaining"
+    (( dump_budget > 6 )) && dump_budget=6
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
+      hierarchy_failures=$((hierarchy_failures + 1))
+      rm -f "$scratch_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+    if ! mv -f -- "$scratch_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish fresh UI hierarchy while waiting for $expected_description"
+      return 1
+    fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
@@ -10564,48 +10639,293 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-places-section.png 10; the
 fi
 echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
 
-if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
-# The prior app-side UI audit can leave Browser search/filter state behind.
-# Reset both controls explicitly so the fixture visibility check starts from a
-# deterministic catalog view rather than the audit's last navigation context.
+# BROW-001 finishes on PLACES. Refresh that real state before using coordinates,
+# then explicitly return to CONTENT; never replay taps from a hierarchy captured
+# before the section switch.
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not refresh Browser hierarchy after BROW-001"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser CONTENT tab"; then
+  echo "ERROR: Browser CONTENT tab was not actionable after Places isolation"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser navigation CONTENT SAMPLES" 12; then
+  echo "ERROR: Browser did not return to its CONTENT/SAMPLES destination"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture fresh Browser CONTENT hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
+  echo "ERROR: fresh Browser CONTENT state did not satisfy the section contract"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_SECTION_XML" "MPC Browser scan local audio files"; then exit 1; fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser state after starting local audio scan"; exit 1
+fi
+# Reset search/filter using a hierarchy captured after the section change.
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser state after clearing search"; exit 1
+fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
-if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 20; then
-  echo "ERROR: clearing inherited Browser state did not reveal the indexed local WAV"
+
+# The pinned Browser actions consume viewport height. Scroll the actual results
+# ScrollView in bounded steps, recapturing after each gesture, until the exact
+# root WAV row is visibly exposed. Preserve the strict row assertion.
+local_wav_visible=0
+for scroll_attempt in 1 2 3 4 5; do
+  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+    echo "ERROR: could not capture Browser results on scroll attempt $scroll_attempt"; exit 1
+  fi
+  if python3 - "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, name = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+def intersection(a, b):
+    if a is None or b is None: return None
+    r = (max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3]))
+    return r if r[0] < r[2] and r[1] < r[3] else None
+expected = "MPC Browser file " + name
+for node in nodes:
+    if node.attrib.get("content-desc") != expected or node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+        continue
+    row = bounds(node)
+    parent = parents.get(node)
+    while parent is not None and parent.attrib.get("content-desc") != "MPC Browser results list":
+        parent = parents.get(parent)
+    if parent is not None and intersection(row, bounds(parent)) is not None:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+  then
+    local_wav_visible=1
+    break
+  fi
+  # Derive the gesture from the live scroll viewport, not stale fixed bounds.
+  if ! scroll_coordinates="$(python3 - "$BROWSER_LOCAL_XML" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("content-desc") != "MPC Browser results list": continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if not match: break
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 80: break
+    print((left + right) // 2, bottom - 18, top + 18)
+    raise SystemExit(0)
+raise SystemExit("visible Browser results ScrollView is missing or has invalid bounds")
+PY
+  )"; then
+    echo "ERROR: could not derive live Browser results scroll coordinates"; exit 1
+  fi
+  read -r scroll_x scroll_from scroll_to <<< "$scroll_coordinates"
+  if ! adb_bounded 10 shell input swipe "$scroll_x" "$scroll_from" "$scroll_x" "$scroll_to" 350; then
+    echo "ERROR: could not scroll Browser results on attempt $scroll_attempt"; exit 1
+  fi
+  sleep 1
+done
+if [[ "$local_wav_visible" != "1" ]]; then
+  echo "ERROR: root WAV $LOCAL_SAMPLE_NAME was not visible after bounded Browser results scrolling"
+  cat "$BROWSER_LOCAL_XML" || true
   exit 1
 fi
 
 echo "Running BROW-003 real local Content category provider boundaries..."
 assert_browser_content_category() {
-  local hierarchy="$1" category="$2" expected="$3"
-  python3 - "$hierarchy" "$category" "$expected" "$LOCAL_SAMPLE_NAME" <<'PY'
+  local hierarchy="$1" category="$2" expected="$3" expected_name="${4:-$LOCAL_SAMPLE_NAME}"
+  python3 - "$hierarchy" "$category" "$expected" "$expected_name" \
+      "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME" \
+      "$BROWSER_CATEGORY_PATH_FIXTURES_SEEDED" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-path, category, expected, sample_name = sys.argv[1:]
+path, category, expected, expected_name, root_name, drum_name, demo_name, path_fixtures = sys.argv[1:]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 descriptions = {node.attrib.get("content-desc", "") for node in nodes}
 texts = [node.attrib.get("text", "") for node in nodes]
 if f"MPC Browser current location: CONTENT • {category}" not in descriptions:
     raise SystemExit(f"Content location did not resolve to {category}")
-file_rows = [d for d in descriptions if d == f"MPC Browser file {sample_name}"
-             or d.startswith(f"MPC Browser file {sample_name} ")]
+
+def file_rows(name):
+    prefix = f"MPC Browser file {name}"
+    return [description for description in descriptions
+            if description == prefix or description.startswith(prefix + " ")]
+
+fixture_names = (root_name, drum_name, demo_name)
 if expected == "AVAILABLE":
-    if not file_rows:
-        raise SystemExit(f"real local WAV missing from supported CONTENT/{category}")
+    if category in ("SAMPLES", "MY FILES"):
+        if not any(description.startswith("MPC Browser file ")
+                   for description in descriptions):
+            raise SystemExit(f"CONTENT/{category} has no visible indexed WAV rows")
+    elif not file_rows(expected_name):
+        raise SystemExit(f"expected real local WAV {expected_name!r} missing from CONTENT/{category}")
+    if category in ("DRUMS", "DEMOS"):
+        wrong_category = demo_name if category == "DRUMS" else drum_name
+        for forbidden in (root_name, wrong_category):
+            if file_rows(forbidden):
+                raise SystemExit(
+                    f"CONTENT/{category} leaked WAV outside its real folder: {forbidden!r}")
+    # For SAMPLES/MY FILES, all expected fixtures are verified across the
+    # caller's fresh, viewport-aware scroll snapshots; a single UiAutomator tree
+    # intentionally contains only the rows currently materialized by the list.
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" in descriptions:
         raise SystemExit(f"supported CONTENT/{category} reported unavailable")
 else:
-    if file_rows:
-        raise SystemExit(f"unsupported CONTENT/{category} fabricated a WAV row")
+    leaked = [name for name in fixture_names if file_rows(name)]
+    if leaked:
+        raise SystemExit(f"unsupported CONTENT/{category} fabricated WAV rows: {leaked!r}")
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" not in descriptions:
         raise SystemExit(f"unsupported CONTENT/{category} didn't report provider limitation")
-    if not any("No real local provider is available" in text for text in texts):
+    if not any("No real local provider is available" in text
+               or "MediaStore folder paths" in text for text in texts):
         raise SystemExit(f"unsupported CONTENT/{category} has no actionable limitation detail")
 print(f"Browser CONTENT/{category}: {expected.lower()} provider behavior verified.")
 PY
+}
+
+scroll_browser_results_until_names() {
+  local hierarchy="$1" remote="$2" category="$3"
+  shift 3
+  local -a expected_names=("$@")
+  local seen_names="|" visible_names name scroll_coordinates scroll_x scroll_from scroll_to
+  local all_seen attempt
+
+  for ((attempt=1; attempt<=9; attempt++)); do
+    if ! dump_device_ui_retry "$remote" "$hierarchy" 8 3; then
+      echo "ERROR: could not refresh CONTENT/$category results viewport on scan $attempt"
+      return 1
+    fi
+    if ! grep -Fq -- "MPC Browser current location: CONTENT • $category" "$hierarchy"; then
+      echo "ERROR: fresh Browser hierarchy left CONTENT/$category while scanning rows"
+      return 1
+    fi
+    if ! visible_names="$(python3 - "$hierarchy" "${expected_names[@]}" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, *expected_names = sys.argv[1:]
+expected = set(expected_names)
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def bounds(node):
+    match = re.fullmatch(
+        r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+        node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersection(a, b):
+    if a is None or b is None:
+        return None
+    rect = (max(a[0], b[0]), max(a[1], b[1]),
+            min(a[2], b[2]), min(a[3], b[3]))
+    return rect if rect[0] < rect[2] and rect[1] < rect[3] else None
+
+scroll = next((node for node in nodes
+               if node.attrib.get("content-desc") == "MPC Browser results list"), None)
+if scroll is None or bounds(scroll) is None:
+    raise SystemExit("fresh Browser results ScrollView is missing or has invalid bounds")
+
+visible = set()
+unexpected = set()
+for node in nodes:
+    description = node.attrib.get("content-desc", "")
+    prefix = "MPC Browser file "
+    if not description.startswith(prefix):
+        continue
+    row = bounds(node)
+    parent = parents.get(node)
+    while parent is not None and parent is not scroll:
+        parent = parents.get(parent)
+    if parent is not scroll or intersection(row, bounds(scroll)) is None:
+        continue
+    name = description[len(prefix):]
+    if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+        raise SystemExit(f"visible Browser file row is not actionable: {name!r}")
+    if name not in expected:
+        unexpected.add(name)
+    else:
+        visible.add(name)
+if unexpected:
+    raise SystemExit(f"unexpected indexed WAV rows in CONTENT results: {sorted(unexpected)!r}")
+for name in expected_names:
+    if name in visible:
+        print(name)
+PY
+)"; then
+      echo "ERROR: could not inspect visible CONTENT/$category file rows"
+      return 1
+    fi
+
+    while IFS= read -r name; do
+      [[ -n "$name" ]] || continue
+      if [[ "$seen_names" != *"|$name|"* ]]; then
+        seen_names+="$name|"
+        echo "CONTENT/$category visible file verified: $name"
+      fi
+    done <<< "$visible_names"
+
+    all_seen=1
+    for name in "${expected_names[@]}"; do
+      if [[ "$seen_names" != *"|$name|"* ]]; then
+        all_seen=0
+        break
+      fi
+    done
+    if (( all_seen )); then
+      echo "CONTENT/$category: all expected indexed WAV rows were visible in fresh viewport snapshots."
+      return 0
+    fi
+
+    if ! scroll_coordinates="$(python3 - "$hierarchy" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("content-desc") != "MPC Browser results list":
+        continue
+    match = re.fullmatch(
+        r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+        node.attrib.get("bounds", ""))
+    if not match:
+        break
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 80:
+        break
+    print((left + right) // 2, bottom - 18, top + 18)
+    raise SystemExit(0)
+raise SystemExit("visible Browser results ScrollView is missing or has invalid bounds")
+PY
+)"; then
+      echo "ERROR: could not derive live CONTENT/$category scroll coordinates"
+      return 1
+    fi
+    read -r scroll_x scroll_from scroll_to <<< "$scroll_coordinates"
+    if ! adb_bounded 10 shell input swipe "$scroll_x" "$scroll_from" "$scroll_x" "$scroll_to" 350; then
+      echo "ERROR: could not scroll CONTENT/$category results on attempt $attempt"
+      return 1
+    fi
+    sleep 1
+  done
+
+  echo "ERROR: CONTENT/$category did not expose every expected indexed WAV after bounded scrolling"
+  echo "Rows observed: ${seen_names}"
+  cat "$hierarchy" || true
+  return 1
 }
 
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
@@ -10613,17 +10933,36 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
 fi
 for category in DRUMS INSTRUMENTS DEMOS; do
   category_lower="$(printf '%s' "$category" | tr '[:upper:]' '[:lower:]')"
+  category_expected="UNAVAILABLE"
+  expected_name="$LOCAL_SAMPLE_NAME"
+  if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+    if [[ "$category" == "DRUMS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DRUMS_NAME"
+    elif [[ "$category" == "DEMOS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DEMOS_NAME"
+    fi
+  fi
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
-  if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
-    echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable local provider"; exit 1
+  if [[ "$category_expected" == "AVAILABLE" ]]; then
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser file $expected_name" 12; then
+      echo "ERROR: indexed category WAV $expected_name missing from CONTENT/$category"; exit 1
+    fi
+  else
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
+      echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable provider"; exit 1
+    fi
   fi
   if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
     echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
   fi
-  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" \
+      "$category_expected" "$expected_name"; then
     echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
   fi
   if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-content-$category_lower.png" 10; then
@@ -10635,18 +10974,20 @@ for category in SAMPLES "MY FILES"; do
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: supported Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
+  # These locations contain three real fixtures; the last one can be below the
+  # visible ScrollView after category navigation. Wait on the stable location
+  # marker, then verify each exact indexed row across fresh, viewport-aware dumps.
   if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser file $LOCAL_SAMPLE_NAME" 12; then
-    echo "ERROR: real WAV fixture did not appear in supported CONTENT/$category"; exit 1
+      "MPC Browser current location: CONTENT • $category" 12; then
+    echo "ERROR: Browser did not enter supported CONTENT/$category"; exit 1
   fi
-  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
-    echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
-  fi
-  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE"; then
+  if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "$category" \
+      "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE" ""; then
     echo "ERROR: Browser CONTENT/$category provider/results contract failed"; exit 1
   fi
 done
-echo "BROW-003 local Content categories show real WAVs only in supported providers."
+echo "BROW-003 local Content categories filter real MediaStore paths; Instruments remains unavailable."
 
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
@@ -10683,11 +11024,16 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
   exit 1
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+# Clearing Search restores the full catalog, whose last alphabetical row may be
+# below the visible results viewport. Wait for the first visible fixture, then
+# verify all three exact files across fresh viewport-aware snapshots.
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
-  echo "ERROR: clearing Search did not restore indexed results"
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
+  echo "ERROR: clearing Search did not restore the indexed Browser catalog"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
 # File-type filters must act on actual results too: PROJECTS yields none for
 # the WAV-only loader, while ALL and SAMPLES restore the real WAV row.
@@ -10699,16 +11045,20 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: ALL filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter SAMPLES"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: SAMPLES filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
 # The sample follows two pinned Browser actions in a short ScrollView. Scroll it
 # fully into the hit area instead of tapping a clipped row at the viewport edge.
