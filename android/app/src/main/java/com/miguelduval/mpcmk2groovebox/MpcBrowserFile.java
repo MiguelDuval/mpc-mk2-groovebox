@@ -15,14 +15,21 @@ final class MpcBrowserFile {
     private final String mimeType;
     private final long sizeBytes;
     private final long durationMs;
+    private final String relativePath;
 
     MpcBrowserFile(String uri, String displayName, String mimeType,
             long sizeBytes, long durationMs) {
+        this(uri, displayName, mimeType, sizeBytes, durationMs, "");
+    }
+
+    MpcBrowserFile(String uri, String displayName, String mimeType,
+            long sizeBytes, long durationMs, String relativePath) {
         this.uri = uri == null ? "" : uri;
         this.displayName = displayName == null ? "" : displayName;
         this.mimeType = mimeType == null ? "" : mimeType;
         this.sizeBytes = sizeBytes;
         this.durationMs = durationMs;
+        this.relativePath = relativePath == null ? "" : relativePath.trim();
     }
 
     String uri() { return uri; }
@@ -30,6 +37,7 @@ final class MpcBrowserFile {
     String mimeType() { return mimeType; }
     long sizeBytes() { return sizeBytes; }
     long durationMs() { return durationMs; }
+    String relativePath() { return relativePath; }
 
     /**
      * Returns a new list in deterministic, case-insensitive display-name order.
@@ -73,12 +81,31 @@ final class MpcBrowserFile {
                 "CONTENT".equals(normalizedSection)
                         && ("SAMPLES".equals(normalizedLocation)
                                 || "MY FILES".equals(normalizedLocation));
-        if (!supportedPlace && !supportedContent) return false;
+        final boolean pathBasedContent =
+                "CONTENT".equals(normalizedSection)
+                        && ("DRUMS".equals(normalizedLocation)
+                                || "DEMOS".equals(normalizedLocation))
+                        && pathContainsFolderSegment(relativePath, normalizedLocation);
+        if (!supportedPlace && !supportedContent && !pathBasedContent) return false;
         if (!"ALL".equals(normalizedFilter) && !"SAMPLES".equals(normalizedFilter)) {
             return false;
         }
         final String needle = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         return needle.isEmpty() || displayName.toLowerCase(Locale.ROOT).contains(needle);
+    }
+
+    /** Match an exact path component, not a filename substring or similarly named folder. */
+    static boolean pathContainsFolderSegment(String path, String folderName) {
+        if (path == null || path.trim().isEmpty()
+                || folderName == null || folderName.trim().isEmpty()) {
+            return false;
+        }
+        final String expected = folderName.trim();
+        final String[] segments = path.replace('\\', '/').split("/");
+        for (String segment : segments) {
+            if (expected.equalsIgnoreCase(segment.trim())) return true;
+        }
+        return false;
     }
 
     String metadataLine() {
