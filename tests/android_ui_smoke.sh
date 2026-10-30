@@ -2226,6 +2226,9 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-placement-flow-final.png|\
     mpc-groovebox-arrange-placement-duplicate.png|\
     mpc-groovebox-arrange-loop-changed.png|\
+    mpc-groovebox-arrange-pan-start.png|\
+    mpc-groovebox-arrange-pan-changed.png|\
+    mpc-groovebox-arrange-pan-restored.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
     mpc-groovebox-grid-zoom-baseline.png|\
     mpc-groovebox-grid-zoom-horizontal.png|\
