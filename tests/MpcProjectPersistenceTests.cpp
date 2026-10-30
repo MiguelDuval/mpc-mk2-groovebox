@@ -386,6 +386,50 @@ int main() {
     assert(persistence::serializeProject(invalidTrackKind, &error).empty());
     assert(!error.empty());
 
+    domain::Project invalidTempo = source;
+    invalidTempo.sequences.front().tempoBpm = 301.0;
+    error.clear();
+    assert(persistence::serializeProject(invalidTempo, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidMeter = source;
+    invalidMeter.sequences.front().numerator = 17;
+    error.clear();
+    assert(persistence::serializeProject(invalidMeter, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidLoop = source;
+    invalidLoop.sequences.front().loopStartTicks = 3000;
+    invalidLoop.sequences.front().loopEndTicks = 2500;
+    error.clear();
+    assert(persistence::serializeProject(invalidLoop, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidGrid = source;
+    invalidGrid.sequences.front().quantizeGridTicks = 241;
+    error.clear();
+    assert(persistence::serializeProject(invalidGrid, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidSwing = source;
+    invalidSwing.sequences.front().swingPercent = 101;
+    error.clear();
+    assert(persistence::serializeProject(invalidSwing, &error).empty());
+    assert(!error.empty());
+
+    // Deserialization rejects values that the interactive Sequence setters
+    // cannot produce, and must leave the currently-open Project untouched.
+    const auto sequenceSettingsBeforeFailure =
+            persistence::serializeProject(loaded, &error);
+    std::string invalidSequenceBytes = serialized;
+    const auto tempoToken = invalidSequenceBytes.find("137.125 4 4 3840");
+    assert(tempoToken != std::string::npos);
+    invalidSequenceBytes.replace(tempoToken, std::string("137.125").size(), "301");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidSequenceBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == sequenceSettingsBeforeFailure);
+
     // The decoder imposes per-collection limits. Serialization rejects a
     // payload above the same limit before emitting an unreadable project.
     domain::Project tooManySamples = source;
