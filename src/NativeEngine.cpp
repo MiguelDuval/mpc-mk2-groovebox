@@ -20,6 +20,7 @@
 #include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
+#include "MPC/Sequencer/MpcSequenceSoloPolicy.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
 #include "MPC/Sequencer/MpcErasePolicy.h"
@@ -3197,6 +3198,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackMuted(
             ? JNI_TRUE : JNI_FALSE;
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCanSoloTrack(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    return mpc::sequencer::canSoloTrackPlayback(
+            state, tracks[static_cast<std::size_t>(trackIndex)])
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackSoloed(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& tracks =
+            mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    return tracks[static_cast<std::size_t>(trackIndex)].soloed
+            ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackProgram(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
@@ -4135,6 +4167,31 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMute(
             env,
             "TRACK " + std::to_string(trackIndex + 1)
                     + " MUTE " + (track.muted ? "ON" : "OFF"));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    auto& tracks = state.activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return toJString(env, "Track Solo failed: invalid Track");
+    }
+
+    auto& track = tracks[static_cast<std::size_t>(trackIndex)];
+    if (!mpc::sequencer::canSoloTrackPlayback(state, track)) {
+        return toJString(
+                env,
+                "Track Solo unavailable: selected Track has no active Drum playback route");
+    }
+
+    track.soloed = !track.soloed;
+    return toJString(
+            env,
+            "TRACK " + std::to_string(trackIndex + 1)
+                    + " SOLO " + (track.soloed ? "ON" : "OFF"));
 }
 
 extern "C" JNIEXPORT jlong JNICALL
