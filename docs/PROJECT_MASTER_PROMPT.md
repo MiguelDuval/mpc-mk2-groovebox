@@ -10,6 +10,8 @@ Before making code changes, read this document and then consult the more specifi
 
 For any MPC-style UI action, also consult `docs/MPC3-USER-ACTION-CATALOG.md` before implementing. Use its action ID, official source anchors, firmware evidence, current implementation mapping and acceptance path; extend the catalog when a new user intent is not already covered.
 
+**Mandatory visual gate:** before changing or accepting any user-visible screen or control, select the relevant `VIS-001`–`VIS-082` context in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md`, open and inspect its actual local image/page capture through `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`, and compare it to the current/proposed UI. Use MPC Standalone OS 3.9 as primary authority. Record VIS IDs, asset paths, and before/after evidence in the PR/checkpoint. If a direct screenshot is unavailable, document the best reference and the gap; do not silently skip this step. Automated tests do not replace this check.
+
 The project must be developed incrementally, with every important layer independently testable.
 
 ---
