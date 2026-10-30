@@ -2531,7 +2531,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void navigateBackFromShell() {
         if (navigationController != null && navigationController.back()) {
-            navigateToMode(navigationController.state().mode());
+            // Page builders establish sensible defaults for fresh navigation,
+            // but those defaults must not overwrite the context just restored
+            // from the previous workspace's history frame.
+            final MpcUiState restored = navigationController.state();
+            navigateToMode(restored.mode());
+            navigationController.setSubcontext(restored.subcontext());
+            navigationController.setDataDialFocus(restored.dataDialFocus());
+            navigationController.setZoomFocus(restored.zoomFocus());
+            navigationController.setActionAvailable(restored.actionAvailable());
+            if (restored.mode() == MpcUiState.Mode.MAIN) {
+                refreshMainDataDialFocusVisuals();
+            }
+            updateMpcShellState();
+            Log.i(TAG, "MPC_NAV_BACK_RESTORED mode=" + restored.mode()
+                    + " subcontext=" + restored.subcontext()
+                    + " dataDialFocus=" + restored.dataDialFocus()
+                    + " zoomFocus=" + restored.zoomFocus()
+                    + " actionAvailable=" + restored.actionAvailable());
             return;
         }
         showMainPage();
