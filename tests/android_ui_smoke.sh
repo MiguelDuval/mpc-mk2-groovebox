@@ -12148,6 +12148,10 @@ PY
 }
 
 run_sample_chop_acceptance() {
+  if [[ "$#" -ne 6 ]]; then
+    echo "ERROR: run_sample_chop_acceptance expected 6 arguments, got $#"
+    return 2
+  fi
   local chop_count="$1" source_frames="$2" input_xml="$3"
   local screenshot="$4" host_xml="$5" remote_xml="$6"
   local marker_before marker_line first_slice_end
@@ -12202,7 +12206,7 @@ fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_8_PNG" 
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_8_PNG" \
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
 
 if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
@@ -12211,7 +12215,7 @@ fi
 if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_16_PNG" 
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_16_PNG" \
     "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
 
 # SAMP-010: zoom must change only the WaveformView viewport; PLAY must use native Pad triggering.
