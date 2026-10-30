@@ -32,6 +32,7 @@ public:
         held_.fill({});
         startTicks_.fill({});
         startVelocities_.fill({});
+        startNotes_.fill({});
         replaceCleared_.fill(false);
         active_ = true;
 
@@ -87,6 +88,11 @@ public:
 
             const auto trackIndex = static_cast<std::size_t>(event.trackIndex);
             const auto padIndex = static_cast<std::size_t>(event.padIndex);
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
 
             if (event.pressed != 0u) {
                 if (!held_[trackIndex][padIndex]) {
@@ -96,6 +102,10 @@ public:
                             event.velocity == 0
                             ? static_cast<std::uint8_t>(1)
                             : event.velocity;
+                    // Snapshot the mapping at note-on so later track selection or
+                    // program edits cannot redirect this held note at note-off.
+                    startNotes_[trackIndex][padIndex] =
+                            trackProgram->pad(padIndex).midiNote;
                 }
                 continue;
             }
@@ -139,7 +149,7 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+            note.note = startNotes_[trackIndex][padIndex];
             note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
@@ -229,7 +239,7 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+                note.note = startNotes_[trackIndex][padIndex];
                 note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
@@ -257,6 +267,7 @@ public:
         held_.fill({});
         startTicks_.fill({});
         startVelocities_.fill({});
+        startNotes_.fill({});
         replaceCleared_.fill(false);
         return recorded;
     }
@@ -315,6 +326,8 @@ private:
                domain::kMaxSequenceTracks> startTicks_{};
     std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
                domain::kMaxSequenceTracks> startVelocities_{};
+    std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
+               domain::kMaxSequenceTracks> startNotes_{};
     std::array<bool, domain::kMaxSequenceTracks> replaceCleared_{};
     PatternRecordMode mode_ = PatternRecordMode::Overdub;
     bool active_ = false;
