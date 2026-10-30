@@ -265,6 +265,92 @@ bool validatePatternData(const domain::Project& project, std::string* error) {
     return true;
 }
 
+bool validateSerializableCollectionSizes(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.samples.size() > kMaxSamples
+            || project.drumPrograms.size() > kMaxPrograms
+            || project.sequences.size() > kMaxSequences) {
+        return setError(error, "Project collection exceeds the supported item limit");
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.tracks.size() > kMaxTracks) {
+            return setError(error, "Track count exceeds the supported item limit");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (track.patterns.size() > kMaxPatternsPerTrack
+                    || track.placements.size() > kMaxPlacementsPerTrack) {
+                return setError(error, "Pattern/placement count exceeds the supported item limit");
+            }
+            for (const auto& pattern : track.patterns) {
+                if (pattern.notes.size() > kMaxNotesPerPattern) {
+                    return setError(error, "Pattern note count exceeds the supported item limit");
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSerializableNumericFields(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sample : project.samples) {
+        // The decoder already rejects NaN and infinities for this field.
+        if (!std::isfinite(sample.sampleRate)) {
+            return setError(error, "Sample rate must be finite");
+        }
+    }
+
+    for (const auto& program : project.drumPrograms) {
+        if (static_cast<unsigned int>(program.type) > 3) {
+            return setError(error, "Program type is out of range");
+        }
+
+        for (const auto& pad : program.pads) {
+            if (pad.midiNote > 127
+                    || static_cast<unsigned int>(pad.triggerMode) > 2) {
+                return setError(error, "Pad MIDI note or trigger mode is out of range");
+            }
+            if (!std::isfinite(pad.tuningSemitones)
+                    || !std::isfinite(pad.level)
+                    || !std::isfinite(pad.pan)
+                    || !std::isfinite(pad.velocityScale)
+                    || !std::isfinite(pad.envelopeAttackMs)
+                    || !std::isfinite(pad.envelopeDecayMs)
+                    || !std::isfinite(pad.envelopeSustain)
+                    || !std::isfinite(pad.envelopeReleaseMs)
+                    || !std::isfinite(pad.filterCutoffHz)) {
+                return setError(error, "Pad numeric fields must be finite");
+            }
+
+            for (const auto& layer : pad.layers) {
+                if (!std::isfinite(layer.gain)
+                        || !std::isfinite(layer.pan)
+                        || !std::isfinite(layer.tuningSemitones)) {
+                    return setError(error, "Sample-layer numeric fields must be finite");
+                }
+                if (layer.velocityMinimum > 127 || layer.velocityMaximum > 127) {
+                    return setError(error, "Sample-layer velocity range is out of range");
+                }
+            }
+        }
+    }
+
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)) {
+            return setError(error, "Sequence tempo must be finite");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (static_cast<unsigned int>(track.type) > 3
+                    || static_cast<unsigned int>(track.kind) > 4) {
+                return setError(error, "Track type or kind is out of range");
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
@@ -311,7 +397,9 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validatePatternData(project, error)
+    if (!validateSerializableCollectionSizes(project, error)
+            || !validateSerializableNumericFields(project, error)
+            || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
         return {};
     }
@@ -388,7 +476,12 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     }
 
     out << "END_PROJECT\n";
-    return out.str();
+    auto bytes = out.str();
+    if (bytes.size() > kMaxProjectFileBytes) {
+        setError(error, "Serialized project exceeds the supported file-size limit");
+        return {};
+    }
+    return bytes;
 }
 
 bool deserializeProject(
