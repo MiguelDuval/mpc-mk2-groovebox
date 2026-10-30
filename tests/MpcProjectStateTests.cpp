@@ -2,6 +2,7 @@
 #include "MPC/Sequencer/MpcPatternOps.h"
 
 #include <cassert>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -242,5 +243,24 @@ int main() {
     const auto firstNewSample = state.registerSample(
             "First sample in new project", "", 48000.0, 1000);
     assert(firstNewSample.value == 1);
+    // Malformed/legacy-sized sequences can approach INT32_MAX. Changing
+    // the time signature must not overflow loop-bar rounding or loop tick
+    // multiplication, and the resulting half-open range must stay in bounds.
+    mpc::MpcProjectState extremeTimeSignatureState;
+    auto& extremeSequence = extremeTimeSignatureState.activeSequence();
+    const auto maximumTicks = std::numeric_limits<std::int32_t>::max();
+    extremeSequence.lengthTicks = maximumTicks;
+    extremeSequence.loopStartTicks = maximumTicks - 3840;
+    extremeSequence.loopEndTicks = maximumTicks;
+    extremeSequence.tracks.front().patterns.front().lengthTicks = maximumTicks;
+    extremeSequence.tracks.front().placements.front().lengthTicks = maximumTicks;
+    assert(extremeTimeSignatureState.setSequenceTimeSignature(16, 4));
+    assert(extremeSequence.lengthTicks == maximumTicks);
+    assert(extremeSequence.loopStartTicks >= 0);
+    assert(extremeSequence.loopStartTicks < extremeSequence.loopEndTicks);
+    assert(extremeSequence.loopEndTicks <= extremeSequence.lengthTicks);
+    assert(extremeSequence.loopStartTicks == maximumTicks - 1);
+    assert(extremeSequence.loopEndTicks == maximumTicks);
+
     return 0;
 }

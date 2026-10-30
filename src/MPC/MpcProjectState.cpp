@@ -338,12 +338,17 @@ bool MpcProjectState::setSequenceTimeSignature(
             sequencer::barLengthTicks(
                     oldSequence.numerator,
                     oldSequence.denominator));
-    const auto startBar = std::clamp(
-            oldSequence.loopStartTicks / oldPerBar + 1,
+    const auto startBar = std::clamp<std::int64_t>(
+            static_cast<std::int64_t>(oldSequence.loopStartTicks) / oldPerBar + 1,
             1,
             bars);
-    const auto endBar = std::clamp(
-            (oldSequence.loopEndTicks + oldPerBar - 1) / oldPerBar,
+    // Promote before adding the bar-rounding offset. loopEndTicks can be near
+    // INT32_MAX in a malformed/legacy Project, so int32 addition would overflow.
+    const auto roundedEndBar =
+            (static_cast<std::int64_t>(oldSequence.loopEndTicks)
+                    + oldPerBar - 1) / oldPerBar;
+    const auto endBar = std::clamp<std::int64_t>(
+            roundedEndBar,
             startBar,
             bars);
 
@@ -358,11 +363,19 @@ bool MpcProjectState::setSequenceTimeSignature(
     sequence.denominator = denominator;
     sequence.lengthTicks = length;
 
-    const auto newPerBar = sequencer::barLengthTicks(numerator, denominator);
-    sequence.loopStartTicks = (startBar - 1) * newPerBar;
-    sequence.loopEndTicks = std::min(
-            length,
-            endBar * newPerBar);
+    const auto newPerBar = static_cast<std::int64_t>(
+            sequencer::barLengthTicks(numerator, denominator));
+    // Time-signature changes can expand the mapped loop beyond the clamped
+    // int32 sequence length. Keep all products in int64 and clamp the resulting
+    // half-open loop range back into the new Sequence.
+    const auto proposedLoopStart = (startBar - 1) * newPerBar;
+    const auto proposedLoopEnd = endBar * newPerBar;
+    const auto newLoopStart = std::clamp<std::int64_t>(
+            proposedLoopStart, 0, static_cast<std::int64_t>(length) - 1);
+    const auto newLoopEnd = std::clamp<std::int64_t>(
+            proposedLoopEnd, newLoopStart + 1, length);
+    sequence.loopStartTicks = static_cast<std::int32_t>(newLoopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(newLoopEnd);
 
     for (auto& track : sequence.tracks) {
         for (auto& pattern : track.patterns) {
