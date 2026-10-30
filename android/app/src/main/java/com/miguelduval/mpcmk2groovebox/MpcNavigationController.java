@@ -18,7 +18,33 @@ final class MpcNavigationController {
     static final int SHORTCUT_COUNT = 5;
 
     private MpcUiState state = new MpcUiState();
-    private final Deque<MpcUiState.Mode> history = new ArrayDeque<>();
+    private static final class NavigationFrame {
+        final MpcUiState.Mode mode;
+        final MpcUiState.Subcontext subcontext;
+        final MpcUiState.DataDialFocus dataDialFocus;
+        final MpcUiState.ZoomFocus zoomFocus;
+        final boolean actionAvailable;
+
+        NavigationFrame(MpcUiState state) {
+            mode = state.mode();
+            subcontext = state.subcontext();
+            dataDialFocus = state.dataDialFocus();
+            zoomFocus = state.zoomFocus();
+            actionAvailable = state.actionAvailable();
+        }
+
+        MpcUiState restoreInto(MpcUiState current) {
+            // Restore navigation presentation only. Selected musical context,
+            // transport and editor data stay live instead of being time-travelled.
+            return current.withMode(mode)
+                    .withSubcontext(subcontext)
+                    .withDataDialFocus(dataDialFocus)
+                    .withZoomFocus(zoomFocus)
+                    .withActionAvailable(actionAvailable);
+        }
+    }
+
+    private final Deque<NavigationFrame> history = new ArrayDeque<>();
     private final MpcUiState.Mode[] shortcuts = new MpcUiState.Mode[SHORTCUT_COUNT];
     private final Listener listener;
 
@@ -159,7 +185,7 @@ final class MpcNavigationController {
             notifyListener();
             return false;
         }
-        history.push(state.mode());
+        history.push(new NavigationFrame(state));
         state = state.withMode(mode).withSubcontext(MpcUiState.Subcontext.NONE)
                 .withActionAvailable(mode != MpcUiState.Mode.RESERVED);
         notifyListener();
@@ -170,7 +196,7 @@ final class MpcNavigationController {
         if (history.isEmpty()) {
             return false;
         }
-        state = state.withMode(history.pop());
+        state = history.pop().restoreInto(state);
         notifyListener();
         return true;
     }
