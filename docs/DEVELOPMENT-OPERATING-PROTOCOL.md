@@ -165,6 +165,10 @@ At the start, read `docs/SESSION-STATE.md`, then independently verify its branch
 
 Because a commit changes the branch HEAD, do not put an unverified future SHA into the file or claim its own resulting SHA is known before the commit exists. Always refetch live HEAD in the next session. `SESSION-STATE.md` is a checkpoint, never an authoritative substitute for GitHub.
 
+## 11. Mandatory visual-reference review
+
+For every UI-facing implementation/review slice, the agent must select the relevant `VIS-001`–`VIS-082` item(s) from `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and open the actual local image/page capture listed in `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`. Compare the current screen and the resulting screen to the reference; record VIS ID(s), asset path/source, and before/after visual evidence in the PR/checkpoint. Prefer official MPC Standalone OS 3.9 evidence; older OS and third-party images are supplementary and must be identified as such. Explicitly record missing exact-screen evidence and never silently skip the gate. This applies to all agents and branches, regardless of prior plans or green tests. Reference materials are documentation-only and must not be bundled into the APK.
+
 ## 10. Stop conditions for a slice
 
 A slice is ready to hand off when:
