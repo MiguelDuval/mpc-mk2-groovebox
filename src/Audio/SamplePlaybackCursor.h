@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 
@@ -17,9 +18,23 @@ inline bool advanceSamplePlaybackCursor(
         return false;
     }
 
-    position += static_cast<double>(positionStep);
-    return position < static_cast<double>(regionEndFrame)
-            && position < static_cast<double>(sampleFrameCount);
+    const double playbackEnd = std::min(
+            static_cast<double>(regionEndFrame),
+            static_cast<double>(sampleFrameCount));
+    // Treat the first frame at or beyond either half-open boundary as end of
+    // playback. Clamp overshoots so a large but finite step cannot leave the
+    // persistent cursor at a huge out-of-range value.
+    const double nextPosition = position + static_cast<double>(positionStep);
+    if (!std::isfinite(nextPosition) || nextPosition >= playbackEnd) {
+        position = playbackEnd;
+        return false;
+    }
+    if (nextPosition < 0.0) {
+        position = 0.0;
+        return false;
+    }
+    position = nextPosition;
+    return true;
 }
 
 } // namespace mpc::audio
