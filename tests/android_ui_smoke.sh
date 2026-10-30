@@ -2045,6 +2045,29 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Checking Arrangement zoom visual evidence capture and upload contract..."
+for required in \
+  'mpc-groovebox-arrange-zoom-baseline.png|\' \
+  'mpc-groovebox-arrange-zoom-in.png|\' \
+  'mpc-groovebox-arrange-zoom-out-restored.png|\'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Arrangement zoom screenshot is not retained by capture_ui_screenshot: $required"
+    exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-arrange-zoom-baseline.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml' \
+  '/tmp/mpc-groovebox-arrange-zoom-in.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-in-uiautomator.xml' \
+  '/tmp/mpc-groovebox-arrange-zoom-out-restored.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Arrangement zoom evidence is not included in the CI artifact upload: $required"
+    exit 1
+  fi
+done
+
 echo "Checking Grid zoom visual evidence capture and upload contract..."
 for required in \
   'mpc-groovebox-grid-zoom-baseline.png|\' \
@@ -2229,6 +2252,9 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-pan-start.png|\
     mpc-groovebox-arrange-pan-changed.png|\
     mpc-groovebox-arrange-pan-restored.png|\
+    mpc-groovebox-arrange-zoom-baseline.png|\
+    mpc-groovebox-arrange-zoom-in.png|\
+    mpc-groovebox-arrange-zoom-out-restored.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
     mpc-groovebox-grid-zoom-baseline.png|\
     mpc-groovebox-grid-zoom-horizontal.png|\
