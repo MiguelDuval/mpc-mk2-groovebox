@@ -381,6 +381,12 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
     }
     mutableSequence.loopStartTicks =
             std::clamp(mutableSequence.loopStartTicks, 0, length - 1);
+    // Malformed/legacy state can already contain a loop end before its start.
+    // Keep the half-open range valid after resizing instead of carrying that
+    // invalid range into the transport clock.
+    if (mutableSequence.loopEndTicks <= mutableSequence.loopStartTicks) {
+        mutableSequence.loopEndTicks = mutableSequence.loopStartTicks + 1;
+    }
 
     resizeSequenceContent(mutableSequence, previousLength, length);
 
