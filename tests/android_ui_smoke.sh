@@ -7168,7 +7168,7 @@ def desc(value, prefix=False):
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
-desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid")
+desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid", prefix=True)
 if any(n.attrib.get("content-desc")=="MPC linear arrangement editor" for n in nodes): raise AssertionError("Arrangement remains visible")
 prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
