@@ -4,6 +4,13 @@
 
 Every UI-facing task must inspect the relevant `VIS-001`–`VIS-082` entries in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and open the associated local visual assets through `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`. Use MPC OS 3.9 as the primary visual authority, record VIS ID(s) and source paths, and compare current/after evidence. Missing exact screenshots must be reported as an explicit gap. This requirement applies to implementation, review, and acceptance; green CI alone is insufficient.
 
+
+## Consolidated checkpoint — 2026-10-30
+
+The current single integration target is `checkpoint/mpc-ui-reference-and-product-20261030`, created from PR #23's exact product-code SHA `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`. It now contains the locally vendored 82-context visual-reference gallery and the independently accepted P0 Mute, native Track Solo, Grid H/V zoom, Arrangement pan/zoom, shell Back-context, truthful MIDI status, Browser local-category/metadata/picker-cancel, and Sample Edit CH4/8/16 evidence changes. The exact source-SHA runs and intentional exclusions are recorded in [SESSION-STATE.md](SESSION-STATE.md).
+
+**Important:** this is a consolidation candidate, not yet a green checkpoint. Its own exact-HEAD Android Build, full emulator smoke, screenshot/XML artifact inspection and artifact checksums are still pending. Do not use this branch as a release artifact until those gates pass. PR #126 (no exact-head green run), PR #127 (Build #3516 failed), PR #122 and PR #116 (failed exact-head runs) remain excluded.
+
 ## CURRENT EXECUTION QUEUE — 2026-10-28 (live GitHub state and exact-SHA evidence govern)
 
 ### P0 recovery — dedicated Mute workspace and truthful unavailable screens: EMULATOR ACCEPTANCE VERIFIED
