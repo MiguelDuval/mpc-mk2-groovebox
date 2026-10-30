@@ -1,4 +1,5 @@
 #include "MPC/MpcProjectPersistence.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <algorithm>
 #include <cmath>
@@ -323,6 +324,44 @@ bool validateEntityIdentifiers(
     return true;
 }
 
+bool validateSequenceSettings(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)
+                || sequence.tempoBpm < 20.0
+                || sequence.tempoBpm > 300.0) {
+            return setError(error, "Sequence tempo is outside the supported 20-300 BPM range");
+        }
+        if (!sequencer::isValidTimeSignature(
+                    sequence.numerator, sequence.denominator)) {
+            return setError(error, "Sequence time signature is out of range");
+        }
+        if (sequence.lengthTicks <= 0) {
+            return setError(error, "Sequence length must be positive");
+        }
+        if (sequence.loopStartTicks < 0
+                || sequence.loopEndTicks <= sequence.loopStartTicks
+                || sequence.loopEndTicks > sequence.lengthTicks) {
+            return setError(error, "Sequence loop range is invalid");
+        }
+        switch (sequence.quantizeGridTicks) {
+            case 60:
+            case 120:
+            case 240:
+            case 480:
+            case 960:
+                break;
+            default:
+                return setError(error, "Sequence quantize grid is out of range");
+        }
+        if (sequence.swingPercent < 0 || sequence.swingPercent > 100) {
+            return setError(error, "Sequence swing is out of range");
+        }
+    }
+    return true;
+}
+
 bool validateSerializableCollectionSizes(
         const domain::Project& project,
         std::string* error) {
@@ -466,6 +505,7 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     // Apply cardinality limits before building identifier sets from caller-owned
     // vectors; oversized Projects should be rejected without large temporary allocations.
     if (!validateSerializableCollectionSizes(project, error)
+            || !validateSequenceSettings(project, error)
             || !validateEntityIdentifiers(project, error)
             || !validateSerializableNumericFields(project, error)
             || !validatePatternData(project, error)
@@ -692,7 +732,8 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validateEntityIdentifiers(candidate, error)
+    if (!validateSequenceSettings(candidate, error)
+            || !validateEntityIdentifiers(candidate, error)
             || !validatePatternData(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
