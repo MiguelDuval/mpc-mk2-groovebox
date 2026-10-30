@@ -133,6 +133,50 @@ void testZeroLengthTapUsesGridDuration() {
     assert(track.patterns.front().notes.back().durationTicks == 240);
 }
 
+void testDrainSortsOnlyThePatternThatReceivedRecordedNotes() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.timingCorrectEnabled = false;
+    auto& armedTrack = sequence.tracks[0];
+    armedTrack.recordArmed = true;
+    armedTrack.patterns.front().notes.push_back(
+            {120, 30, 40, 80, 127, 1});
+    armedTrack.patterns.front().notes.push_back(
+            {0, 30, 41, 80, 127, 1});
+
+    assert(state.addTrack(mpc::domain::TrackKind::Drum, "UNARMED DRUMS"));
+    auto& untouchedTrack = sequence.tracks[1];
+    untouchedTrack.patterns.front().notes.push_back(
+            {120, 30, 42, 80, 127, 1});
+    untouchedTrack.patterns.front().notes.push_back(
+            {60, 30, 43, 80, 127, 1});
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // Empty drains must not reorder unrelated project patterns.
+    assert(recorder.drain(state, queue) == 0);
+    const auto& untouchedNotes = state.activeSequence().tracks[1].patterns.front().notes;
+    assert(untouchedNotes.size() == 2);
+    assert(untouchedNotes[0].tick == 120);
+    assert(untouchedNotes[1].tick == 60);
+
+    assert(queue.tryEnqueue({60, 0, 0, 100, 1}));
+    assert(queue.tryEnqueue({90, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 1);
+
+    const auto& recordedNotes = state.activeSequence().tracks[0].patterns.front().notes;
+    assert(recordedNotes.size() == 3);
+    assert(recordedNotes[0].tick == 0);
+    assert(recordedNotes[1].tick == 60);
+    assert(recordedNotes[2].tick == 120);
+    // A different, unarmed Drum track remains in its prior order.
+    assert(untouchedNotes[0].tick == 120);
+    assert(untouchedNotes[1].tick == 60);
+}
+
 void testArmedTrackUsesItsOwnDrumProgramMapping() {
     mpc::MpcProjectState state;
     auto secondProgram = state.activeDrumProgram();
@@ -220,6 +264,7 @@ int main() {
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
     testTimingCorrectCanBeDisabled();
+    testDrainSortsOnlyThePatternThatReceivedRecordedNotes();
     testArmedTrackUsesItsOwnDrumProgramMapping();
     testMalformedEventFieldsCannotCreateInvalidNotes();
     return 0;
