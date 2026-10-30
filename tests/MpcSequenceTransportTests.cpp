@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 
 namespace {
 
@@ -36,6 +37,25 @@ void testNonLoopPositionDoesNotWrap() {
 
     assert(clock.positionAtTimestamp(1500000000) == 960);
     assert(clock.positionAtTimestamp(3000000000) == 1919);
+}
+
+void testExtremeLoopPositionsDoNotOverflow() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.loopEnabled = true;
+    sequence.loopStartTicks = 960;
+    sequence.loopEndTicks = 2880;
+
+    mpc::sequencer::MpcSequenceTransportClock clock;
+    constexpr std::int64_t timestamp = 1'000'000'000;
+
+    clock.start(sequence, std::numeric_limits<std::int64_t>::min(), timestamp);
+    assert(clock.snapshot().positionTicks == 1792);
+    assert(clock.positionAtTimestamp(timestamp) == 1792);
+
+    clock.start(sequence, std::numeric_limits<std::int64_t>::max(), timestamp);
+    assert(clock.snapshot().positionTicks == 2047);
+    assert(clock.positionAtTimestamp(timestamp) == 2047);
 }
 
 void testOutOfRangeTempoCannotOverflowClockConversion() {
@@ -83,6 +103,7 @@ void testStopFreezesPosition() {
 int main() {
     testLoopedPosition();
     testNonLoopPositionDoesNotWrap();
+    testExtremeLoopPositionsDoNotOverflow();
     testOutOfRangeTempoCannotOverflowClockConversion();
     testStopFreezesPosition();
     return 0;
