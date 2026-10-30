@@ -7,7 +7,7 @@ Every UI-facing task must inspect the relevant `VIS-001`–`VIS-082` entries in 
 
 ## Consolidated checkpoint — 2026-10-30
 
-The current single integration target is `checkpoint/mpc-ui-reference-and-product-20261030`, created from PR #23's exact product-code SHA `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`. It now contains the locally vendored 82-context visual-reference gallery and the independently accepted P0 Mute, native Track Solo, Grid H/V zoom, Arrangement pan/zoom, shell Back-context, truthful MIDI status, Browser local-category/metadata/picker-cancel, and Sample Edit CH4/8/16 evidence changes. The exact source-SHA runs and intentional exclusions are recorded in [SESSION-STATE.md](SESSION-STATE.md).
+The current single integration target is `checkpoint/mpc-ui-reference-and-product-20261030`, created from PR #23's exact product-code SHA `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`. It now contains the locally vendored 82-context visual-reference gallery and independently accepted P0 Mute, per-Track recorder mapping/input validation (PRs #86/#98), native Track Solo, Grid H/V zoom, Arrangement pan/zoom, shell Back-context, truthful MIDI status, Browser local-category/metadata/picker-cancel, and Sample Edit CH4/8/16 evidence changes. The exact source-SHA runs and intentional exclusions are recorded in [SESSION-STATE.md](SESSION-STATE.md).
 
 **Important:** this is a consolidation candidate, not yet a green checkpoint. Its own exact-HEAD Android Build, full emulator smoke, screenshot/XML artifact inspection and artifact checksums are still pending. Do not use this branch as a release artifact until those gates pass. PR #126 (no exact-head green run), PR #127 (Build #3516 failed), PR #122 and PR #116 (failed exact-head runs) remain excluded.
 
