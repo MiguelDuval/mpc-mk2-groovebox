@@ -1,5 +1,46 @@
-# Session State — MPC MkII Groovebox
+# Live checkpoint — 2026-10-30
 
+**Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
+**Latest confirmed parent before this state update:** `a94ab477acf6476ab8f27f3ded4c0417bd9b7f0d` (the subsequent state-file commit becomes the branch HEAD; refetch the branch live in the next session).  
+**Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
+**Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
+
+## Consolidation result so far
+
+A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, mandatory visual-reference rules and the verified feature slices listed below. This is the single branch to continue from while the consolidated build is being accepted. Old PRs remain as historical/source records; do not develop new slices on their stacks.
+
+| Integrated slice | Source exact SHA / evidence | Status on checkpoint |
+|---|---|---|
+| MPC visual screenshot catalog | PR #129; 82 VIS contexts, 402 source-image records (370 downloaded / 32 failed), 248 PDF page captures, 281 embedded crops | Integrated; 32 retrieval gaps remain explicit |
+| P0 Pad/Track Mute + Reserved routes | Product SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84`; Build #3465 run `40591850947`, PR-head Build #3466 run `40660926245` | Integrated; source emulator acceptance green |
+| Native Track Solo | SHA `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd`; Build #3468 run `40663060996` | Integrated; source emulator/native acceptance green |
+| Grid inverse zoom + touch proof | PR #123 SHA `b11c2a4ce55a21528f056e740df108fb81d30b9b` Build #3457 run `40578192003`; PR #117 Build #3413 run `40547525120`; PR #114 Build #3399 run `40527004496` | Integrated; combined exact-head verification pending |
+| Arrangement pan/zoom proof | SHA `25f62d07d8e06e45847cca02f002066d10a4ac3d`; Build #3458 run `40578350114` | Integrated; combined exact-head verification pending |
+| Back navigation context + truthful MIDI state | PR #110 Build #3412 run `40547076817`; PR #112 Build #3400 run `40527456461` | Integrated; source runs green, hardware remains pending |
+| Project Save As evidence capture | PR #115 Build #3403 run `40535592616` | Integrated; source run green |
+| Browser local folders / file size / modified date | PR #80 Build #3374 run `40461592533`; PR #111 Builds #3394/#3395 runs `40518877443`, `40518880896` | Core code/test blobs and acceptance blocks already present; combined exact-head verification pending |
+| Browser picker cancellation | SHA `e707ffd026210cef3a022d743741f5f1f631b749`; Build #3424 run `40562838515` | Integrated; positive selection assignment and hardware SAF remain separate |
+| Sample Edit CH4/8/16 evidence preservation | SHA `ade77f513404112a251ad65cbd445e33003af599`; Build #3514 run `40895016008` | Integrated; combined exact-head verification pending |
+
+## Held changes
+
+- PR #126 WAV export codec is NOT integrated. Its latest source run #3480 / `40710623733` failed at `MpcProjectState.cpp:209` on `-Werror=unused-variable` (`oldKind`); the decoder step itself passed. Its source also expects an `AudioEngine::exportSampleToWav` route absent from the checkpoint's current AudioEngine API. A temporary untested `encodeWav` addition to `WavSample.cpp/.h` was reverted. Re-evaluate as a fresh isolated feature only after defining the current product export API.
+- PR #127 Browser XML assertion repair remains held; Build #3516 failed. Inspect the exact failing step and current checkpoint assertions before importing.
+- PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
+- Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
+
+## Mandatory visual-reference rule
+
+Every agent must open the relevant `VIS-001`–`VIS-082` entry in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and visually inspect its local image/page capture from `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md` before changing/reviewing/accepting a screen. Record VIS IDs, asset paths, and before/after evidence. MPC Standalone OS 3.9 is primary; older images are supplementary. Missing direct screenshots must be called out; no visual-reference gate is waived by a green test.
+
+## Next actions
+
+1. Open a Draft consolidation PR from `checkpoint/mpc-ui-reference-and-product-20261030` to `feature/mpc-one-ui-fidelity` to trigger the Android workflow on the integrated exact HEAD.
+2. Inspect exact-head workflow result, job steps, APK artifact and visual-evidence archive. Validate required markers for Mute, Solo, Grid, Arrangement, Browser, Sample Edit and Project Save As; do not claim acceptance before inspecting evidence.
+3. Fix only concrete failures on this checkpoint branch, rerun exact-head CI, then update this file with the resulting SHA/run/artifact identities.
+4. After green consolidated CI, decide whether to merge checkpoint PR into the product feature branch. Never change `main` as part of this consolidation.
+
+---
 
 ## Consolidated engineering checkpoint — 2026-10-30 (current handoff)
 
