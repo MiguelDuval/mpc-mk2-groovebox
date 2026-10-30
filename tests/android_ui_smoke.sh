@@ -10407,6 +10407,9 @@ SAMPLE_CHOPPED_8_REMOTE="/sdcard/mpc-groovebox-sample-chop-8-slices-uiautomator.
 SAMPLE_CHOPPED_16_PNG="/tmp/mpc-groovebox-sample-chop-16-slices.png"
 SAMPLE_CHOPPED_16_XML="/tmp/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
 SAMPLE_CHOPPED_16_REMOTE="/sdcard/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
+# Scratch hierarchy for full-region resets; never overwrite the archived CH4/8/16 snapshots.
+SAMPLE_CHOP_NAV_XML="/tmp/sample-chop-navigation-uiautomator.xml"
+SAMPLE_CHOP_NAV_REMOTE="/sdcard/sample-chop-navigation-uiautomator.xml"
 
 if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
     "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CHOPPED_PNG" \
@@ -10417,19 +10420,19 @@ if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
 if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: Sample Edit FULL action was not actionable before CH8"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_8_PNG" 
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
 
 if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_16_PNG" 
     "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
 
 # SAMP-010: zoom must change only the WaveformView viewport; PLAY must use native Pad triggering.
@@ -10438,8 +10441,26 @@ if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
 if ! tap_ui_description "$SAMPLE_CHOPPED_16_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: SAMP-010 could not restore the Pad 01 source region after CH16"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
+
+assert_sample_chop_evidence_snapshot() {
+  local label="$1" hierarchy="$2" chop_count="$3" actual expected_end expected
+  expected_end=$((sample_crop_expected_frames / chop_count))
+  expected="0 $expected_end $sample_crop_expected_frames"
+  if ! actual="$(read_sample_edit_region_frames "$hierarchy" 2>/dev/null)"; then
+    echo "ERROR: SAMP-009 $label evidence hierarchy no longer contains a valid region snapshot"
+    return 1
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    echo "ERROR: SAMP-009 $label evidence hierarchy was overwritten: expected '$expected', got '$actual'"
+    return 1
+  fi
+  echo "SAMP-009 $label evidence hierarchy preserved: $actual"
+}
+if ! assert_sample_chop_evidence_snapshot CH4 "$SAMPLE_CHOPPED_XML" 4; then exit 1; fi
+if ! assert_sample_chop_evidence_snapshot CH8 "$SAMPLE_CHOPPED_8_XML" 8; then exit 1; fi
+if ! assert_sample_chop_evidence_snapshot CH16 "$SAMPLE_CHOPPED_16_XML" 16; then exit 1; fi
 
 SAMPLE_ZOOM_BEFORE_PNG="/tmp/mpc-groovebox-sample-zoom-before.png"
 SAMPLE_ZOOM_BEFORE_XML="/tmp/mpc-groovebox-sample-zoom-before-uiautomator.xml"
@@ -10459,7 +10480,7 @@ SAMPLE_ZOOM_AUDITION_PNG="/tmp/mpc-groovebox-sample-zoom-audition.png"
 SAMPLE_ZOOM_AUDITION_XML="/tmp/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
 SAMPLE_ZOOM_AUDITION_REMOTE="/sdcard/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
 
-sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CHOPPED_16_XML")" || {
+sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CHOP_NAV_XML")" || {
   echo "ERROR: SAMP-010 could not read the full-region baseline"; exit 1;
 }
 if [[ "$sample_zoom_before_state" != "0 $sample_crop_expected_frames $sample_crop_expected_frames" ]]; then
