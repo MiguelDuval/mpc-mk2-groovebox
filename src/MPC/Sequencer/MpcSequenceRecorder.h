@@ -72,7 +72,8 @@ public:
         while (queue.tryDequeue(event)) {
             // Queue events cross a real-time producer/consumer boundary. Do not
             // let malformed byte-sized fields poison the editable Pattern model.
-            if (event.trackIndex >= replaceCleared_.size()
+            if (event.tick < 0
+                    || event.trackIndex >= replaceCleared_.size()
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads
                     || event.velocity > 127
