@@ -9,6 +9,8 @@
 
 This is the action-oriented companion to [MPC3-9-OS-KNOWLEDGE-BASE.md](MPC3-9-OS-KNOWLEDGE-BASE.md), [MPC3-REFERENCE-INDEX.md](MPC3-REFERENCE-INDEX.md), and [MPC3-UI-SCREEN-BLUEPRINT.md](MPC3-UI-SCREEN-BLUEPRINT.md). Read this catalog before implementing a substantial MPC-style interaction. It is intended to reduce repeated research and make the next action in a user workflow explicit.
 
+> **Mandatory visual evidence gate:** Before implementing or accepting any user-facing action, open the corresponding visual context(s) from [the MPC UI screenshot catalog](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) and inspect the local asset(s) linked through [the reference gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md). Record VIS ID(s) and before/after proof. A passing action test does not establish visual fidelity.
+
 ## 1. Scope and truthfulness contract
 
 The catalog covers documented, high-value MPC 3.9 interactions that are relevant to our Android UI, including actions that are not yet implemented. It deliberately distinguishes:
