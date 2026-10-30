@@ -13316,6 +13316,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (resultCode != RESULT_OK || data == null) {
+            if (resultCode == RESULT_CANCELED) {
+                // Cancellation is a no-result transition, never a sample load.
+                // Capture the destination and read the sampler identity before clearing it.
+                final int cancelledTargetPad = browserPickerTargetPad >= 0
+                        ? browserPickerTargetPad : Math.max(0, Math.min(15, selectedPad));
+                final int cancelledTargetLayer = browserPickerTargetLayer >= 0
+                        ? browserPickerTargetLayer : Math.max(0, Math.min(7, selectedLayer));
+                final String currentSampleName = startupComplete
+                        ? nativeAudioGetPadSampleName(cancelledTargetPad, cancelledTargetLayer)
+                        : "unavailable";
+                Log.i(TAG, "BROWSER_WAV_PICKER_CANCELLED"
+                        + " resultCode=" + resultCode
+                        + " targetPad=" + cancelledTargetPad
+                        + " targetLayer=" + cancelledTargetLayer
+                        + " sampleName=" + (currentSampleName == null ? "" : currentSampleName));
+            } else {
+                Log.i(TAG, "BROWSER_WAV_PICKER_NO_RESULT"
+                        + " resultCode=" + resultCode
+                        + " dataPresent=" + (data != null));
+            }
             browserPickerTargetPad = -1;
             browserPickerTargetLayer = -1;
             return;
