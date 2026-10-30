@@ -4,6 +4,7 @@
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcSequencerPlayback.h"
+#include "MPC/Sequencer/MpcSequenceSoloPolicy.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <algorithm>
@@ -43,6 +44,7 @@ public:
         // Reserve before creating playback sessions: each session references
         // one stable sequence-length Pattern assembled from the track's clips.
         arrangementPatterns_.reserve(sequence.tracks.size());
+        playbackTracks_.reserve(sequence.tracks.size());
 
         for (const auto& track : sequence.tracks) {
             if (track.patterns.empty()) {
@@ -69,7 +71,10 @@ public:
                     arrangementPatterns_.back(),
                     *program,
                     audio_.triggerQueue(),
-                    &track.muted));
+                    &track.muted,
+                    &track.soloed,
+                    &anySoloedPlayableTrack_));
+            playbackTracks_.push_back(&track);
         }
 
         if (playbacks_.empty()) {
@@ -90,6 +95,8 @@ public:
         }
         playbacks_.clear();
         arrangementPatterns_.clear();
+        playbackTracks_.clear();
+        anySoloedPlayableTrack_ = false;
     }
 
     void reset() noexcept {
@@ -112,6 +119,12 @@ public:
             std::uint32_t seed,
             std::int32_t sampleRate) noexcept {
         SequencePlaybackAggregate result;
+
+        if (!playbacks_.empty()) {
+            anySoloedPlayableTrack_ = hasSoloedPlaybackTrack(
+                    std::span<const domain::Track* const>(
+                            playbackTracks_.data(), playbackTracks_.size()));
+        }
 
         for (auto& playback : playbacks_) {
             const auto value = playback->advance(
@@ -143,7 +156,9 @@ private:
     MpcProjectState& projectState_;
     audio::AudioEngine& audio_;
     std::vector<domain::Pattern> arrangementPatterns_;
+    std::vector<const domain::Track*> playbackTracks_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
+    bool anySoloedPlayableTrack_ = false;
 };
 
 } // namespace mpc::sequencer
