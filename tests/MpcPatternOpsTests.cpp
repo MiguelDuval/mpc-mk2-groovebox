@@ -634,6 +634,19 @@ int main() {
     assert(pattern.notes.size() == 1);
     assert(pattern.notes[0].tick == 960);
 
+    const std::array<mpc::domain::MidiNoteEvent, 5> malformedAttributes{{
+            {0, 120, 255, 100, 127, 1},
+            {0, 120, 36, 255, 127, 1},
+            {0, 120, 36, 100, 255, 1},
+            {0, 120, 36, 100, 127, 9},
+            {0, 3841, 36, 100, 127, 1}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   malformedAttributes,
+                   mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes[0].tick == 960);
+
     mpc::domain::Pattern swingPattern;
     swingPattern.lengthTicks = 3840;
     swingPattern.notes = {
