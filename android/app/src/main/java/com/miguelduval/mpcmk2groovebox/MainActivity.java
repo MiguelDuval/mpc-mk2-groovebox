@@ -950,7 +950,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final double tempo = startupComplete
                 ? nativeSequenceGetTempo()
                 : 120.0;
-        final boolean midiReady = midiBridge != null;
+        final boolean midiReady = midiBridge != null && midiBridge.isConnected();
         final boolean audioReady = startupComplete && NATIVE_LIBRARY_LOADED;
         pullDownPanel.setContext(
                 "UNTITLED",
@@ -1710,7 +1710,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             automationTopButton.setText("AUTO");
         }
 
-        final boolean midiReady = midiBridge != null;
+        final boolean midiReady = midiBridge != null && midiBridge.isConnected();
         updateTopMidiStatus(midiInTopStatus, midiReady);
         updateTopMidiStatus(midiOutTopStatus, midiReady);
     }
@@ -18618,12 +18618,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> {
-            boolean connected = description != null
-                    && description.startsWith("Connected:");
+            // The connection message is diagnostic text; open ports are the
+            // authoritative readiness signal for the persistent shell.
+            boolean connected = midiBridge != null && midiBridge.isConnected();
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
             updateTopMidiStatus(midiInTopStatus, connected);
             updateTopMidiStatus(midiOutTopStatus, connected);
+            refreshMpcCompactContext();
             if (connected) {
                 Arrays.fill(hardwareButtonLedStateCache, -1);
                 lastTouchStripLedSignature = "";
