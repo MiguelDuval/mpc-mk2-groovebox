@@ -51,6 +51,86 @@ domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     return sequence;
 }
 
+
+// Keep the native model internally valid when a user changes Sequence length.
+// Notes beyond the new Pattern end are removed; note durations are bounded by
+// the Pattern length. Placements that no longer intersect both the Sequence
+// timeline and their source Pattern are removed or clipped, never left for the
+// serializer or playback path to discover as invalid state.
+void resizeSequenceContent(
+        domain::Sequence& sequence,
+        std::int32_t previousLength,
+        std::int32_t newLength) {
+    for (auto& track : sequence.tracks) {
+        for (auto& pattern : track.patterns) {
+            pattern.lengthTicks = newLength;
+            auto& notes = pattern.notes;
+            notes.erase(
+                    std::remove_if(
+                            notes.begin(),
+                            notes.end(),
+                            [newLength](const domain::MidiNoteEvent& note) {
+                                return note.tick < 0 || note.tick >= newLength;
+                            }),
+                    notes.end());
+            for (auto& note : notes) {
+                if (note.durationTicks < 0) note.durationTicks = 0;
+                if (note.durationTicks > newLength) note.durationTicks = newLength;
+            }
+        }
+
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0
+                    && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = newLength;
+            }
+        }
+
+        auto& placements = track.placements;
+        placements.erase(
+                std::remove_if(
+                        placements.begin(),
+                        placements.end(),
+                        [&track, newLength](const domain::PatternPlacement& placement) {
+                            if (placement.startTick < 0
+                                    || placement.startTick >= newLength
+                                    || placement.lengthTicks <= 0
+                                    || placement.sourceOffsetTicks < 0) {
+                                return true;
+                            }
+                            const auto pattern = std::find_if(
+                                    track.patterns.begin(),
+                                    track.patterns.end(),
+                                    [&placement](const domain::Pattern& value) {
+                                        return value.id == placement.patternId;
+                                    });
+                            return pattern == track.patterns.end()
+                                    || pattern->lengthTicks <= 0
+                                    || placement.sourceOffsetTicks >= pattern->lengthTicks;
+                        }),
+                placements.end());
+
+        for (auto& placement : placements) {
+            const auto pattern = std::find_if(
+                    track.patterns.begin(),
+                    track.patterns.end(),
+                    [&placement](const domain::Pattern& value) {
+                        return value.id == placement.patternId;
+                    });
+            // Invalid/missing-source placements have already been removed.
+            if (pattern == track.patterns.end()) continue;
+            const auto timelineAvailable = static_cast<std::int64_t>(newLength)
+                    - placement.startTick;
+            const auto sourceAvailable = static_cast<std::int64_t>(pattern->lengthTicks)
+                    - placement.sourceOffsetTicks;
+            placement.lengthTicks = static_cast<std::int32_t>(
+                    std::min<std::int64_t>(
+                            placement.lengthTicks,
+                            std::min(timelineAvailable, sourceAvailable)));
+        }
+    }
+}
+
 } // namespace
 
 MpcProjectState::MpcProjectState() {
@@ -302,18 +382,7 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
     mutableSequence.loopStartTicks =
             std::clamp(mutableSequence.loopStartTicks, 0, length - 1);
 
-    for (auto& track : mutableSequence.tracks) {
-        for (auto& pattern : track.patterns) {
-            pattern.lengthTicks = length;
-        }
-        // Keep only the legacy full-sequence placement coupled to sequence length.
-        // Explicit shorter clip placements remain independent of later sequence resizing.
-        for (auto& placement : track.placements) {
-            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
-                placement.lengthTicks = length;
-            }
-        }
-    }
+    resizeSequenceContent(mutableSequence, previousLength, length);
 
     if (activeTrackIndex_ >= mutableSequence.tracks.size()) {
         activeTrackIndex_ = mutableSequence.tracks.empty()
@@ -377,18 +446,7 @@ bool MpcProjectState::setSequenceTimeSignature(
     sequence.loopStartTicks = static_cast<std::int32_t>(newLoopStart);
     sequence.loopEndTicks = static_cast<std::int32_t>(newLoopEnd);
 
-    for (auto& track : sequence.tracks) {
-        for (auto& pattern : track.patterns) {
-            pattern.lengthTicks = length;
-        }
-        // Preserve a full-sequence placement as the sequence's length changes,
-        // while keeping intentional short/offset placements unchanged.
-        for (auto& placement : track.placements) {
-            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
-                placement.lengthTicks = length;
-            }
-        }
-    }
+    resizeSequenceContent(sequence, previousLength, length);
     return true;
 }
 
