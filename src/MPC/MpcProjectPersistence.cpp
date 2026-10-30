@@ -265,6 +265,62 @@ bool validatePatternData(const domain::Project& project, std::string* error) {
     return true;
 }
 
+bool validateEntityIdentifiers(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.id.empty()) {
+        return setError(error, "Project identifier must not be empty");
+    }
+
+    std::set<std::string> sampleIds;
+    std::set<std::uint32_t> assignedSampleIds;
+    for (const auto& sample : project.samples) {
+        if (sample.id.empty() || !sampleIds.insert(sample.id).second) {
+            return setError(error, "Sample identifiers must be nonempty and unique");
+        }
+        if (sample.assetId.isAssigned()
+                && !assignedSampleIds.insert(sample.assetId.value).second) {
+            return setError(error, "Assigned sample asset identifiers must be unique");
+        }
+    }
+
+    std::set<std::string> programIds;
+    for (const auto& program : project.drumPrograms) {
+        if (program.id.empty() || !programIds.insert(program.id).second) {
+            return setError(error, "Drum Program identifiers must be nonempty and unique");
+        }
+    }
+
+    std::set<std::string> sequenceIds;
+    for (const auto& sequence : project.sequences) {
+        if (sequence.id.empty() || !sequenceIds.insert(sequence.id).second) {
+            return setError(error, "Sequence identifiers must be nonempty and unique");
+        }
+
+        std::set<std::string> trackIds;
+        for (const auto& track : sequence.tracks) {
+            if (track.id.empty() || !trackIds.insert(track.id).second) {
+                return setError(error, "Track identifiers must be nonempty and unique within a Sequence");
+            }
+
+            std::set<std::string> patternIds;
+            for (const auto& pattern : track.patterns) {
+                if (pattern.id.empty() || !patternIds.insert(pattern.id).second) {
+                    return setError(error, "Pattern identifiers must be nonempty and unique within a Track");
+                }
+            }
+
+            std::set<std::string> placementIds;
+            for (const auto& placement : track.placements) {
+                if (placement.id.empty() || !placementIds.insert(placement.id).second) {
+                    return setError(error, "Placement identifiers must be nonempty and unique within a Track");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validateSerializableCollectionSizes(
         const domain::Project& project,
         std::string* error) {
@@ -397,7 +453,10 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
+    // Apply cardinality limits before building identifier sets from caller-owned
+    // vectors; oversized Projects should be rejected without large temporary allocations.
     if (!validateSerializableCollectionSizes(project, error)
+            || !validateEntityIdentifiers(project, error)
             || !validateSerializableNumericFields(project, error)
             || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
@@ -623,7 +682,8 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validatePatternData(candidate, error)
+    if (!validateEntityIdentifiers(candidate, error)
+            || !validatePatternData(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
     }
