@@ -6733,8 +6733,8 @@ def bounds(n):
  m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
  if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
  return tuple(map(int,m.groups()))
-def desc(value):
- found=[n for n in nodes if n.attrib.get("content-desc")==value]
+def desc(value, prefix=False):
+ found=[n for n in nodes if (n.attrib.get("content-desc","").startswith(value) if prefix else n.attrib.get("content-desc")==value)]
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
