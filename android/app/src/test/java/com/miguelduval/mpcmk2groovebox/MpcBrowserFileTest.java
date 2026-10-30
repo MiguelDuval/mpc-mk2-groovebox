@@ -63,6 +63,21 @@ public final class MpcBrowserFileTest {
     }
 
     @Test
+    public void fileSizeOptionOnlyHidesSizeAndPreservesOtherMetadata() {
+        MpcBrowserFile file = new MpcBrowserFile(
+                "content://media/external/audio/media/12",
+                "Kick.wav", "audio/wav", 1536L, 1200L);
+        assertEquals("1.5 KB • 0:01 • WAV", file.metadataLine(true));
+        assertEquals("0:01 • WAV", file.metadataLine(false));
+
+        MpcBrowserFile unknown = new MpcBrowserFile(
+                "content://media/external/audio/media/13",
+                "Unknown.wav", "audio/wav", -1L, 0L);
+        assertEquals("SIZE UNKNOWN • DURATION UNKNOWN • WAV", unknown.metadataLine(true));
+        assertEquals("DURATION UNKNOWN • WAV", unknown.metadataLine(false));
+    }
+
+    @Test
     public void onlyWaveFilesAreEligibleForTheCurrentNativeLoader() {
         assertTrue(MpcBrowserFile.isWavName("Kick.WAV"));
         assertTrue(MpcBrowserFile.isWavName("  snare.wav  "));
