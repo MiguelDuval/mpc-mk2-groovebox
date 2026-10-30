@@ -10,6 +10,14 @@ namespace mpc::sequencer {
 
 inline constexpr std::int32_t kTicksPerQuarterNote = 960;
 
+// Keep transport timing and audio-frame scheduling on the same supported BPM
+// range even when a legacy or malformed editable Sequence contains bad data.
+[[nodiscard]] inline double sanitizeTempoBpm(double tempoBpm) noexcept {
+    return std::isfinite(tempoBpm)
+            ? std::clamp(tempoBpm, 20.0, 300.0)
+            : 120.0;
+}
+
 [[nodiscard]] inline std::optional<std::int32_t> ticksToFrames(
         std::int64_t ticks,
         double tempoBpm,
