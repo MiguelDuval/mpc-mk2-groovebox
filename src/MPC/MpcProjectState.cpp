@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <unordered_set>
 
 namespace mpc {
 
@@ -131,6 +132,36 @@ void resizeSequenceContent(
     }
 }
 
+std::unordered_set<std::uint32_t> collectUsedSampleIds(
+        const domain::Project& project) {
+    std::unordered_set<std::uint32_t> used;
+    for (const auto& sample : project.samples) {
+        if (sample.assetId.isAssigned()) used.insert(sample.assetId.value);
+    }
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) used.insert(layer.sample.value);
+            }
+        }
+    }
+    return used;
+}
+
+std::uint32_t findAvailableSampleId(
+        const domain::Project& project,
+        std::uint32_t firstCandidate) {
+    const auto used = collectUsedSampleIds(project);
+    auto candidate = firstCandidate == 0 ? std::uint32_t{1} : firstCandidate;
+    const auto first = candidate;
+    do {
+        if (!used.contains(candidate)) return candidate;
+        ++candidate;
+        if (candidate == 0) candidate = 1;
+    } while (candidate != first);
+    return 0;
+}
+
 } // namespace
 
 MpcProjectState::MpcProjectState() {
@@ -190,17 +221,9 @@ bool MpcProjectState::replaceProject(domain::Project project) {
     if (maximumId != std::numeric_limits<std::uint32_t>::max()) {
         nextSampleId_ = maximumId + 1;
     } else {
-        nextSampleId_ = 1;
-        const auto used = [this](std::uint32_t candidate) {
-            for (const auto& sample : project_.samples) if (sample.assetId.value == candidate) return true;
-            for (const auto& program : project_.drumPrograms) {
-                for (const auto& pad : program.pads) {
-                    for (const auto& layer : pad.layers) if (layer.sample.value == candidate) return true;
-                }
-            }
-            return false;
-        };
-        while (nextSampleId_ != 0 && used(nextSampleId_)) ++nextSampleId_;
+        // Keep a persistent search-mode sentinel after wrap. The first free ID
+        // is not necessarily followed by another free ID.
+        nextSampleId_ = 0;
     }
     return true;
 }
@@ -630,11 +653,25 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
-    if (nextSampleId_ == 0) {
-        nextSampleId_ = 1;
+    // Preserve the fast monotonic path until wrap. Zero is a persistent
+    // search-mode sentinel: once the counter wraps, each allocation must skip
+    // live SampleRefs and assigned layer references. The first free ID is not
+    // necessarily followed by another free ID, so do not advance past a hole
+    // and then blindly trust that next value.
+    const bool searchForFreeId = nextSampleId_ == 0;
+    const auto allocatedId = searchForFreeId
+            ? findAvailableSampleId(project_, 1)
+            : nextSampleId_;
+    if (allocatedId == 0) {
+        return {};
     }
 
-    const auto id = domain::SampleId{nextSampleId_++};
+    if (!searchForFreeId) {
+        nextSampleId_ = allocatedId == std::numeric_limits<std::uint32_t>::max()
+                ? 0
+                : allocatedId + 1;
+    }
+    const auto id = domain::SampleId{allocatedId};
 
     domain::SampleRef ref;
     ref.id = "sample-" + std::to_string(id.value);
