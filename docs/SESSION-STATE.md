@@ -1,5 +1,45 @@
 # Session State — MPC MkII Groovebox
 
+
+## Consolidated engineering checkpoint — 2026-10-30 (current handoff)
+
+**Candidate branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
+**Immutable product starting point:** PR #23 product-code SHA `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`. The consolidated candidate is a descendant of this SHA; the product branch and `main` were not changed.  
+**Validation state:** the integrated changes below were individually accepted on their own exact source heads. The combined branch has **not yet passed its own exact-HEAD Android Build** and must not be called a green/release checkpoint until that workflow and artifact inspection complete. A draft validation PR against `feature/mpc-one-ui-fidelity` is the next action.
+
+### Integrated source slices and their independent evidence
+
+| Slice integrated into this candidate | Accepted source evidence |
+|---|---|
+| Reference screenshot archive: 82 VIS contexts; local gallery, manifest and extracted assets | PR #129 source head `9c4bdbc7c673d68136ff9fff9184549aac56fff6`; local assets/INDEX and catalog vendored. Inventory: 402 source-image records, 370 downloaded, 32 failed, 248 PDF page captures, 281 figure crops, 59 direct-image sources. |
+| Main Mute workspace + truthful Reserved routes | PR #124 product SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84`, Build #3465 / [run 40591850947](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40591850947); branch/doc HEAD `e7de5881c936a8b1167ce6835ee7424944407749`, Build #3466 / [run 40660926245](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40660926245). Pad/Track 4×4 evidence and matching hierarchy inspected on source run. |
+| Native Track Solo playback and real UI state | PR #125 head `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd`, Build #3468 / [run 40663060996](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40663060996). |
+| Reversible discrete Grid zoom ladder and exact inverse viewport history | PR #117 head `62c13b07aa17eaf5d2e7fec6e24b75d66e7b37e8`, Build #3413 / [run 40547525120](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40547525120); PR #123 head `b11c2a4ce55a21528f056e740df108fb81d30b9b`, Build #3457 / [run 40578192003](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40578192003). |
+| Real-touch Grid zoom H/V viewport isolation and visual evidence | PR #114 head `1b177ad886f87ac18e09828daa8880825ee38a3e`, Build #3399 / [run 40527004496](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527004496). |
+| Arrangement ruler pan + zoom round-trip, native event-data invariance | PR #120 head `25f62d07d8e06e45847cca02f002066d10a4ac3d`, Build #3458 / [run 40578350114](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40578350114). |
+| Shell Back restores prior subcontext/focus; Project Save As fresh compressed hierarchy is retained | PR #110 head `68a83fc7f9541efc14531854d1060e5969f5429f`, Build #3412 / [run 40547076817](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40547076817); follow-up PR #115 head `cdce4f1776cce5da064bfbeebbca5f7d87d06af2`, Build #3403 / [run 40535592616](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40535592616). |
+| Toolbar MIDI readiness reflects actual connected ports and reports disconnect | PR #112 head `65c651388ab67195c09687e9e67952e6b91688f4`, Build #3400 / [run 40527456461](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40527456461). Physical Studio connection remains unverified. |
+| Browser local Content categories, file-size/date options and picker-cancel state preservation | PR #56 head `20e33dd7b9d2462dcd816da1281b2206948d243b`, Build #3239 / [run 40144540628](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40144540628); PR #80 head `5fe65c952c7a6771f49478f5a026be9c0ada0f38`, Build #3374 / [run 40461592533](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40461592533); PR #111 head `935e59374b5ac682ec6ccca16b66b43db28f16d7`, Builds #3394/#3395 / runs [40518877443](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40518877443) and [40518880896](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40518880896); PR #119 head `e707ffd026210cef3a022d743741f5f1f631b749`, Build #3424 / [run 40562838515](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40562838515). |
+| Sample Edit CH4/CH8/CH16 evidence snapshot immutability | PR #128 head `ade77f513404112a251ad65cbd445e33003af599`, Build #3514 / [run 40895016008](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40895016008). |
+
+### Intentionally not integrated
+
+- PR #126 WAV export codec/host-test adjustment: its exact current head has no successful exact-SHA workflow result in the available record. Keep separate until fully verified.
+- PR #127 Browser XML assertion follow-up: latest exact-head Build #3516 failed. Do not integrate a failing assertion branch; diagnose separately.
+- PR #122 empty-search follow-up and PR #116 duplicate picker-cancel path: recorded exact-head runs failed; not integrated. PR #119 is the accepted picker-cancel source slice.
+- PR #121 is a stale/failed documentation checkpoint, superseded by this live state document.
+- Source PRs remain unchanged/open as source records unless explicitly closed; do not merge them into `main`. The consolidation candidate is the single working target pending its own validation.
+
+### Mandatory acceptance gates / next step
+
+1. Open a Draft validation PR from this branch to `feature/mpc-one-ui-fidelity` and run Android Build on the exact returned head SHA.
+2. Resolve any compile, native/JUnit, shell preflight, emulator-smoke or artifact failures without weakening acceptance assertions. Keep `cancel-in-progress: false`.
+3. Inspect APK and visual-evidence artifact from that exact run; verify Grid/Arrangement, Solo/Mute, Browser, Project picker and Sample Chop evidence files, including their matching XML. Record artifact IDs/checksums only after inspection.
+4. UI work must inspect the actual local MPC OS 3.9 reference image(s) first, record VIS ID(s)/asset paths and before/after proof. The rule is mandatory in `AGENTS.md`, master prompt, development protocol, blueprint, action catalog, reference index and roadmap.
+5. Physical Akai MPC Studio MkII validation is still PENDING. Emulator success is not hardware certification.
+
+Do not modify `main`, force-push, rebase, reset, rewrite history, or merge this checkpoint into the product branch automatically. Re-fetch live refs and Actions before every acceptance claim.
+
 **Checkpoint date:** 2026-10-27  
 **Purpose:** live handoff. Exact branch HEAD, exact-SHA CI and inspected artifacts govern; this document is not a substitute for live GitHub state.
 
