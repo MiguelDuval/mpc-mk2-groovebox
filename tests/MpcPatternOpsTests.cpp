@@ -438,6 +438,17 @@ int main() {
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
 
+    // Public Pattern mutation helpers must not create MIDI values that the
+    // project persistence contract later refuses to serialize.
+    const auto notesBeforeInvalidMutation = stepPattern.notes.size();
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 255, 100));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 255));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, 0, 127, 9));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, -1));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, 1921));
+    assert(!mpc::sequencer::setStepNoteVelocity(stepPattern, 0, 120, 36, 255));
+    assert(stepPattern.notes.size() == notesBeforeInvalidMutation);
+
     // Arrangement moves change only event position and reject collisions.
     mpc::domain::Pattern arrangementPattern;
     arrangementPattern.lengthTicks = 1920;
@@ -606,6 +617,19 @@ int main() {
     assert(mpc::sequencer::recordNotes(
                    pattern,
                    invalidOnly,
+                   mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes[0].tick == 960);
+
+    const std::array<mpc::domain::MidiNoteEvent, 5> malformedAttributes{{
+            {0, 120, 255, 100, 127, 1},
+            {0, 120, 36, 255, 127, 1},
+            {0, 120, 36, 100, 255, 1},
+            {0, 120, 36, 100, 127, 9},
+            {0, 3841, 36, 100, 127, 1}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   malformedAttributes,
                    mpc::sequencer::PatternRecordMode::Replace) == 0);
     assert(pattern.notes.size() == 1);
     assert(pattern.notes[0].tick == 960);
