@@ -1,5 +1,37 @@
 # Implementation Roadmap
 
+## CONSOLIDATED CHECKPOINT — 2026-10-30
+
+**Working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
+**Integration base:** exact product branch checkpoint `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
+**Policy:** this checkpoint is the sole forward development line while consolidation is being verified. Do not continue parallel feature work on the old stacked branches unless a task is explicitly marked HOLD/ISOLATED. `main` is untouched.
+
+### Integrated into the consolidated branch
+
+- **Visual reference archive:** PR #129 catalog integrated. The gallery contains all 82 named `VIS-001`–`VIS-082` contexts. The materialized index lists 402 source-image records (370 downloaded, 32 failed), 248 PDF page captures and 281 embedded-figure crops. The 32 failed source retrievals remain explicit gaps; never claim every one of the 82 contexts has a direct screenshot. Mandatory reference-first rules were added to `AGENTS.md`, the master prompt, operating protocol, UI blueprint, action catalog, reference index and roadmap.
+- **P0 Mute/reserved-mode recovery:** PR #124 source code/documentation integrated. Source product SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84` passed Build #3465 / run `40591850947`; the updated PR head passed Build #3466 / run `40660926245`. Pad and Track 4×4 mute grids and real native mute toggles were evidenced.
+- **Track Solo:** PR #125 source code integrated. Exact source head `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd` passed Build #3468 / run `40663060996`; native no-Solo / single-or-multiple-Solo / Mute precedence / live toggle / active Sequence behavior passed emulator smoke and native tests.
+- **Grid:** PR #123 exact inverse-window history and PR #117 reversible discrete zoom ladder integrated, alongside PR #114 real-touch visual viewport assertions and evidence upload paths. Source runs: Build #3457 / run `40578192003`, Build #3413 / run `40547525120`, Build #3399 / run `40527004496` (all source exact-head runs passed). Combined branch exact-head build is still required.
+- **Arrangement:** PR #120 pan and reset→zoom-in→zoom-out viewport acceptance integrated. Source head `25f62d07d8e06e45847cca02f002066d10a4ac3d` passed Build #3458 / run `40578350114`; native event state is compared through the acceptance smoke. Combined branch exact-head build is still required.
+- **Navigation and MIDI status:** PR #110 saved/restored shell subcontext/focus and PR #112 truthful MIDI connected-port status integrated. Source runs #3412 / `40547076817` and #3400 / `40527456461` passed. Physical MPC Studio MkII connection testing remains pending.
+- **Project Save As:** PR #115 fresh compressed hierarchy capture and immutable second Save As evidence integrated. Source run #3403 / `40535592616` passed.
+- **Browser:** the consolidated tree already matches PR #111's accepted implementation in the core `MpcBrowserFile`, `MpcBrowserView`, `MpcLocalAudioCatalog`, `MpcDocumentTreeCatalog` and `MpcBrowserFileTest` file blobs. It includes real Drums/Demos relative-path categories, truthful unsupported Instruments, persistent file-size and modified-date options. PR #80 source Build #3374 / run `40461592533`; PR #111 source Builds #3394/#3395 / runs `40518877443` and `40518880896` passed. PR #119 picker-cancel state preservation integrated; exact source head `e707ffd026210cef3a022d743741f5f1f631b749` passed Build #3424 / run `40562838515`. The consolidated branch still needs its own exact-head run and evidence inspection.
+- **Sample Edit evidence:** PR #128 immutable CH4/CH8/CH16 hierarchy snapshots integrated. Exact source head `ade77f513404112a251ad65cbd445e33003af599` passed Build #3514 / run `40895016008`.
+
+### Explicitly held — not part of this checkpoint yet
+
+- **PR #126 WAV export codec:** do not integrate from its source branch yet. Build #3480 / run `40710623733` passed the WAV decoder step but failed later at `MpcProjectState.cpp:209:16` due to `-Werror=unused-variable` (`oldKind`) on its separate sample-lifecycle base. More importantly, the checkpoint's current AudioEngine API does not contain the source branch's `exportSampleToWav` path, so copying the source diff would introduce an orphan codec API. The temporary partial `encodeWav` addition was reverted. Reconcile the intended export API on this checkpoint before reconsidering.
+- **PR #127 BROW-013 assertion repair:** source Build #3516 failed. Do not import a test-only change until the failed step and the checkpoint's existing Browser hierarchy assertions are reconciled.
+- **PR #116 picker-cancel Pad/Layer follow-up:** its exact source run #3411 failed; PR #119's state-preservation path is the accepted replacement for now.
+- Other old open/stacked PRs are not assumed included merely because they exist. Inspect their exact diffs and exact-head CI before any further import. In particular, never cherry-pick a whole agent/sample-lifecycle branch to collect one useful fix.
+
+### Immediate next step
+
+Open a Draft consolidation PR from this branch to `feature/mpc-one-ui-fidelity` to trigger one complete Android Build on the consolidated exact HEAD. Do not merge it until the workflow passes; inspect the APK and visual evidence artifacts, verify all native and emulator acceptance markers (Mute, Solo, Grid, Arrangement, Browser, Sample Edit and Project Save As), and record the final exact SHA. Then update this section and `SESSION-STATE.md`. Physical MPC Studio MkII validation remains a separate pending gate. Never merge to `main` automatically.
+
+---
+
+
 ## Non-negotiable UI acceptance gate
 
 Every UI-facing task must inspect the relevant `VIS-001`–`VIS-082` entries in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and open the associated local visual assets through `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`. Use MPC OS 3.9 as the primary visual authority, record VIS ID(s) and source paths, and compare current/after evidence. Missing exact screenshots must be reported as an explicit gap. This requirement applies to implementation, review, and acceptance; green CI alone is insufficient.
