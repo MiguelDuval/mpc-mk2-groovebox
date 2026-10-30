@@ -1346,3 +1346,10 @@ Acceptance requires an exact-SHA emulator run that validates both 4×4 grids, to
 - Exact run artifacts: APK ID `12775051524`, SHA-256 `3b1ea246a0a5e1f069d6fc99eea82952b7ea5624a77712b20c08a063be909e71`; evidence ID `12775747260`, SHA-256 `96bf4e0e085ffb7ee86fe0a7600358473f6c4a6df71148e46dbe2b21d1dd345b`. GitHub metadata and the downloaded archive digest match; screenshots and XML were inspected.
 - Runtime smoke toggled and restored the real native Pad and Track mute values and asserted Sequence/Track/Pad selection plus note data stayed unchanged through Back. Main MUTE replacement/return and truthful Reserved destinations are also runtime-asserted. The archive contains dedicated PNG/XML for the two Mute grids, not separate screenshots for each Reserved route.
 - Physical MPC Studio MkII remains PENDING; emulator acceptance is not a hardware certification.
+
+
+## 2026-10-28 Track Solo playback and UI state — emulator verified
+
+The Main/Track View Function Bar **SOLO** action toggles the selected playable Drum Track's native Solo state and reports real ON/OFF state. Track View rows may display state, but the shared Function Bar remains the semantic mutation surface. Track Types without an actual playback route must remain visibly unavailable; do not simulate Solo with Mute.
+
+Solo/Mute routing is enforced by the native sequencer before events reach the realtime audio callback: when no playable Track is Soloed, all unmuted playable Drum Tracks continue; once any playable Track is Soloed, only those Soloed Tracks route new events; Mute wins over Solo for the same Track. Solo state changes during playback and active-Sequence scope are tested. Android Build #3468 / [run 40663060996](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40663060996) passed on exact SHA `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd`. Physical controller validation is still pending, and the full consolidated branch needs its own exact-head run.
