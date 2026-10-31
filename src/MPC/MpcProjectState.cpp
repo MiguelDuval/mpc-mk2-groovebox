@@ -653,6 +653,12 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
+    // Keep live SampleRefs in the same range accepted by project persistence.
+    // Zero remains the supported value for unknown rate/length metadata.
+    if (!std::isfinite(sampleRate) || sampleRate < 0.0 || lengthSamples < 0) {
+        return {};
+    }
+
     // Preserve the fast monotonic path until wrap. Zero is a persistent
     // search-mode sentinel: once the counter wraps, each allocation must skip
     // live SampleRefs and assigned layer references. The first free ID is not

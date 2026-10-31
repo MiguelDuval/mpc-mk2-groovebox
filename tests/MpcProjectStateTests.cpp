@@ -12,6 +12,13 @@ int main() {
     assert(state.activeDrumProgram().pads.size() == mpc::domain::kMaxProgramPads);
     assert(state.activeDrumProgram().pad(0).midiNote == 36);
 
+    // Invalid SampleRef metadata is rejected before any ID is consumed.
+    assert(!state.registerSample("Negative rate", "", -1.0, 24000).isAssigned());
+    assert(!state.registerSample(
+            "Non-finite rate", "", std::numeric_limits<double>::quiet_NaN(), 24000).isAssigned());
+    assert(!state.registerSample("Negative length", "", 48000.0, -1).isAssigned());
+    assert(state.project().samples.empty());
+
     const auto sampleId = state.registerSample(
             "Kick",
             "",
@@ -19,6 +26,7 @@ int main() {
             24000);
 
     assert(sampleId.isAssigned());
+    assert(sampleId.value == 1);
     assert(state.project().samples.size() == 1);
     assert(state.findSample(sampleId) != nullptr);
     assert(state.findSample(sampleId)->name == "Kick");

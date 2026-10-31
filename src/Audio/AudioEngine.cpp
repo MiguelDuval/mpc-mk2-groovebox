@@ -4,6 +4,7 @@
 #include "MPC/MpcPadAftertouchPolicy.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
+#include "SampleLoopRegionPolicy.h"
 #include "SampleLayerParameters.h"
 #include "SampleCrop.h"
 #include "SampleEnvelope.h"
@@ -1097,6 +1098,8 @@ std::string AudioEngine::deletePadAssignments(
                     projectState_.activeDrumProgram().pad(pad).layer(layer);
             layerState.sample = {};
             layerState.region = {};
+            layerState.loopStartSample = 0;
+            layerState.loopEndSample = 0;
             padSamples_[pad][layer].reset();
             padSampleDescriptions_[pad][layer].clear();
         }
@@ -1148,8 +1151,17 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: no source sample assigned";
     }
 
-    const auto sourceSampleId =
-            projectState_.activeDrumProgram().pad(sourcePadIndex).layer(sourceLayerIndex).sample;
+    // The legacy master-sample fallback is not the SampleLayer's buffer, so
+    // don't carry that layer's old loop coordinates into the fallback source.
+    const bool sourceHasLayerBuffer =
+            padSamples_[sourcePadIndex][sourceLayerIndex] != nullptr;
+    const auto& sourceLayerState =
+            projectState_.activeDrumProgram().pad(sourcePadIndex).layer(sourceLayerIndex);
+    const auto sourceSampleId = sourceLayerState.sample;
+    const auto sourceLoopStart =
+            sourceHasLayerBuffer ? sourceLayerState.loopStartSample : 0;
+    const auto sourceLoopEnd =
+            sourceHasLayerBuffer ? sourceLayerState.loopEndSample : 0;
 
     if (!sourceRegion.isValidFor(sourceSample->frameCount())) {
         return "Chop failed: invalid source sample region";
@@ -1228,6 +1240,13 @@ std::string AudioEngine::chopPadSampleToPads(
         destinationLayerState.region = SampleRegion{
                 sourceRegion.startFrame + relativeRegion.startFrame,
                 sourceRegion.startFrame + relativeRegion.endFrame};
+        const auto loop = clipSampleLoopToRegion(
+                sourceLoopStart,
+                sourceLoopEnd,
+                destinationLayerState.region.startFrame,
+                destinationLayerState.region.endFrame);
+        destinationLayerState.loopStartSample = loop.startFrame;
+        destinationLayerState.loopEndSample = loop.endFrame;
         padSampleDescriptions_[destinationPad][0] = sourceDescription;
     }
 
@@ -1288,6 +1307,20 @@ std::string AudioEngine::cropPadSampleRegion(
         return "Crop failed: invalid source sample region";
     }
 
+    std::int64_t sourceLoopStart = 0;
+    std::int64_t sourceLoopEnd = 0;
+    if (padSamples_[padIndex][layerIndex] != nullptr) {
+        const auto& sourceLayer =
+                projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
+        sourceLoopStart = sourceLayer.loopStartSample;
+        sourceLoopEnd = sourceLayer.loopEndSample;
+    }
+    const auto croppedLoop = rebaseSampleLoopForCrop(
+            sourceLoopStart,
+            sourceLoopEnd,
+            sourceRegion.startFrame,
+            sourceRegion.endFrame);
+
     const auto cropped = cropSampleToRegion(*sourceSample, sourceRegion);
     if (!cropped.has_value()) {
         return "Crop failed: invalid source region or sample format";
@@ -1313,6 +1346,8 @@ std::string AudioEngine::cropPadSampleRegion(
             static_cast<double>(croppedSample->sampleRate),
             static_cast<std::int64_t>(croppedSample->frameCount()));
     layerState.region = fullSampleRegion(croppedFrames);
+    layerState.loopStartSample = croppedLoop.startFrame;
+    layerState.loopEndSample = croppedLoop.endFrame;
     padSampleDescriptions_[padIndex][layerIndex] =
             std::to_string(croppedSample->sampleRate) + " Hz "
             + std::to_string(croppedSample->channelCount) + " ch "
@@ -1742,8 +1777,16 @@ std::string AudioEngine::setPadSampleRegion(
         }
     }
 
-    projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex).region =
-            SampleRegion{startFrame, endFrame};
+    auto& layerState =
+            projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
+    const auto loop = clipSampleLoopToRegion(
+            layerState.loopStartSample,
+            layerState.loopEndSample,
+            startFrame,
+            endFrame);
+    layerState.region = SampleRegion{startFrame, endFrame};
+    layerState.loopStartSample = loop.startFrame;
+    layerState.loopEndSample = loop.endFrame;
 
     const std::string message =
             "Pad "

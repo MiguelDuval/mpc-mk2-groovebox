@@ -448,6 +448,80 @@ bool validateSerializableNumericFields(
     return true;
 }
 
+
+bool validateSampleReferences(
+        const domain::Project& project, std::string* error) {
+    for (const auto& sample : project.samples) {
+        if (sample.sampleRate < 0.0) {
+            return setError(error, "Sample rate is out of range");
+        }
+        if (sample.lengthSamples < 0) {
+            return setError(error, "Sample length is out of range");
+        }
+    }
+    return true;
+}
+
+bool validateSampleLayerState(
+        const domain::Project& project, std::string* error) {
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.gain < 0.0f || layer.gain > 1.0f) {
+                    return setError(error, "Sample layer gain is out of range");
+                }
+                if (layer.pan < -1.0f || layer.pan > 1.0f) {
+                    return setError(error, "Sample layer pan is out of range");
+                }
+                if (layer.tuningSemitones < -24.0f || layer.tuningSemitones > 24.0f) {
+                    return setError(error, "Sample layer tuning is out of range");
+                }
+                if (!layer.velocityRange().isValid()) {
+                    return setError(error, "Sample layer velocity range is reversed");
+                }
+                if (!layer.sample.isAssigned()) {
+                    continue;
+                }
+                if (layer.loopStartSample < 0 || layer.loopEndSample < 0) {
+                    return setError(error, "Sample loop bounds are negative");
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && layer.loopEndSample <= layer.loopStartSample) {
+                    return setError(error, "Sample loop range is empty or reversed");
+                }
+                if (layer.region.startFrame >= layer.region.endFrame) {
+                    return setError(error, "Sample region is empty or reversed");
+                }
+                const auto sample = std::find_if(
+                        project.samples.begin(), project.samples.end(),
+                        [&layer](const domain::SampleRef& candidate) {
+                            return candidate.assetId.value == layer.sample.value;
+                        });
+                if (sample == project.samples.end()) {
+                    return setError(error, "Sample layer references a missing SampleRef");
+                }
+                if (sample->lengthSamples > 0) {
+                    if (static_cast<std::uint64_t>(layer.region.endFrame)
+                            > static_cast<std::uint64_t>(sample->lengthSamples)) {
+                        return setError(error, "Sample region exceeds the referenced sample");
+                    }
+                    if (layer.loopEndSample > sample->lengthSamples) {
+                        return setError(error, "Sample loop exceeds the referenced sample");
+                    }
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && (static_cast<std::uint64_t>(layer.loopStartSample)
+                                    < static_cast<std::uint64_t>(layer.region.startFrame)
+                            || static_cast<std::uint64_t>(layer.loopEndSample)
+                                    > static_cast<std::uint64_t>(layer.region.endFrame))) {
+                    return setError(error, "Sample loop is outside the playback region");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
@@ -508,6 +582,8 @@ std::string serializeProject(const domain::Project& project, std::string* error)
             || !validateSequenceSettings(project, error)
             || !validateEntityIdentifiers(project, error)
             || !validateSerializableNumericFields(project, error)
+            || !validateSampleReferences(project, error)
+            || !validateSampleLayerState(project, error)
             || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
         return {};
@@ -734,6 +810,9 @@ bool deserializeProject(
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
     if (!validateSequenceSettings(candidate, error)
             || !validateEntityIdentifiers(candidate, error)
+            || !validateSerializableNumericFields(candidate, error)
+            || !validateSampleReferences(candidate, error)
+            || !validateSampleLayerState(candidate, error)
             || !validatePatternData(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;

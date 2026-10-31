@@ -379,6 +379,130 @@ int main() {
     assert(persistence::serializeProject(invalidLayerVelocity, &error).empty());
     assert(!error.empty());
 
+
+    // SampleRef metadata and assigned SampleLayer regions/loops must be valid
+    // before serialization; malformed external files must also preserve the
+    // currently open Project on load failure.
+    const auto assertInvalidSampleLayerRejected =
+            [](auto mutateLayer, const std::string& expectedError) {
+        auto invalid = makeProject();
+        mutateLayer(invalid.drumPrograms[0].pads[0].layer(0));
+        std::string validationError;
+        assert(persistence::serializeProject(invalid, &validationError).empty());
+        assert(validationError == expectedError);
+    };
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.sample.value = 999; },
+            "Sample layer references a missing SampleRef");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{1777, 1777}; },
+            "Sample region is empty or reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.region = domain::SampleRegion{17, 24001}; },
+            "Sample region exceeds the referenced sample");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopStartSample = -1; },
+            "Sample loop bounds are negative");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) {
+                layer.loopStartSample = 1700;
+                layer.loopEndSample = 100;
+            },
+            "Sample loop range is empty or reversed");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopEndSample = 24001; },
+            "Sample loop exceeds the referenced sample");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopStartSample = 0; },
+            "Sample loop is outside the playback region");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.loopEndSample = 1800; },
+            "Sample loop is outside the playback region");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.gain = 1.25f; },
+            "Sample layer gain is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.pan = -1.25f; },
+            "Sample layer pan is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) { layer.tuningSemitones = 24.5f; },
+            "Sample layer tuning is out of range");
+    assertInvalidSampleLayerRejected(
+            [](auto& layer) {
+                layer.velocityMinimum = 119;
+                layer.velocityMaximum = 7;
+            },
+            "Sample layer velocity range is reversed");
+
+    auto negativeSampleRate = makeProject();
+    negativeSampleRate.samples.front().sampleRate = -48000.0;
+    std::string sampleMetadataError;
+    assert(persistence::serializeProject(negativeSampleRate, &sampleMetadataError).empty());
+    assert(sampleMetadataError == "Sample rate is out of range");
+    auto negativeSampleLength = makeProject();
+    negativeSampleLength.samples.front().lengthSamples = -1;
+    sampleMetadataError.clear();
+    assert(persistence::serializeProject(negativeSampleLength, &sampleMetadataError).empty());
+    assert(sampleMetadataError == "Sample length is out of range");
+
+    auto disabledLoopProject = makeProject();
+    disabledLoopProject.drumPrograms[0].pads[0].layer(0).loopStartSample = 0;
+    disabledLoopProject.drumPrograms[0].pads[0].layer(0).loopEndSample = 0;
+    std::string disabledLoopError;
+    const auto disabledLoopBytes =
+            persistence::serializeProject(disabledLoopProject, &disabledLoopError);
+    assert(!disabledLoopBytes.empty());
+    domain::Project disabledLoopRoundTrip;
+    assert(persistence::deserializeProject(
+            disabledLoopBytes, disabledLoopRoundTrip, &disabledLoopError));
+    assert(disabledLoopRoundTrip.drumPrograms[0].pads[0].layer(0).loopStartSample == 0);
+    assert(disabledLoopRoundTrip.drumPrograms[0].pads[0].layer(0).loopEndSample == 0);
+
+    const std::string validLayerRecord =
+            "LAYER 101 17 1777 0.625 0.125 -3.5 7 119 100 1700 1\n";
+    const auto assertInvalidSerializedLayerRejected =
+            [&](const std::string& from, const std::string& to,
+                    const std::string& expectedError) {
+        std::string malformedBytes = serialized;
+        const auto position = malformedBytes.find(validLayerRecord);
+        assert(position != std::string::npos);
+        auto malformedRecord = validLayerRecord;
+        const auto field = malformedRecord.find(from);
+        assert(field != std::string::npos);
+        malformedRecord.replace(field, from.size(), to);
+        malformedBytes.replace(position, validLayerRecord.size(), malformedRecord);
+        const auto loadedBeforeFailure = persistence::serializeProject(loaded);
+        assert(!loadedBeforeFailure.empty());
+        std::string loadError;
+        assert(!persistence::deserializeProject(malformedBytes, loaded, &loadError));
+        assert(loadError == expectedError);
+        assert(persistence::serializeProject(loaded) == loadedBeforeFailure);
+    };
+    assertInvalidSerializedLayerRejected(
+            "LAYER 101 ", "LAYER 999 ",
+            "Sample layer references a missing SampleRef");
+    assertInvalidSerializedLayerRejected(
+            " 17 1777 ", " 1777 1777 ",
+            "Sample region is empty or reversed");
+    assertInvalidSerializedLayerRejected(
+            " 17 1777 ", " 17 24001 ",
+            "Sample region exceeds the referenced sample");
+    assertInvalidSerializedLayerRejected(
+            " 100 1700 ", " -1 1700 ",
+            "Sample loop bounds are negative");
+    assertInvalidSerializedLayerRejected(
+            " 100 1700 ", " 1700 100 ",
+            "Sample loop range is empty or reversed");
+    assertInvalidSerializedLayerRejected(
+            " 100 1700 ", " 100 24001 ",
+            "Sample loop exceeds the referenced sample");
+    assertInvalidSerializedLayerRejected(
+            " 100 1700 ", " 0 1700 ",
+            "Sample loop is outside the playback region");
+    assertInvalidSerializedLayerRejected(
+            " 100 1700 ", " 100 1800 ",
+            "Sample loop is outside the playback region");
+
     domain::Project invalidTrackKind = source;
     invalidTrackKind.sequences.front().tracks.front().kind =
             static_cast<domain::TrackKind>(5);
