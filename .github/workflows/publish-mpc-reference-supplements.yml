@@ -1,0 +1,58 @@
+name: Publish verified MPC Program reference supplements
+
+on:
+  push:
+    branches:
+      - "research/mpc-reference-asset-recovery-20261031"
+
+permissions:
+  contents: write
+
+jobs:
+  publish-supplements:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout isolated research branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Preserve publisher and switch to latest consolidation branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp scripts/publish_mpc_reference_supplements.py /tmp/publish_mpc_reference_supplements.py
+          git fetch origin checkpoint/mpc-ui-reference-and-product-20261030
+          git checkout --force -B checkpoint/mpc-ui-reference-and-product-20261030 origin/checkpoint/mpc-ui-reference-and-product-20261030
+
+      - name: Download and verify two official source images against current checkpoint
+        run: python /tmp/publish_mpc_reference_supplements.py
+
+      - name: Apply metadata and images to checkpoint branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p docs/MPC3-UI-REFERENCE-ASSETS/images
+          cp /tmp/mpc-reference-supplement/images/*.png docs/MPC3-UI-REFERENCE-ASSETS/images/
+          cp /tmp/mpc-reference-supplement/docs/MPC3-UI-REFERENCE-ASSETS/manifest.json docs/MPC3-UI-REFERENCE-ASSETS/manifest.json
+          cp /tmp/mpc-reference-supplement/docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md
+          cp /tmp/mpc-reference-supplement/docs/MPC3-UI-REFERENCE-ASSETS/RECOVERY-NOTES.md docs/MPC3-UI-REFERENCE-ASSETS/RECOVERY-NOTES.md
+          git add docs/MPC3-UI-REFERENCE-ASSETS/manifest.json docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md docs/MPC3-UI-REFERENCE-ASSETS/RECOVERY-NOTES.md docs/MPC3-UI-REFERENCE-ASSETS/images/akai-support-midi-program-track.png docs/MPC3-UI-REFERENCE-ASSETS/images/akai-support-cv-program-track.png
+          if git diff --cached --quiet; then
+            echo "No supplemental reference changes were needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "docs: add supplemental Akai MIDI and CV Program references"
+          git push origin HEAD:checkpoint/mpc-ui-reference-and-product-20261030
+
+      - name: Upload staged metadata and images
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-program-reference-supplements
+          path: /tmp/mpc-reference-supplement/
+          if-no-files-found: warn
