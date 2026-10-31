@@ -174,3 +174,42 @@ The previous FAVORITE 1 / Project persistence queue is historical. Build #3073 s
 ## Historical notes
 
 The prior long-form checkpoint has been preserved in `docs/SESSION-HISTORY-ARCHIVE.md`. Read it only for a specific regression/history investigation, and verify any claim against live evidence.
+
+
+---
+
+## Latest combined candidate acceptance — 2026-10-31 re-check
+
+**Canonical branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
+**PR:** [#133 — checkpoint: consolidate accepted MPC groovebox work](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/133), still Draft and still targets `feature/mpc-one-ui-fidelity`.  
+**Exact candidate SHA:** `76733e7b8b9a30e05a48e202f2db49ab18d27b62`.  
+**Exact workflow:** Android Build #3593, run [41105497950](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41105497950), completed `success` for that exact SHA. The `android-debug` job passed all 53 substantive steps, including native policy/playback/scheduler/recorder/project tests, JVM tests, debug APK assembly/upload, smoke syntax/preflight, emulator smoke and visual evidence upload. No `main` change.
+
+### Downloaded and inspected exact-run artifacts
+
+| Artifact | ID | Size | SHA-256 |
+|---|---:|---:|---|
+| `app-debug.apk` | `13001052554` | 10,433,069 bytes | `293bd5263421da1eb56b877ee4db8a391741c354462331c25c5aa7afa38de8e4` |
+| `mpc-ui-visual-evidence.zip` | `13003441439` | 17,852,842 bytes | `062a834ac7b506705d033f9eb077e3472a0d754fa4cd92c804382705e54a47e6` |
+
+The APK was verified as an Android package. The evidence ZIP contains 223 entries: 104 PNGs, 86 UiAutomator XML files, plus logs/state snapshots. 81 PNG/XML basename pairs match. The required key pairs are present for Pad Mute, Track Mute, Grid zoom baseline/H/V, Arrangement zoom, Browser local results and picker assignment/cancel, Project Save As picker, and Sample Edit CH4/CH8/CH16. Their screenshot/hierarchy pairs were visually or structurally inspected from this exact-run archive.
+
+### Solo acceptance boundary
+
+Native Track Solo playback policy/tests are included in the successful exact-head workflow; the workflow's source preflight also verifies the real routing functions and requires the Solo UI round-trip assertion contract. The uploaded evidence does **not** contain a dedicated Solo ON/restored PNG/XML pair. The available Track View capture shows MUTE ON and SOLO OFF, with a live accessible Solo control. The downloaded Actions log did not expose the `UI_TRACK_SOLO_ROUNDTRIP_COMPLETE` marker as a standalone line, so retain the narrower statement: **native Solo implementation/test accepted; dedicated UI Solo ON/restoration screenshot proof remains an explicit evidence gap**. Do not invent a screenshot or claim physical Studio validation.
+
+### Reference screenshot archive inventory (checkpoint files)
+
+- `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md` contain 82 named `VIS-001`–`VIS-082` contexts; the gallery has 1,294 embedded local image references and no remote Markdown image URLs.
+- `manifest.json`: 402 source-image records (370 downloaded, 32 failed); 248 rendered PDF page captures, 281 rendered figure crops, one explicit out-of-range page record; 42 total failure records comprising 32 extracted-image retrieval failures, 9 source-page-scan failures, and 1 legacy PDF retrieval failure. These failure categories are explicit, not silently counted as recovered.
+- Current MPC Standalone OS 3.9 page captures are primary; older standalone manuals remain supplementary. Archive is documentation/reference material and is not packaged in the APK.
+- PR #129 is still an open source-of-record PR. The archive content is vendored into this checkpoint; do not close or merge source PRs automatically.
+
+### Remaining gates
+
+1. Keep PR #133 Draft until reviewer/product decision; do not merge or retarget automatically.
+2. Add a dedicated, exact-run Solo ON → OFF UI evidence pair (or clearly keep it excluded from UI screenshot acceptance) without weakening the native playback assertions.
+3. Keep physical Akai MPC Studio MkII validation pending; emulator success is not hardware certification.
+4. Preserve explicit reference-archive retrieval failures; only retry where a stable authoritative source exists.
+5. PR #126 WAV export, #127 Browser assertion follow-up, #122 empty-search retry and #116 duplicate picker path remain excluded pending their own clean exact-head evidence.
+
