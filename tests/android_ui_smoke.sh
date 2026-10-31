@@ -14,6 +14,7 @@ BROWSER_FILTER_ICON_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groo
 UI_STATE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcUiState.java"
 NAVIGATION_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcNavigationController.java"
 NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
+SOLO_POLICY_SOURCE="src/MPC/Sequencer/MpcSequenceSoloPolicy.h"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
 
@@ -32,8 +33,9 @@ if [[ -z "$reserved_nav_start" || -z "$reserved_nav_end" || "$reserved_nav_end" 
   exit 1
 fi
 reserved_nav_block=$(sed -n "${reserved_nav_start},$((reserved_nav_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-if ! grep -Fq -- 'navigationController.navigate(mode);' <<<"$reserved_nav_block"; then
-  echo "ERROR: reserved shortcut activation must preserve its semantic mode"
+if ! grep -Fq -- 'showUnavailableModePage(' <<<"$reserved_nav_block" \
+    || ! grep -Fq -- 'navigationController.navigate(mode);' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: reserved shortcut activation must render a full workspace and preserve its semantic mode"
   exit 1
 fi
 echo "Running MPC shortcut config source hygiene preflight..."
@@ -124,6 +126,28 @@ for required in \
   '--tests com.miguelduval.mpcmk2groovebox.MpcProjectRecoveryStoreTest'; do
   if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
     echo "ERROR: Project safety JVM suite is present but not selected by Gradle CI: $required"; exit 1
+  fi
+done
+
+echo "Checking immutable DocumentsUI evidence pairs and CI artifact retention..."
+for required in \
+  'PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"' \
+  'PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"' \
+  'dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed' \
+  'capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"' \
+  'Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy.'\
+  'Preserved immutable initial Save As hierarchy/screenshot pair.' \
+  'Preserved immutable Project Open hierarchy/screenshot pair.'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: immutable DocumentsUI evidence-pair contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-project-*.png' \
+  '/tmp/mpc-groovebox-project*-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: immutable DocumentsUI evidence is not uploaded by CI: $required"; exit 1
   fi
 done
 
@@ -642,6 +666,82 @@ if grep -Fq -- 'case "CLIP":' <<<"$mixer_track_type_map_block" || \
   exit 1
 fi
 
+echo "Running Track View MUTE workspace routing preflight..."
+track_view_function_start=$(grep -n -m1 'if (mode == MpcUiState.Mode.TRACK_VIEW)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+track_view_function_end=$(grep -n -m1 'if (mode == MpcUiState.Mode.MUTE)' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
+if [[ -z "$track_view_function_start" || -z "$track_view_function_end" || "$track_view_function_end" -le "$track_view_function_start" ]]; then
+  echo "ERROR: Track View Function Bar source boundaries are missing"; exit 1
+fi
+track_view_function_block=$(sed -n "${track_view_function_start},$((track_view_function_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
+if ! grep -Fq -- 'MPC Function Bar Open Mute workspace' <<<"$track_view_function_block" \
+    || ! grep -Fq -- 'v -> showMutePage()' <<<"$track_view_function_block" \
+    || grep -Fq -- 'v -> toggleSelectedTrackMute()' <<<"$track_view_function_block"; then
+  echo "ERROR: Track View MUTE must open the real 4x4 Mute workspace, not only toggle one Track"; exit 1
+fi
+
+echo "Running real 4x4 Mute workspace preflight..."
+for required in \
+  'private void showMutePage()' \
+  'private void refreshMuteGrid()' \
+  'private boolean muteGridHasExpectedTargetsForAudit(boolean trackMode)' \
+  'MPC Mute 4x4 grid' \
+  'MPC Mute pad ' \
+  'MPC Mute track ' \
+  'nativeSequenceIsPadMuted' \
+  'nativeSequenceTogglePadMute(padIndex)' \
+  'nativeSequenceToggleTrackMute(trackIndex)' \
+  'UI_MUTE_PAD_CAPTURE_READY:' \
+  'UI_MUTE_TRACK_CAPTURE_READY:' \
+  'UI_MUTE_GRID_ROUNDTRIP_COMPLETE:' \
+  'UI_RESERVED_SHORTCUT_ROUTE_COMPLETE:'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$NATIVE_ENGINE_SOURCE"; then
+    echo "ERROR: real Mute workspace implementation contract missing: $required"
+    exit 1
+  fi
+done
+
+echo "Running real Track Solo playback-routing preflight..."
+for required in \
+  'nativeSequenceCanSoloTrack' \
+  'nativeSequenceIsTrackSoloed' \
+  'nativeSequenceToggleTrackSolo' \
+  'shouldRouteTrackForSolo(' \
+  'hasSoloedPlaybackTrack(' \
+  'trackSoloed_' \
+  'anyTrackSoloed_'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" "$NATIVE_ENGINE_SOURCE" "$SOLO_POLICY_SOURCE" \
+      "src/MPC/Sequencer/MpcSequencePlaybackSession.h" \
+      "src/MPC/Sequencer/MpcSequencerPlayback.h"; then
+    echo "ERROR: real Track Solo playback-routing contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  'verifyTrackSoloToggleAndRestoreForAudit(' \
+  'captureTrackSoloStateForAudit(' \
+  'UI_TRACK_SOLO_CAPTURE_READY:' \
+  'final String releaseName = "mpc-track-solo-" + phase + "-capture-release";' \
+  'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:' \
+  'final String beforeDescription = "MPC Function Bar Track Solo "' \
+  'final String toggledDescription = "MPC Function Bar Track Solo "' \
+  'final String stateDescription = "MPC Function Bar Track Solo "' \
+  '(soloBefore ? "ON" : "OFF")' \
+  '(soloAfterToggle ? "ON" : "OFF")' \
+  '(expectedSolo ? "ON" : "OFF")'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: Track Solo state/evidence contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  'mpc-track-solo-before-capture-release' \
+  'mpc-track-solo-toggled-capture-release'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Track Solo smoke capture phase missing: $required"; exit 1
+  fi
+done
+if ! grep -Fq -- 'tests/MpcSequencerPlaybackTests.cpp' ".github/workflows/android-build.yml"; then
+  echo "ERROR: native playback Solo test is not part of the Android Build workflow"; exit 1
+fi
+
 echo "Running Track View mute round-trip preflight..."
 for required in \
   'verifyTrackViewMuteToggleAndRestoreForAudit(' \
@@ -873,6 +973,20 @@ for required in \
     exit 1
   fi
 done
+
+echo "Running truthful MIDI readiness preflight..."
+MIDI_BRIDGE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/AndroidMidiBridge.java"
+for required in 'public boolean isConnected()' 'if (wasConnected)' 'MPC Studio MkII disconnected'; do
+  if ! grep -Fq -- "$required" "$MIDI_BRIDGE_SOURCE"; then
+    echo "ERROR: Android MIDI connection-state contract missing: $required"
+    exit 1
+  fi
+done
+if ! grep -Fq -- 'midiBridge != null && midiBridge.isConnected()' "$MAIN_ACTIVITY_SOURCE" \
+    || grep -Fq -- 'final boolean midiReady = midiBridge != null;' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: persistent shell must derive MIDI readiness from connected ports, not bridge allocation"
+  exit 1
+fi
 
 echo "Running MPC shortcut pictography preflight..."
 SHORTCUT_ITEM_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutRailItemView.java"
@@ -1332,7 +1446,7 @@ for required in 'providerState = info(context,' 'LOCAL AUDIO • NOT SCANNED'; d
     exit 1
   fi
 done
-for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'REQUEST_OPEN_DOCUMENT_TREE' 'ACTION_OPEN_DOCUMENT_TREE' 'takePersistableUriPermission(' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'MpcDocumentTreeCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0'; do
+for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'REQUEST_OPEN_DOCUMENT_TREE' 'ACTION_OPEN_DOCUMENT_TREE' 'takePersistableUriPermission(' 'READ_MEDIA_AUDIO' 'READ_EXTERNAL_STORAGE' 'MpcLocalAudioCatalog.queryWavFiles' 'MpcDocumentTreeCatalog.queryWavFiles' 'nativeAudioLoadSampleForPadLayer(' 'MediaPlayer' 'void assignSelectedBrowserFile()' 'browserPickerTargetPad = Math.max(0, Math.min(15, selectedPad))' 'browserPickerTargetLayer = Math.max(0, Math.min(7, selectedLayer))' 'final int targetPad = browserPickerTargetPad >= 0' 'final int targetLayer = browserPickerTargetLayer >= 0' 'BROWSER_WAV_PICKER_CANCELLED'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" \
       && ! grep -Fq -- "$required" "android/app/src/main/AndroidManifest.xml" \
       && ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLocalAudioCatalog.java"; then
@@ -1946,6 +2060,52 @@ for required in   'hardwareFeedbackView.setVisibility(View.GONE);'   'bottomStat
     exit 1
   fi
 done
+echo "Checking Arrangement zoom visual evidence capture and upload contract..."
+for required in \
+  'mpc-groovebox-arrange-zoom-baseline.png|\' \
+  'mpc-groovebox-arrange-zoom-in.png|\' \
+  'mpc-groovebox-arrange-zoom-out-restored.png|\'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Arrangement zoom screenshot is not retained by capture_ui_screenshot: $required"
+    exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-arrange-zoom-baseline.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml' \
+  '/tmp/mpc-groovebox-arrange-zoom-in.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-in-uiautomator.xml' \
+  '/tmp/mpc-groovebox-arrange-zoom-out-restored.png' \
+  '/tmp/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Arrangement zoom evidence is not included in the CI artifact upload: $required"
+    exit 1
+  fi
+done
+
+echo "Checking Grid zoom visual evidence capture and upload contract..."
+for required in \
+  'mpc-groovebox-grid-zoom-baseline.png|\' \
+  'mpc-groovebox-grid-zoom-horizontal.png|\' \
+  'mpc-groovebox-grid-zoom-vertical.png|\'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Grid zoom screenshot is not retained by capture_ui_screenshot: $required"
+    exit 1
+  fi
+done
+for required in \
+  '/tmp/mpc-groovebox-grid-zoom-baseline.png' \
+  '/tmp/mpc-groovebox-grid-zoom-baseline-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-horizontal.png' \
+  '/tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml' \
+  '/tmp/mpc-groovebox-grid-zoom-vertical.png' \
+  '/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml'; do
+  if ! grep -Fq -- "$required" ".github/workflows/android-build.yml"; then
+    echo "ERROR: Grid zoom evidence is not included in the CI artifact upload: $required"
+    exit 1
+  fi
+done
+
 echo "Running MPC Main XL strip value preflight..."
 MAIN_MIXER_STRIP_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
 require_source_contains "$MAIN_MIXER_STRIP_SOURCE" 'right.setSingleLine(true)'
@@ -1990,7 +2150,10 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placem
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE ± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
 echo "Running MPC Browser Options preflight..."
-for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'removeOnPreDrawListener(this)'
+for required in   'MpcBrowserChromeIconDrawable'   'MPC Browser Options'   'MPC Browser Option Show file size'   'MPC Browser Options close'   'PREF_BROWSER_SHOW_FILE_SIZE'   'BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED'   'PREF_BROWSER_SHOW_MODIFIED_DATE'   'BROWSER_OPTIONS_SHOW_MODIFIED_DATE_VERIFIED'   'void onOptionsRequested();'   'showBrowserOptionsDialog'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"       && ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
     echo "ERROR: MPC Browser Options contract missing: $required"
     exit 1
@@ -2023,17 +2186,18 @@ for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label(
     exit 1
   fi
 done
-for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'Main Mode selected sequence • MPC selected field'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'Main Mode selected sequence • MPC selected field'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'verifyMainMuteRouteForAudit('   'UI_MAIN_MUTE_ROUTE_COMPLETE:'   'verifyTrackSoloToggleAndRestoreForAudit('   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:'   'MPC Function Bar Track Solo '    'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
-    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..4}; do' \
-    'initial DocumentsUI hierarchy is not ready' 'after 4 fresh, bounded attempts' \
+    'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
+    'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
+    'initial DocumentsUI hierarchy is not ready' 'after 2 fresh, bounded compressed captures' \
     'expected Project Open outcome $expected_marker'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
@@ -2085,6 +2249,10 @@ capture_ui_screenshot() {
     mpc-groovebox-step-touch-page2.png|\
     mpc-groovebox-step-touch-pad2.png|\
     mpc-groovebox-track-view-muted.png|\
+    mpc-groovebox-track-solo-on.png|\
+    mpc-groovebox-track-solo-off.png|\
+    mpc-groovebox-mute-pad.png|\
+    mpc-groovebox-mute-track.png|\
     mpc-groovebox-arrange-grid-focus.png|\
     mpc-groovebox-arrange-back.png|\
     mpc-groovebox-arrange-grid-reentry.png|\
@@ -2098,7 +2266,16 @@ capture_ui_screenshot() {
     mpc-groovebox-arrange-placement-flow-final.png|\
     mpc-groovebox-arrange-placement-duplicate.png|\
     mpc-groovebox-arrange-loop-changed.png|\
+    mpc-groovebox-arrange-pan-start.png|\
+    mpc-groovebox-arrange-pan-changed.png|\
+    mpc-groovebox-arrange-pan-restored.png|\
+    mpc-groovebox-arrange-zoom-baseline.png|\
+    mpc-groovebox-arrange-zoom-in.png|\
+    mpc-groovebox-arrange-zoom-out-restored.png|\
     mpc-groovebox-grid-edit-after-draw.png|\
+    mpc-groovebox-grid-zoom-baseline.png|\
+    mpc-groovebox-grid-zoom-horizontal.png|\
+    mpc-groovebox-grid-zoom-vertical.png|\
     mpc-groovebox-browser.png|\
     mpc-groovebox-browser-device.png|\
     mpc-groovebox-browser-local-results.png|\
@@ -2134,6 +2311,8 @@ capture_ui_screenshot() {
     mpc-groovebox-sample-browser-return.png|\
     mpc-groovebox-sample-crop-*.png|\
     mpc-groovebox-sample-chop-*.png|\
+    mpc-groovebox-project-save-b-initial.png|\
+    mpc-groovebox-project-save-b-picker-fresh-pair.png|\
     mpc-groovebox-project-*.png|\
     mpc-groovebox-*-cancel*.png)
       adb_bounded "$timeout_seconds" exec-out screencap -p > "$screenshot_path"
@@ -2567,15 +2746,477 @@ arrangement_grid_focus_capture_done=0
 arrangement_back_capture_done=0
 arrangement_grid_reentry_capture_done=0
 track_view_mute_capture_done=0
+track_solo_before_capture_done=0
+track_solo_toggled_capture_done=0
+track_solo_on_capture_done=0
+track_solo_off_capture_done=0
+track_solo_before_state=""
+mute_pad_capture_done=0
+mute_track_capture_done=0
 step_touch_capture_done=0
 step_touch_acceptance_complete=0
+arrangement_zoom_touch_capture_done=0
+arrangement_zoom_touch_acceptance_complete=0
 arrangement_loop_touch_capture_done=0
 arrangement_loop_touch_acceptance_complete=0
+capture_track_solo_evidence() {
+  local phase="$1" marker_line="$2"
+  local expected_solo solo_state description file_base png host_xml remote_xml
+  case "$marker_line" in
+    *"solo=true"*) expected_solo=true; solo_state=on ;;
+    *"solo=false"*) expected_solo=false; solo_state=off ;;
+    *) echo "ERROR: Track Solo evidence marker omitted its native state: $marker_line"; return 1 ;;
+  esac
+
+  description="MPC Function Bar Track Solo $([[ "$expected_solo" == "true" ]] && echo ON || echo OFF)"
+  file_base="mpc-groovebox-track-solo-$solo_state"
+  png="/tmp/$file_base.png"
+  host_xml="/tmp/$file_base-uiautomator.xml"
+  remote_xml="/sdcard/$file_base-uiautomator.xml"
+
+  echo "Capturing Track Solo $solo_state state and fresh accessibility hierarchy ($phase)..."
+  if ! capture_ui_screenshot "$png" 10; then
+    echo "ERROR: Track Solo $solo_state screenshot capture failed"; return 1
+  fi
+  if ! dump_device_ui_retry "$remote_xml" "$host_xml" 8 3; then
+    echo "ERROR: Track Solo $solo_state fresh accessibility capture failed"; return 1
+  fi
+  if ! python3 - "$host_xml" "$expected_solo" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_solo = sys.argv[1], sys.argv[2]
+if expected_solo not in ("true", "false"):
+    raise SystemExit(f"invalid native Track Solo state marker: {expected_solo!r}")
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+expected_state = "ON" if expected_solo == "true" else "OFF"
+opposite_state = "OFF" if expected_solo == "true" else "ON"
+expected_description = f"MPC Function Bar Track Solo {expected_state}"
+opposite_description = f"MPC Function Bar Track Solo {opposite_state}"
+matches = [n for n in nodes if n.attrib.get("content-desc") == expected_description]
+opposites = [n for n in nodes if n.attrib.get("content-desc") == opposite_description]
+if len(matches) != 1 or opposites:
+    raise SystemExit(
+        f"expected one {expected_description!r} and no opposite state; "
+        f"matches={len(matches)} opposites={len(opposites)}")
+node = matches[0]
+if node.attrib.get("text", "") != "SOLO":
+    raise SystemExit(f"Solo control label mismatch: {node.attrib!r}")
+if node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+    raise SystemExit(f"Solo control is visible but not actionable: {node.attrib!r}")
+if node.attrib.get("selected") != expected_solo:
+    raise SystemExit(
+        f"Solo accessibility selection disagrees with native state: "
+        f"expected={expected_solo} node={node.attrib!r}")
+bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                      node.attrib.get("bounds", ""))
+if not bounds:
+    raise SystemExit(f"invalid Solo control bounds: {node.attrib.get('bounds')!r}")
+x1, y1, x2, y2 = map(int, bounds.groups())
+if x2 <= x1 or y2 <= y1:
+    raise SystemExit(f"empty Solo control bounds: {node.attrib.get('bounds')!r}")
+if sum(1 for n in nodes if n.attrib.get("content-desc") == "MPC One Main Toolbar") != 1:
+    raise SystemExit("Track Solo state was not captured on the real Main workspace")
+print(f"Track Solo {expected_state} verified: clickable selected={expected_solo} bounds={(x1,y1,x2,y2)}")
+PY
+  then
+    echo "ERROR: Track Solo accessibility state disagrees with native state ($expected_solo)"
+    cat "$host_xml"
+    return 1
+  fi
+  if ! test -s "$png"; then
+    echo "ERROR: Track Solo $solo_state screenshot is empty"; return 1
+  fi
+  if ! adb_bounded 10 shell run-as "$PACKAGE" touch "cache/mpc-track-solo-$phase-capture-release"; then
+    echo "ERROR: could not release Track Solo $phase capture checkpoint"; return 1
+  fi
+
+  if [[ "$phase" == "before" ]]; then
+    track_solo_before_state="$expected_solo"
+    track_solo_before_capture_done=1
+  elif [[ "$phase" == "toggled" ]]; then
+    if [[ -z "$track_solo_before_state" || "$track_solo_before_state" == "$expected_solo" ]]; then
+      echo "ERROR: Track Solo ON/OFF pair did not capture opposite states"; return 1
+    fi
+    track_solo_toggled_capture_done=1
+  else
+    echo "ERROR: unknown Track Solo evidence phase: $phase"; return 1
+  fi
+  if [[ "$solo_state" == "on" ]]; then
+    track_solo_on_capture_done=1
+  else
+    track_solo_off_capture_done=1
+  fi
+  echo "Track Solo $solo_state screenshot/XML pair captured and app audit released."
+}
+
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
   log_snapshot="$(adb_bounded 5 logcat -d -v brief 2>/dev/null || true)"
 
+  if grep -Fq -- "UI_ARRANGE_ZOOM_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
+    arrangement_zoom_touch_acceptance_complete=1
+  fi
+
+  if [ "$arrangement_zoom_touch_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY:" <<<"$log_snapshot"; then
+    # ARR-003: real Function Bar zoom touches must change the visible timeline
+    # scale only. Compare the current Arrangement viewport against live UI tree
+    # metadata and compare the exact native Track event projection across the
+    # reset → zoom-in → zoom-out round trip.
+    ARRANGE_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-arrange-zoom-baseline.png"
+    ARRANGE_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
+    ARRANGE_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
+    ARRANGE_PAN_PREP_PNG="/tmp/mpc-groovebox-arrange-pan-start.png"
+    ARRANGE_PAN_PREP_XML="/tmp/mpc-groovebox-arrange-pan-start-uiautomator.xml"
+    ARRANGE_PAN_PREP_REMOTE="/sdcard/mpc-groovebox-arrange-pan-start-uiautomator.xml"
+    ARRANGE_PAN_CHANGED_PNG="/tmp/mpc-groovebox-arrange-pan-changed.png"
+    ARRANGE_PAN_CHANGED_XML="/tmp/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
+    ARRANGE_PAN_CHANGED_REMOTE="/sdcard/mpc-groovebox-arrange-pan-changed-uiautomator.xml"
+    ARRANGE_PAN_RESTORED_PNG="/tmp/mpc-groovebox-arrange-pan-restored.png"
+    ARRANGE_PAN_RESTORED_XML="/tmp/mpc-groovebox-arrange-pan-restored-uiautomator.xml"
+    ARRANGE_PAN_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-pan-restored-uiautomator.xml"
+    ARRANGE_ZOOM_IN_PNG="/tmp/mpc-groovebox-arrange-zoom-in.png"
+    ARRANGE_ZOOM_IN_XML="/tmp/mpc-groovebox-arrange-zoom-in-uiautomator.xml"
+    ARRANGE_ZOOM_IN_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-in-uiautomator.xml"
+    ARRANGE_ZOOM_RESTORED_PNG="/tmp/mpc-groovebox-arrange-zoom-out-restored.png"
+    ARRANGE_ZOOM_RESTORED_XML="/tmp/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml"
+    ARRANGE_ZOOM_RESTORED_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml"
+
+    arrange_zoom_viewport() {
+      python3 - "$1" <<'PY_ARRANGE_ZOOM_VIEWPORT'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+found = []
+for node in root.iter("node"):
+    description = node.attrib.get("content-desc", "")
+    match = re.fullmatch(
+        r"Arrangement ZOOM OUT visible bars=(\d+) viewport start bar=(\d+)",
+        description)
+    if not match:
+        continue
+    bounds = re.fullmatch(
+        r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+        node.attrib.get("bounds", ""))
+    if not bounds:
+        continue
+    left, top, right, bottom = map(int, bounds.groups())
+    if right > left and bottom > top:
+        found.append((int(match.group(1)), int(match.group(2))))
+if len(found) != 1:
+    raise SystemExit(
+        f"expected one visible Arrangement viewport description, found {len(found)}: {found}")
+print(found[0][0], found[0][1])
+PY_ARRANGE_ZOOM_VIEWPORT
+    }
+
+    arrange_zoom_data_from_log() {
+      python3 - "$1" <<'PY_ARRANGE_ZOOM_LOG'
+import re
+import sys
+match = re.search(r"\bdata=(.*)$", sys.argv[1])
+if not match or not match.group(1):
+    raise SystemExit("Arrangement zoom audit log has no native Track event projection")
+print(match.group(1))
+PY_ARRANGE_ZOOM_LOG
+    }
+
+    arrange_zoom_log_line() {
+      local action="$1" line=""
+      for zoom_log_attempt in {1..12}; do
+        line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+          | grep -F -- "UI_ARRANGE_ZOOM_STATE: action=$action " | tail -n 1 || true)"
+        if [[ -n "$line" ]]; then printf '%s\n' "$line"; return 0; fi
+        sleep 0.25
+      done
+      echo "ERROR: missing native Arrangement zoom marker for action=$action"
+      return 1
+    }
+
+    echo "Running ARR-003 real-touch Arrangement RESET → ZOOM+ → ZOOM− viewport round trip..."
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement hierarchy before RESET"; exit 1
+    fi
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "RESET"; then
+      echo "ERROR: Arrangement RESET zoom action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom baseline hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom baseline screenshot"; exit 1
+    fi
+    read -r arrange_zoom_baseline_bars arrange_zoom_baseline_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_BASELINE_XML") || {
+        echo "ERROR: baseline Arrangement viewport metadata is missing"; exit 1;
+      }
+    if (( arrange_zoom_baseline_bars <= 1 )); then
+      echo "ERROR: baseline Arrangement viewport cannot zoom in: $arrange_zoom_baseline_bars bars"; exit 1
+    fi
+    arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
+    arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
+    # Pan should be exercised at a zoom level where not every Sequence bar is
+    # visible. Begin with a real ZOOM + touch and reset after the pan round trip.
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+      echo "ERROR: Arrangement ZOOM + could not prepare a panning viewport"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_PREP_REMOTE" "$ARRANGE_PAN_PREP_XML" 8 4; then
+      echo "ERROR: could not capture Arrangement panning baseline hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_PREP_PNG" 10; then
+      echo "ERROR: could not capture Arrangement panning baseline screenshot"; exit 1
+    fi
+    read -r arrange_pan_original_bars arrange_pan_original_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_PREP_XML") || {
+        echo "ERROR: panning baseline viewport metadata is missing"; exit 1;
+      }
+    if (( arrange_pan_original_bars >= arrange_zoom_baseline_bars )); then
+      echo "ERROR: ZOOM + did not create a narrower panning window"; exit 1
+    fi
+    # ARR-003 navigation: drag the blank ruler to pan forward, then reverse the
+    # exact gesture. Only viewportStartBar may change; the native Track event
+    # projection and visible-bar range must remain unchanged. Touch points come
+    # from live Canvas bounds and device density, not hard-coded screen coordinates.
+    arrange_density="$(adb_bounded 10 shell wm density)" || {
+      echo "ERROR: could not read live density for Arrangement pan hit testing"; exit 1;
+    }
+    arrange_pan_touch_points="$(python3 - "$ARRANGE_PAN_PREP_XML" "$arrange_density" <<'PY_ARRANGE_PAN_TOUCH_POINTS'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text = sys.argv[1], sys.argv[2]
+density_match = re.search(r"Physical density:\s*(\d+)", density_text)
+if not density_match:
+    raise SystemExit(f"could not parse live display density: {density_text!r}")
+density = int(density_match.group(1)) / 160.0
+nodes = [node for node in ET.parse(path).getroot().iter("node")
+         if node.attrib.get("content-desc", "") == "MPC linear arrangement editor"]
+if len(nodes) != 1:
+    raise SystemExit(f"expected one Arrangement Canvas root, found {len(nodes)}")
+match = re.fullmatch(
+    r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+    nodes[0].attrib.get("bounds", ""))
+if not match:
+    raise SystemExit(f"invalid Arrangement Canvas bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+header = round(138 * density)
+ruler_y = top + round(12 * density)
+timeline_width = right - left - header
+if timeline_width <= 0 or ruler_y >= bottom:
+    raise SystemExit(f"Arrangement ruler/timeline geometry is invalid: {nodes[0].attrib}")
+start_x = left + header + round(timeline_width * 0.85)
+finish_x = left + header + round(timeline_width * 0.25)
+if not (left + header < finish_x < start_x < right and top < ruler_y < bottom):
+    raise SystemExit(f"derived ruler pan touch is outside the Canvas: {(start_x, finish_x, ruler_y)}")
+print(start_x, ruler_y, finish_x, ruler_y)
+PY_ARRANGE_PAN_TOUCH_POINTS
+    )" || { echo "ERROR: could not derive live ruler pan touch coordinates"; exit 1; }
+    read -r arrange_pan_start_x arrange_pan_y arrange_pan_end_x arrange_pan_end_y \
+      <<< "$arrange_pan_touch_points"
+
+    arrange_pan_marker_count_before() {
+      adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+        | grep -F -c -- 'UI_ARRANGE_PAN_STATE: action=PAN' || true
+    }
+    wait_for_new_arrange_pan_marker() {
+      local before="$1" line="" count="" logs=""
+      for pan_log_attempt in {1..20}; do
+        logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+        count="$(grep -F -c -- 'UI_ARRANGE_PAN_STATE: action=PAN' <<<"$logs" || true)"
+        if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then
+          line="$(grep -F -- 'UI_ARRANGE_PAN_STATE: action=PAN' <<<"$logs" | tail -n 1)"
+          printf '%s\n' "$line"
+          return 0
+        fi
+        sleep 0.25
+      done
+      echo "ERROR: no fresh native Arrangement pan callback was emitted"
+      return 1
+    }
+
+    arrange_pan_markers_before="$(arrange_pan_marker_count_before)"
+    if ! adb_bounded 10 shell input swipe \
+      "$arrange_pan_start_x" "$arrange_pan_y" \
+      "$arrange_pan_end_x" "$arrange_pan_end_y" 650; then
+      echo "ERROR: real ruler swipe did not execute for Arrangement pan"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_CHANGED_REMOTE" "$ARRANGE_PAN_CHANGED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement panned hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_CHANGED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement panned screenshot"; exit 1
+    fi
+    read -r arrange_pan_changed_bars arrange_pan_changed_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_CHANGED_XML") || {
+        echo "ERROR: panned Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_pan_changed_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_markers_before")" || exit 1
+    arrange_pan_changed_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_changed_line")"
+    read -r arrange_pan_log_from arrange_pan_log_to arrange_pan_log_bars <<< "$arrange_pan_changed_state"
+    if [[ "$arrange_pan_log_from" != "$arrange_pan_original_start" \
+        || "$arrange_pan_log_to" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_log_bars" != "$arrange_pan_original_bars" ]]; then
+      echo "ERROR: pan callback did not report the exact before/after viewport"
+      echo "$arrange_pan_changed_line"; exit 1
+    fi
+    arrange_pan_changed_data="$(arrange_zoom_data_from_log "$arrange_pan_changed_line")" || exit 1
+    if [[ "$arrange_pan_changed_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_changed_start" -le "$arrange_pan_original_start" ]]; then
+      echo "ERROR: ruler pan did not move viewport forward while preserving scale: baseline=$arrange_pan_original_bars/$arrange_pan_original_start panned=$arrange_pan_changed_bars/$arrange_pan_changed_start"; exit 1
+    fi
+    if [[ "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement ruler pan changed native Track event data"
+      printf 'BASELINE: %s\nPANNED: %s\n' "$arrange_zoom_baseline_data" "$arrange_pan_changed_data"; exit 1
+    fi
+
+    arrange_pan_restore_markers_before="$(arrange_pan_marker_count_before)"
+    if ! adb_bounded 10 shell input swipe \
+      "$arrange_pan_end_x" "$arrange_pan_y" \
+      "$arrange_pan_start_x" "$arrange_pan_y" 650; then
+      echo "ERROR: reverse ruler swipe did not execute for Arrangement pan restoration"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_PAN_RESTORED_REMOTE" "$ARRANGE_PAN_RESTORED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement pan-restored hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_PAN_RESTORED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement pan-restored screenshot"; exit 1
+    fi
+    read -r arrange_pan_restored_bars arrange_pan_restored_start \
+      < <(arrange_zoom_viewport "$ARRANGE_PAN_RESTORED_XML") || {
+        echo "ERROR: restored Arrangement pan viewport metadata is missing"; exit 1;
+      }
+    arrange_pan_restored_line="$(wait_for_new_arrange_pan_marker "$arrange_pan_restore_markers_before")" || exit 1
+    arrange_pan_restored_state="$(sed -nE 's/.*from=([0-9]+) to=([0-9]+) visibleBars=([0-9]+).*/\1 \2 \3/p' <<<"$arrange_pan_restored_line")"
+    read -r arrange_pan_restore_from arrange_pan_restore_to arrange_pan_restore_bars <<< "$arrange_pan_restored_state"
+    if [[ "$arrange_pan_restore_from" != "$arrange_pan_changed_start" \
+        || "$arrange_pan_restore_to" != "$arrange_pan_original_start" \
+        || "$arrange_pan_restore_bars" != "$arrange_pan_original_bars" ]]; then
+      echo "ERROR: reverse-pan callback did not report the exact restored viewport"
+      echo "$arrange_pan_restored_line"; exit 1
+    fi
+    arrange_pan_restored_data="$(arrange_zoom_data_from_log "$arrange_pan_restored_line")" || exit 1
+    if [[ "$arrange_pan_restored_bars" != "$arrange_pan_original_bars" \
+        || "$arrange_pan_restored_start" != "$arrange_pan_original_start" ]]; then
+      echo "ERROR: reverse ruler pan did not restore the exact prior viewport: baseline=$arrange_pan_original_bars/$arrange_pan_original_start restored=$arrange_pan_restored_bars/$arrange_pan_restored_start"; exit 1
+    fi
+    if [[ "$arrange_pan_restored_data" != "$arrange_zoom_baseline_data" \
+        || "$arrange_pan_changed_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement pan round trip changed native Track event data"
+      printf 'BASELINE: %s\nPANNED: %s\nRESTORED: %s\n' \
+        "$arrange_zoom_baseline_data" "$arrange_pan_changed_data" "$arrange_pan_restored_data"; exit 1
+    fi
+    if ! test -s /tmp/mpc-groovebox-arrange-pan-start.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-pan-changed.png \
+        || ! test -s /tmp/mpc-groovebox-arrange-pan-restored.png; then
+      echo "ERROR: required Arrangement pan screenshots are missing"; exit 1
+    fi
+    if [[ ! -s "$ARRANGE_PAN_PREP_XML" \
+        || ! -s "$ARRANGE_PAN_CHANGED_XML" \
+        || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
+      echo "ERROR: required Arrangement pan accessibility XML is missing"; exit 1
+    fi
+    # Reset and recapture after panning so the separate ZOOM + / ZOOM −
+    # round-trip starts from a fresh, canonical viewport.
+    if ! tap_visible_description_early "$ARRANGE_PAN_RESTORED_XML" "RESET"; then
+      echo "ERROR: Arrangement RESET did not recover the viewport after panning"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
+      echo "ERROR: could not capture fresh reset Arrangement zoom baseline"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: could not capture reset Arrangement zoom baseline screenshot"; exit 1
+    fi
+    read -r arrange_zoom_baseline_bars arrange_zoom_baseline_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_BASELINE_XML") || {
+        echo "ERROR: reset Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_reset_line="$(arrange_zoom_log_line "RESET")" || exit 1
+    arrange_zoom_baseline_data="$(arrange_zoom_data_from_log "$arrange_zoom_reset_line")" || exit 1
+
+    echo "ARR-003 ruler pan passed: viewport start advanced and returned exactly; visible bars and native Track event data remained unchanged."
+
+
+
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_BASELINE_XML" "ZOOM +"; then
+      echo "ERROR: Arrangement ZOOM + action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_IN_REMOTE" "$ARRANGE_ZOOM_IN_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom-in hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_IN_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom-in screenshot"; exit 1
+    fi
+    read -r arrange_zoom_in_bars arrange_zoom_in_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_IN_XML") || {
+        echo "ERROR: zoom-in Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_in_line="$(arrange_zoom_log_line "ZOOM_IN")" || exit 1
+    arrange_zoom_in_data="$(arrange_zoom_data_from_log "$arrange_zoom_in_line")" || exit 1
+    if (( arrange_zoom_in_bars >= arrange_zoom_baseline_bars )); then
+      echo "ERROR: real ZOOM + did not narrow Arrangement viewport: baseline=$arrange_zoom_baseline_bars zoomIn=$arrange_zoom_in_bars"; exit 1
+    fi
+    if [[ "$arrange_zoom_in_data" != "$arrange_zoom_baseline_data" ]]; then
+      echo "ERROR: Arrangement ZOOM + changed native Track event data"
+      printf 'BASELINE: %s\nZOOM IN: %s\n' "$arrange_zoom_baseline_data" "$arrange_zoom_in_data"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_IN_XML" "ZOOM −"; then
+      echo "ERROR: Arrangement ZOOM − action was not clickable"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui_retry "$ARRANGE_ZOOM_RESTORED_REMOTE" "$ARRANGE_ZOOM_RESTORED_XML" 8 4; then
+      echo "ERROR: could not capture fresh Arrangement zoom-restored hierarchy"; exit 1
+    fi
+    if ! capture_ui_screenshot "$ARRANGE_ZOOM_RESTORED_PNG" 10; then
+      echo "ERROR: could not capture Arrangement zoom-restored screenshot"; exit 1
+    fi
+    read -r arrange_zoom_restored_bars arrange_zoom_restored_start \
+      < <(arrange_zoom_viewport "$ARRANGE_ZOOM_RESTORED_XML") || {
+        echo "ERROR: restored Arrangement viewport metadata is missing"; exit 1;
+      }
+    arrange_zoom_out_line="$(arrange_zoom_log_line "ZOOM_OUT")" || exit 1
+    arrange_zoom_out_data="$(arrange_zoom_data_from_log "$arrange_zoom_out_line")" || exit 1
+    if [[ "$arrange_zoom_restored_bars" != "$arrange_zoom_baseline_bars" \
+        || "$arrange_zoom_restored_start" != "$arrange_zoom_baseline_start" ]]; then
+      echo "ERROR: ZOOM − did not restore original Arrangement viewport: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start restored=$arrange_zoom_restored_bars/$arrange_zoom_restored_start"; exit 1
+    fi
+    if [[ "$arrange_zoom_in_data" != "$arrange_zoom_out_data" \
+        || "$arrange_zoom_baseline_data" != "$arrange_zoom_out_data" ]]; then
+      echo "ERROR: Arrangement zoom round trip changed native Track event data"
+      printf 'BASELINE: %s\nZOOM IN: %s\nZOOM OUT: %s\n' \
+        "$arrange_zoom_baseline_data" "$arrange_zoom_in_data" "$arrange_zoom_out_data"; exit 1
+    fi
+    for arrange_zoom_artifact in \
+      "$ARRANGE_ZOOM_BASELINE_PNG" "$ARRANGE_ZOOM_BASELINE_XML" \
+      "$ARRANGE_ZOOM_IN_PNG" "$ARRANGE_ZOOM_IN_XML" \
+      "$ARRANGE_ZOOM_RESTORED_PNG" "$ARRANGE_ZOOM_RESTORED_XML"; do
+      if [[ ! -s "$arrange_zoom_artifact" ]]; then
+        echo "ERROR: Arrangement zoom evidence is missing: $arrange_zoom_artifact"; exit 1
+      fi
+    done
+    echo "ARR-003 passed: visible bars narrowed on ZOOM +, ZOOM − restored viewport, and native Track event data remained byte-for-byte unchanged."
+    if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $arrange_zoom_baseline_bars $arrange_zoom_baseline_start > cache/mpc-arrange-zoom-touch-result'"; then
+      echo "ERROR: could not write Arrangement zoom acceptance result"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-zoom-touch-capture-release; then
+      echo "ERROR: could not release app-side Arrangement zoom checkpoint"; exit 1
+    fi
+    arrangement_zoom_touch_capture_done=1
+    echo "ARR-003 zoom/pan acceptance passed and app-side checkpoint released."
+  fi
   if grep -Fq -- "UI_ARRANGE_LOOP_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
     arrangement_loop_touch_acceptance_complete=1
   fi
@@ -5579,6 +6220,22 @@ PY
     browser_runtime_capture_done=1
   fi
 
+  if [ "$track_solo_before_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_TRACK_SOLO_CAPTURE_READY: phase=before " <<<"$log_snapshot"; then
+    solo_before_line=$(grep -F -- "UI_TRACK_SOLO_CAPTURE_READY: phase=before " <<<"$log_snapshot" | tail -n 1)
+    if ! capture_track_solo_evidence "before" "$solo_before_line"; then
+      echo "ERROR: initial Track Solo state lacks screenshot/XML acceptance evidence"; exit 1
+    fi
+  fi
+
+  if [ "$track_solo_toggled_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_TRACK_SOLO_CAPTURE_READY: phase=toggled " <<<"$log_snapshot"; then
+    solo_toggled_line=$(grep -F -- "UI_TRACK_SOLO_CAPTURE_READY: phase=toggled " <<<"$log_snapshot" | tail -n 1)
+    if ! capture_track_solo_evidence "toggled" "$solo_toggled_line"; then
+      echo "ERROR: toggled Track Solo state lacks screenshot/XML acceptance evidence"; exit 1
+    fi
+  fi
+
   if [ "$track_view_mute_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot"; then
     echo "Capturing Track View mute state and Android accessibility hierarchy..."
@@ -5645,6 +6302,107 @@ PY
     track_view_mute_capture_done=1
   fi
 
+  if [ "$mute_pad_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MUTE_PAD_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing live Pad Mute 4x4 state and accessibility hierarchy..."
+    MUTE_PAD_PNG="/tmp/mpc-groovebox-mute-pad.png"
+    MUTE_PAD_XML="/tmp/mpc-groovebox-mute-pad-uiautomator.xml"
+    MUTE_PAD_REMOTE="/sdcard/mpc-groovebox-mute-pad-uiautomator.xml"
+    if ! capture_ui_screenshot "$MUTE_PAD_PNG" 10; then
+      echo "ERROR: Mute Pad screenshot capture failed"; exit 1
+    fi
+    if ! dump_device_ui "$MUTE_PAD_REMOTE" "$MUTE_PAD_XML" 10; then
+      echo "ERROR: Mute Pad accessibility hierarchy capture failed"; exit 1
+    fi
+    mute_pad_state_line=$(grep -F -- "UI_MUTE_PAD_CAPTURE_READY:" <<<"$log_snapshot" | tail -n 1)
+    case "$mute_pad_state_line" in
+      *mutedAfterToggle=true*) mute_pad_target=true ;;
+      *mutedAfterToggle=false*) mute_pad_target=false ;;
+      *) echo "ERROR: Mute Pad capture marker omitted its target state"; exit 1 ;;
+    esac
+    if ! python3 - "$MUTE_PAD_XML" "$mute_pad_target" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, expected_muted = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+workspace = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute workspace"]
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute 4x4 grid"]
+pads = [n for n in nodes if re.fullmatch(r"MPC Mute pad [0-9]{2}", n.attrib.get("content-desc", ""))]
+if len(workspace) != 1 or len(grids) != 1:
+    raise AssertionError(f"Mute workspace/grid missing: workspace={len(workspace)} grid={len(grids)}")
+if len(pads) != 16:
+    raise AssertionError(f"expected exactly 16 real Pad mute targets, got {len(pads)}")
+by_desc = {n.attrib["content-desc"]: n for n in pads}
+if "MPC Mute pad 01" not in by_desc or "MPC Mute pad 16" not in by_desc:
+    raise AssertionError("Pad mute target range must include Pad 01 through Pad 16")
+first = by_desc["MPC Mute pad 01"]
+expected_text = "MUTE ON" if expected_muted == "true" else "MUTE OFF"
+if expected_text not in first.attrib.get("text", "") or first.attrib.get("enabled") != "true":
+    raise AssertionError(f"Pad 01 view does not display native mute state {expected_muted}: {first.attrib}")
+print(f"Pad Mute 4x4 accepted: 16 touch targets; Pad 01 {expected_text}.")
+PY
+    then
+      echo "ERROR: Mute Pad XML does not prove the real 16-target state"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-mute-pad-capture-release; then
+      echo "ERROR: could not release app-side Pad Mute evidence checkpoint"; exit 1
+    fi
+    mute_pad_capture_done=1
+  fi
+
+  if [ "$mute_track_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_MUTE_TRACK_CAPTURE_READY:" <<<"$log_snapshot"; then
+    echo "Capturing live Track Mute 4x4 state and accessibility hierarchy..."
+    MUTE_TRACK_PNG="/tmp/mpc-groovebox-mute-track.png"
+    MUTE_TRACK_XML="/tmp/mpc-groovebox-mute-track-uiautomator.xml"
+    MUTE_TRACK_REMOTE="/sdcard/mpc-groovebox-mute-track-uiautomator.xml"
+    if ! capture_ui_screenshot "$MUTE_TRACK_PNG" 10; then
+      echo "ERROR: Mute Track screenshot capture failed"; exit 1
+    fi
+    if ! dump_device_ui "$MUTE_TRACK_REMOTE" "$MUTE_TRACK_XML" 10; then
+      echo "ERROR: Mute Track accessibility hierarchy capture failed"; exit 1
+    fi
+    mute_track_state_line=$(grep -F -- "UI_MUTE_TRACK_CAPTURE_READY:" <<<"$log_snapshot" | tail -n 1)
+    case "$mute_track_state_line" in
+      *mutedAfterToggle=true*) mute_track_target=true ;;
+      *mutedAfterToggle=false*) mute_track_target=false ;;
+      *) echo "ERROR: Mute Track capture marker omitted its target state"; exit 1 ;;
+    esac
+    if ! python3 - "$MUTE_TRACK_XML" "$mute_track_target" "$mute_track_state_line" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, expected_muted, marker = sys.argv[1:]
+nodes = list(ET.parse(path).getroot().iter("node"))
+workspace = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute workspace"]
+grids = [n for n in nodes if n.attrib.get("content-desc") == "MPC Mute 4x4 grid"]
+cells = [n for n in nodes if (re.fullmatch(r"MPC Mute track [0-9]{2}", n.attrib.get("content-desc", ""))
+                              or re.fullmatch(r"MPC Mute track slot [0-9]{2} unavailable", n.attrib.get("content-desc", "")))]
+if len(workspace) != 1 or len(grids) != 1:
+    raise AssertionError(f"Mute workspace/grid missing: workspace={len(workspace)} grid={len(grids)}")
+if len(cells) != 16:
+    raise AssertionError(f"expected 16 Track mute grid cells, got {len(cells)}")
+m = re.search(r"trackIndex=([0-9]+)", marker)
+if not m: raise AssertionError(f"Track marker lacks target index: {marker}")
+target_desc = f"MPC Mute track {int(m.group(1)):02d}"
+selected = [n for n in cells if n.attrib.get("content-desc") == target_desc]
+if len(selected) != 1:
+    raise AssertionError(f"selected Track mute target not found: {target_desc}")
+expected_text = "MUTE ON" if expected_muted == "true" else "MUTE OFF"
+if expected_text not in selected[0].attrib.get("text", "") or selected[0].attrib.get("enabled") != "true":
+    raise AssertionError(f"Track target does not display native mute state {expected_muted}: {selected[0].attrib}")
+print(f"Track Mute 4x4 accepted: 16 slots; {target_desc} {expected_text}.")
+PY
+    then
+      echo "ERROR: Mute Track XML does not prove the real 16-slot state"; exit 1
+    fi
+    if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-mute-track-capture-release; then
+      echo "ERROR: could not release app-side Track Mute evidence checkpoint"; exit 1
+    fi
+    mute_track_capture_done=1
+  fi
+
   if [ "$arrangement_grid_focus_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_ARRANGEMENT_GRID_FOCUS_CAPTURE_READY" <<<"$log_snapshot"; then
     echo "Capturing Arrangement-to-Grid focused-step screenshot and accessibility hierarchy..."
@@ -5700,8 +6458,12 @@ def bounds(node):
         raise AssertionError("invalid Android accessibility bounds: " + repr(node.attrib))
     return tuple(map(int, match.groups()))
 
-def one_description(description):
-    found = [node for node in nodes if node.attrib.get("content-desc") == description]
+def one_description(description, prefix=False):
+    found = [
+        node for node in nodes
+        if (node.attrib.get("content-desc", "").startswith(description)
+            if prefix else node.attrib.get("content-desc") == description)
+    ]
     if len(found) != 1:
         raise AssertionError(f"expected one visible {description!r}, got {len(found)}")
     node = found[0]
@@ -5711,7 +6473,7 @@ def one_description(description):
     return node
 
 one_description("MPC Grid View workspace")
-one_description("MPC Grid View drum event grid")
+one_description("MPC Grid View drum event grid", prefix=True)
 
 accessible_ranges = [
     node for node in nodes
@@ -5770,7 +6532,7 @@ def bounds(node):
                          node.attrib.get("bounds", ""))
     if match is None: raise AssertionError("invalid bounds " + repr(node.attrib))
     return tuple(map(int, match.groups()))
-grid = [n for n in nodes if n.attrib.get("content-desc") == "MPC Grid View drum event grid"]
+grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
 if len(grid) != 1: raise AssertionError(f"expected one Grid canvas, got {len(grid)}")
 left, top, right, bottom = bounds(grid[0])
 density_matches = re.findall(r"Override density:\s*(\d+)", density_text)
@@ -6139,6 +6901,332 @@ PY
     fi
     echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
 
+    # Exercise both real Function Bar zoom actions using measured accessibility
+    # targets. They may change only the visible viewport, never native note data.
+    echo "Running real-touch Grid horizontal/vertical zoom viewport-isolation acceptance..."
+    GRID_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-grid-zoom-baseline-uiautomator.xml"
+    GRID_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-grid-zoom-baseline-uiautomator.xml"
+    GRID_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-grid-zoom-baseline.png"
+    GRID_ZOOM_H_XML="/tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml"
+    GRID_ZOOM_H_REMOTE="/sdcard/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml"
+    GRID_ZOOM_H_PNG="/tmp/mpc-groovebox-grid-zoom-horizontal.png"
+    GRID_ZOOM_V_XML="/tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml"
+    GRID_ZOOM_V_REMOTE="/sdcard/mpc-groovebox-grid-zoom-vertical-uiautomator.xml"
+    GRID_ZOOM_V_PNG="/tmp/mpc-groovebox-grid-zoom-vertical.png"
+
+    # Select the seeded native note (not an empty cell) before zooming. This lets
+    # both viewport changes prove that pad/step identity, quantize timing and
+    # all event fields remain byte-for-byte equivalent in the accessible model.
+    GRID_ZOOM_PRESELECT_XML="/tmp/mpc-groovebox-grid-zoom-preselect-uiautomator.xml"
+    GRID_ZOOM_PRESELECT_REMOTE="/sdcard/mpc-groovebox-grid-zoom-preselect-uiautomator.xml"
+    if ! dump_device_ui "$GRID_ZOOM_PRESELECT_REMOTE" "$GRID_ZOOM_PRESELECT_XML"; then
+      echo "ERROR: Grid zoom preselection hierarchy failed"; exit 1
+    fi
+    if ! tap_visible_description_early "$GRID_ZOOM_PRESELECT_XML" "Grid Select tool"; then
+      echo "ERROR: could not switch Grid to SELECT before preserving the seeded event"; exit 1
+    fi
+    sleep 0.2
+    if ! dump_device_ui "$GRID_ZOOM_PRESELECT_REMOTE" "$GRID_ZOOM_PRESELECT_XML"; then
+      echo "ERROR: fresh Grid SELECT hierarchy failed"; exit 1
+    fi
+    grid_seed_coordinates="$(python3 - "$GRID_ZOOM_PRESELECT_XML" "$grid_density_info" "$target_step" <<'PY_GRID_ZOOM_SEED_COORDINATES'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, density_text, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if match is None:
+        raise AssertionError(f"invalid bounds: {node.attrib!r}")
+    return tuple(map(int, match.groups()))
+grid = [n for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Grid View drum event grid")]
+if len(grid) != 1:
+    raise AssertionError(f"expected one live Grid canvas, got {len(grid)}")
+ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+    "Grid visible step range: steps ")]
+if len(ranges) != 1:
+    raise AssertionError(f"expected one step range, got {len(ranges)}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                 ranges[0].attrib.get("content-desc", ""))
+if m is None:
+    raise AssertionError("malformed Grid visible step range")
+first, last, total = map(int, m.groups())
+if last - first + 1 != 16 or not first <= step <= last <= total:
+    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}–{last}/{total}")
+counts = [int(m.group(1)) for n in nodes
+          for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+if counts != [1]:
+    raise AssertionError(f"fixture must have one existing native note before zoom: {counts!r}")
+density_matches = re.findall(r"Override density:\s*(\d+)", density_text)
+if not density_matches:
+    density_matches = re.findall(r"Physical density:\s*(\d+)", density_text)
+if not density_matches:
+    raise AssertionError(f"could not parse device density: {density_text!r}")
+density = int(density_matches[-1]) / 160.0
+left, top, right, bottom = bounds(grid[0])
+visible_steps = last - first + 1
+visible_pads = 16
+column, row = step - first, visible_pads - 1
+left_inset, top_inset, end_inset = 42*density, 24*density, 6*density
+plot_width = max(1.0, right-left-left_inset-end_inset)
+plot_height = max(1.0, bottom-top-top_inset-end_inset)
+x = round(left + left_inset + (column+0.5)*plot_width/visible_steps)
+y = round(top + top_inset + (row+0.5)*plot_height/visible_pads)
+if not (left < x < right and top < y < bottom):
+    raise AssertionError(f"seeded note tap {(x,y)} escaped live Grid bounds {(left,top,right,bottom)}")
+print(x, y)
+PY_GRID_ZOOM_SEED_COORDINATES
+    )" || {
+      echo "ERROR: could not derive a live-bounds tap for the existing seeded Grid note"; exit 1;
+    }
+    read -r grid_seed_x grid_seed_y <<< "$grid_seed_coordinates"
+    if ! adb_bounded 10 shell input tap "$grid_seed_x" "$grid_seed_y"; then
+      echo "ERROR: could not select the seeded native note for zoom invariance"; exit 1
+    fi
+    sleep 0.3
+    if ! dump_device_ui "$GRID_ZOOM_BASELINE_REMOTE" "$GRID_ZOOM_BASELINE_XML"; then
+      echo "ERROR: Grid zoom baseline hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_BASELINE_PNG" 10; then
+      echo "ERROR: Grid zoom baseline screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$target_step" <<'PY_GRID_ZOOM_BASELINE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, step_s = sys.argv[1:]
+step = int(step_s)
+nodes = list(ET.parse(path).getroot().iter("node"))
+ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+    "Grid visible step range: steps ")]
+if len(ranges) != 1:
+    raise AssertionError(f"expected one Grid step-range node, got {len(ranges)}")
+m = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                 ranges[0].attrib.get("content-desc", ""))
+if m is None:
+    raise AssertionError("malformed Grid step range")
+first, last, total = map(int, m.groups())
+if last-first+1 != 16 or not first <= step <= last <= total:
+    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}–{last}/{total}")
+prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+states = [n.attrib.get("content-desc", "") for n in nodes
+          if n.attrib.get("content-desc", "").startswith(prefix)]
+if len(states) != 1:
+    raise AssertionError(f"expected one selected native event, got {states!r}")
+event_match = re.fullmatch(
+    r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+    r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+if event_match is None:
+    raise AssertionError(f"malformed native event fields: {states[0]!r}")
+event = tuple(map(int, event_match.groups()))
+if event[0] != step or not 1 <= event[1] <= 127 or not 0 <= event[2] <= 127 \
+        or not 1 <= event[3] <= 8 or not -960 <= event[4] <= 960 or event[5] <= 0:
+    raise AssertionError(f"native fields outside supported range: {event!r}")
+selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+selected = [n.attrib.get("content-desc", "") for n in nodes
+            if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+    raise AssertionError(f"selected note identity/velocity disagrees with native fields: {selected!r}, {event!r}")
+resolution = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+if len(resolution) != 1:
+    raise AssertionError(f"quantize resolution missing: {resolution!r}")
+tick_match = re.search(r"\((\d+) ticks\)$", resolution[0])
+if tick_match is None:
+    raise AssertionError(f"malformed quantize resolution: {resolution[0]!r}")
+event_counts = [int(m.group(1)) for n in nodes
+                for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+if event_counts != [1]:
+    raise AssertionError(f"zoom fixture must contain exactly one event: {event_counts!r}")
+print(f"Grid zoom baseline: PAD 01 / STEP {step}, fields={event[1:]}, quantize={tick_match.group(1)} ticks; events={event_counts[0]}")
+PY_GRID_ZOOM_BASELINE
+    then
+      echo "ERROR: Grid zoom baseline native event state is inconsistent"; cat "$GRID_ZOOM_BASELINE_XML"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$GRID_ZOOM_BASELINE_XML" "ZOOM H"; then
+      echo "ERROR: real-touch Grid ZOOM H Function Bar action failed"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_H_REMOTE" "$GRID_ZOOM_H_XML"; then
+      echo "ERROR: Grid ZOOM H hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_H_PNG" 10; then
+      echo "ERROR: Grid ZOOM H screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_BASELINE_XML" "$GRID_ZOOM_H_XML" "$target_step" <<'PY_GRID_ZOOM_H'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+before_path, after_path, step_s = sys.argv[1:]
+step = int(step_s)
+def read(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+        "Grid visible step range: steps ")]
+    if len(ranges) != 1:
+        raise AssertionError(f"{path}: expected one Grid step range")
+    rm = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                      ranges[0].attrib.get("content-desc", ""))
+    if rm is None:
+        raise AssertionError(f"{path}: malformed Grid step range")
+    first, last, total = map(int, rm.groups())
+    prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+    states = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith(prefix)]
+    if len(states) != 1:
+        raise AssertionError(f"{path}: expected one selected event, got {states!r}")
+    em = re.fullmatch(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+    if em is None:
+        raise AssertionError(f"{path}: malformed native fields: {states[0]!r}")
+    event = tuple(map(int, em.groups()))
+    selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+    selected = [n.attrib.get("content-desc", "") for n in nodes
+                if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+    if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+        raise AssertionError(f"{path}: selected pad/step disagrees with native event: {selected!r}")
+    tick_nodes = [n.attrib.get("content-desc", "") for n in nodes
+                  if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+    if len(tick_nodes) != 1:
+        raise AssertionError(f"{path}: missing quantize resolution")
+    tm = re.search(r"\((\d+) ticks\)$", tick_nodes[0])
+    if tm is None:
+        raise AssertionError(f"{path}: malformed quantize label: {tick_nodes[0]!r}")
+    counts = [int(m.group(1)) for n in nodes
+              for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+    if counts != [1]:
+        raise AssertionError(f"{path}: expected one native note, got {counts!r}")
+    return (first,last,total), event, selected[0], int(tm.group(1)), counts
+before_range, before_event, before_selected, before_ticks, before_counts = read(before_path)
+after_range, after_event, after_selected, after_ticks, after_counts = read(after_path)
+if before_event != after_event or before_selected != after_selected or before_ticks != after_ticks:
+    raise AssertionError(f"ZOOM H changed event identity/timing/fields: "
+                         f"{(before_event,before_selected,before_ticks)!r} -> "
+                         f"{(after_event,after_selected,after_ticks)!r}")
+if before_counts != [1] or after_counts != before_counts:
+    raise AssertionError(f"ZOOM H changed event count: {before_counts!r} -> {after_counts!r}")
+if after_range[2] != before_range[2] or after_range[1]-after_range[0]+1 >= before_range[1]-before_range[0]+1:
+    raise AssertionError(f"ZOOM H must shrink only visible steps: {before_range!r} -> {after_range!r}")
+if not after_range[0] <= step <= after_range[1]:
+    raise AssertionError(f"ZOOM H lost selected event step {step} from viewport {after_range!r}")
+print(f"Grid ZOOM H changed visible steps {before_range[0]}–{before_range[1]} -> {after_range[0]}–{after_range[1]}; event fields/timing unchanged.")
+PY_GRID_ZOOM_H
+    then
+      echo "ERROR: Grid ZOOM H changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
+    fi
+
+    if ! tap_visible_description_early "$GRID_ZOOM_H_XML" "ZOOM V"; then
+      echo "ERROR: real-touch Grid ZOOM V Function Bar action failed"; exit 1
+    fi
+    sleep 0.25
+    if ! dump_device_ui "$GRID_ZOOM_V_REMOTE" "$GRID_ZOOM_V_XML"; then
+      echo "ERROR: Grid ZOOM V hierarchy failed"; exit 1
+    fi
+    if ! capture_ui_screenshot "$GRID_ZOOM_V_PNG" 10; then
+      echo "ERROR: Grid ZOOM V screenshot failed"; exit 1
+    fi
+    if ! python3 - "$GRID_ZOOM_H_XML" "$GRID_ZOOM_V_XML" "$target_step" <<'PY_GRID_ZOOM_V'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+before_path, after_path, step_s = sys.argv[1:]
+step = int(step_s)
+def read(path):
+    nodes = list(ET.parse(path).getroot().iter("node"))
+    ranges = [n for n in nodes if n.attrib.get("content-desc", "").startswith(
+        "Grid visible step range: steps ")]
+    if len(ranges) != 1:
+        raise AssertionError(f"{path}: expected one Grid step range")
+    rm = re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",
+                      ranges[0].attrib.get("content-desc", ""))
+    if rm is None:
+        raise AssertionError(f"{path}: malformed Grid step range")
+    first, last, total = map(int, rm.groups())
+
+    prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
+    states = [n.attrib.get("content-desc", "") for n in nodes
+              if n.attrib.get("content-desc", "").startswith(prefix)]
+    if len(states) != 1:
+        raise AssertionError(f"{path}: expected one selected event, got {states!r}")
+    em = re.fullmatch(
+        r"Grid event parameters: PAD 01, STEP 0*(\d+), VEL (\d+), PROB (\d+), "
+        r"RAT (\d+)x, NUDGE ([+-]?\d+), DUR (\d+)", states[0])
+    if em is None:
+        raise AssertionError(f"{path}: malformed native fields: {states[0]!r}")
+    event = tuple(map(int, em.groups()))
+
+    selected_prefix = f"Grid selection: PAD 01, STEP {step:02d}, note present, velocity "
+    selected = [n.attrib.get("content-desc", "") for n in nodes
+                if n.attrib.get("content-desc", "").startswith(selected_prefix)]
+    if len(selected) != 1 or selected[0] != selected_prefix + str(event[1]):
+        raise AssertionError(f"{path}: selected pad/step disagrees with native event: {selected!r}")
+
+    tick_nodes = [n.attrib.get("content-desc", "") for n in nodes
+                  if n.attrib.get("content-desc", "").startswith("Grid quantize resolution: ")]
+    if len(tick_nodes) != 1:
+        raise AssertionError(f"{path}: missing quantize resolution")
+    tm = re.search(r"\((\d+) ticks\)$", tick_nodes[0])
+    if tm is None:
+        raise AssertionError(f"{path}: malformed quantize label: {tick_nodes[0]!r}")
+
+    counts = [int(m.group(1)) for n in nodes
+              for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
+    if counts != [1]:
+        raise AssertionError(f"{path}: expected one native note, got {counts!r}")
+
+    grid_prefix = "MPC Grid View drum event grid; Grid visible pad range: pads "
+    grid_nodes = [n for n in nodes
+                  if n.attrib.get("content-desc", "").startswith(grid_prefix)]
+    if len(grid_nodes) != 1:
+        raise AssertionError(f"{path}: expected one Grid canvas with pad viewport semantics, got {len(grid_nodes)}")
+    grid_description = grid_nodes[0].attrib.get("content-desc", "")
+    pm = re.fullmatch(
+        r"MPC Grid View drum event grid; Grid visible pad range: pads\s+(\d+) through (\d+) of 16",
+        grid_description)
+    if pm is None:
+        raise AssertionError(f"{path}: malformed visible pad range: {grid_description!r}")
+    pad_first, pad_last = map(int, pm.groups())
+    if not 1 <= pad_last <= pad_first <= 16:
+        raise AssertionError(f"{path}: invalid descending Pad viewport: {(pad_first, pad_last)!r}")
+
+    return (first, last, total), event, selected[0], int(tm.group(1)), counts, (pad_first, pad_last)
+
+before_range, before_event, before_selected, before_ticks, before_counts, before_pads = read(before_path)
+after_range, after_event, after_selected, after_ticks, after_counts, after_pads = read(after_path)
+if before_event != after_event or before_selected != after_selected or before_ticks != after_ticks:
+    raise AssertionError(f"ZOOM V changed event identity/timing/fields: "
+                         f"{(before_event, before_selected, before_ticks)!r} -> "
+                         f"{(after_event, after_selected, after_ticks)!r}")
+if before_range != after_range:
+    raise AssertionError(f"ZOOM V changed horizontal range: {before_range!r} -> {after_range!r}")
+if before_counts != [1] or after_counts != before_counts:
+    raise AssertionError(f"ZOOM V changed event count: {before_counts!r} -> {after_counts!r}")
+
+before_pad_count = before_pads[0] - before_pads[1] + 1
+after_pad_count = after_pads[0] - after_pads[1] + 1
+if before_pad_count != 16:
+    raise AssertionError(f"horizontal zoom unexpectedly changed visible Pad count: {before_pads!r}")
+if after_pad_count >= before_pad_count:
+    raise AssertionError(f"ZOOM V must reduce visible Pad count: {before_pads!r} -> {after_pads!r}")
+if not min(after_pads) <= 1 <= max(after_pads):
+    raise AssertionError(f"ZOOM V lost selected PAD 01 from viewport: {after_pads!r}")
+print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}–{before_pads[1]} -> "
+      f"{after_pads[0]}–{after_pads[1]}; event identity/timing/fields unchanged.")
+PY_GRID_ZOOM_V
+    then
+      echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
+    fi
+    echo "Grid ZOOM H and ZOOM V both change only the viewport; full native event fields and quantize timing are identical."
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" \
         touch cache/mpc-arrange-grid-focus-capture-release; then
       echo "ERROR: could not release app-side Arrangement-to-Grid capture checkpoint"
@@ -6164,8 +7252,8 @@ def bounds(n):
  m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
  if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
  return tuple(map(int,m.groups()))
-def desc(value):
- found=[n for n in nodes if n.attrib.get("content-desc")==value]
+def desc(value, prefix=False):
+ found=[n for n in nodes if (n.attrib.get("content-desc","").startswith(value) if prefix else n.attrib.get("content-desc")==value)]
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
@@ -6206,12 +7294,12 @@ def bounds(n):
  m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",n.attrib.get("bounds",""))
  if m is None: raise AssertionError("invalid bounds "+repr(n.attrib))
  return tuple(map(int,m.groups()))
-def desc(value):
- found=[n for n in nodes if n.attrib.get("content-desc")==value]
+def desc(value, prefix=False):
+ found=[n for n in nodes if (n.attrib.get("content-desc","").startswith(value) if prefix else n.attrib.get("content-desc")==value)]
  if len(found)!=1: raise AssertionError(f"expected one {value!r}, got {len(found)}")
  n=found[0]; x1,y1,x2,y2=bounds(n)
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
-desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid")
+desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid", prefix=True)
 if any(n.attrib.get("content-desc")=="MPC linear arrangement editor" for n in nodes): raise AssertionError("Arrangement remains visible")
 prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
@@ -6328,8 +7416,18 @@ PY
     fi
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
-        || [ "$track_view_mute_capture_done" -ne 1 ]; then
-      echo "ERROR: UI audit completed without Track View mute and Arrange navigation evidence"
+        || [ "$track_view_mute_capture_done" -ne 1 ] \
+        || [ "$track_solo_before_capture_done" -ne 1 ] \
+        || [ "$track_solo_toggled_capture_done" -ne 1 ] \
+        || [ "$track_solo_on_capture_done" -ne 1 ] \
+        || [ "$track_solo_off_capture_done" -ne 1 ] \
+        || [ "$mute_pad_capture_done" -ne 1 ] \
+        || [ "$mute_track_capture_done" -ne 1 ] \
+        || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
+        || ! grep -Fq -- "UI_MAIN_MUTE_ROUTE_COMPLETE:" <<<"$log_snapshot" \
+        || ! grep -Fq -- "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
+        || ! grep -Fq -- "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE:" <<<"$log_snapshot"; then
+      echo "ERROR: UI audit completed without real Pad/Track Mute grid acceptance and Arrange navigation evidence"
       exit 1
     fi
     ui_audit_complete=1
@@ -6369,6 +7467,28 @@ if [ "$track_view_mute_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-track-view-muted.png \
     || ! test -s /tmp/mpc-groovebox-track-view-muted-uiautomator.xml; then
   echo "ERROR: Track View mute acceptance lacks screenshot/hierarchy evidence"; exit 1
+fi
+
+if [ "$track_solo_before_capture_done" -ne 1 ] \
+    || [ "$track_solo_toggled_capture_done" -ne 1 ] \
+    || [ "$track_solo_on_capture_done" -ne 1 ] \
+    || [ "$track_solo_off_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-track-solo-on.png \
+    || ! test -s /tmp/mpc-groovebox-track-solo-on-uiautomator.xml \
+    || ! test -s /tmp/mpc-groovebox-track-solo-off.png \
+    || ! test -s /tmp/mpc-groovebox-track-solo-off-uiautomator.xml; then
+  echo "ERROR: Track Solo acceptance lacks exact ON/OFF screenshot + hierarchy pairs"; exit 1
+fi
+
+if [ "$mute_pad_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-mute-pad.png \
+    || ! test -s /tmp/mpc-groovebox-mute-pad-uiautomator.xml; then
+  echo "ERROR: Pad Mute acceptance lacks fresh screenshot/hierarchy evidence"; exit 1
+fi
+if [ "$mute_track_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-mute-track.png \
+    || ! test -s /tmp/mpc-groovebox-mute-track-uiautomator.xml; then
+  echo "ERROR: Track Mute acceptance lacks fresh screenshot/hierarchy evidence"; exit 1
 fi
 
 if [ "$arrangement_back_capture_done" -ne 1 ] \
@@ -6448,6 +7568,13 @@ LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
 LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
 LOCAL_SAMPLE_DEVICE="/sdcard/Music/$LOCAL_SAMPLE_NAME"
 LOCAL_SAMPLE_HOST="/tmp/$LOCAL_SAMPLE_NAME"
+BROWSER_DRUMS_NAME="Browser-Smoke-Drum.wav"
+BROWSER_DRUMS_DEVICE="/sdcard/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DRUMS_CANONICAL="/storage/emulated/0/Music/Drums/$BROWSER_DRUMS_NAME"
+BROWSER_DEMOS_NAME="Browser-Smoke-Demo.wav"
+BROWSER_DEMOS_DEVICE="/sdcard/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_DEMOS_CANONICAL="/storage/emulated/0/Music/Demos/$BROWSER_DEMOS_NAME"
+BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=0
 BROWSER_LOCAL_XML="/tmp/mpc-groovebox-browser-local-results-uiautomator.xml"
 BROWSER_LOCAL_REMOTE="/sdcard/mpc-groovebox-browser-local-results-uiautomator.xml"
 
@@ -6527,6 +7654,59 @@ if ! grep -Fq -- "$LOCAL_SAMPLE_NAME" "$MEDIASTORE_FIXTURE_QUERY"; then
   exit 1
 fi
 echo "MediaStore fixture indexed and verified: $LOCAL_SAMPLE_NAME (ID $MEDIA_ITEM_ID)"
+
+seed_browser_content_category_fixture() {
+  local name="$1" device_path="$2" canonical_path="$3" expected_relative_path="$4" label="$5"
+  local scan_log="/tmp/mpc-browser-category-$label-scan.txt"
+  local query_file="/tmp/mpc-browser-category-$label-query.txt"
+  local item_uri item_id collection_uri
+  if ! adb_bounded 10 shell mkdir -p "${device_path%/*}"; then
+    echo "ERROR: could not prepare MediaStore category folder for $label"
+    return 1
+  fi
+  if ! adb_bounded 30 push "$LOCAL_SAMPLE_HOST" "$device_path"; then
+    echo "ERROR: could not copy WAV fixture into the $label category folder"
+    return 1
+  fi
+  if ! adb_bounded 15 shell content call --uri content://media --method scan_file \
+      --arg "$canonical_path" > "$scan_log" 2>&1; then
+    echo "ERROR: MediaStore scan_file failed for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  item_uri="$(grep -oE 'content://media/[^[:space:]]+/audio/media/[0-9]+' "$scan_log" | head -n 1 || true)"
+  item_id="${item_uri##*/}"
+  collection_uri="${item_uri%/*}"
+  if [[ ! "$item_id" =~ ^[0-9]+$ || -z "$collection_uri" ]]; then
+    echo "ERROR: MediaStore did not return a usable URI for $label category fixture"
+    cat "$scan_log" || true
+    return 1
+  fi
+  if ! adb_bounded 10 shell content query --uri "$collection_uri" \
+      --projection _id:_display_name:relative_path --where "_id=$item_id" \
+      > "$query_file" 2>&1; then
+    echo "ERROR: could not query the indexed $label category fixture"
+    cat "$query_file" || true
+    return 1
+  fi
+  if ! grep -Fq -- "$name" "$query_file" \
+      || ! grep -Fq -- "$expected_relative_path" "$query_file"; then
+    echo "ERROR: MediaStore category fixture path mismatch for $label"
+    cat "$query_file" || true
+    return 1
+  fi
+  echo "MediaStore category fixture indexed and path-verified: $name ($expected_relative_path)"
+}
+
+if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+  if ! seed_browser_content_category_fixture "$BROWSER_DRUMS_NAME" "$BROWSER_DRUMS_DEVICE" \
+      "$BROWSER_DRUMS_CANONICAL" "Music/Drums/" "drums"; then exit 1; fi
+  if ! seed_browser_content_category_fixture "$BROWSER_DEMOS_NAME" "$BROWSER_DEMOS_DEVICE" \
+      "$BROWSER_DEMOS_CANONICAL" "Music/Demos/" "demos"; then exit 1; fi
+  BROWSER_CATEGORY_PATH_FIXTURES_SEEDED=1
+else
+  echo "Android API below 29: MediaStore path-based Drums/Demos categories remain explicitly unavailable."
+fi
 
 
 
@@ -6867,10 +8047,25 @@ PY
 
 wait_for_ui_description() {
   local hierarchy_path="$1" remote_path="$2" expected_description="$3"
-  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining hierarchy_failures=0
+  local timeout_seconds="$4" deadline=$((SECONDS + $4)) remaining dump_budget hierarchy_failures=0
+  local scratch_path="${hierarchy_path%.xml}-wait-current.xml"
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    if ! dump_device_ui "$remote_path" "$hierarchy_path" "$remaining"; then hierarchy_failures=$((hierarchy_failures + 1)); continue; fi
+    # Bound each dump so a transient UiAutomator stall cannot consume the
+    # entire wait, and capture into scratch so a timeout never erases the last
+    # validated hierarchy needed to diagnose a missing target.
+    dump_budget="$remaining"
+    (( dump_budget > 6 )) && dump_budget=6
+    if ! dump_device_ui "$remote_path" "$scratch_path" "$dump_budget"; then
+      hierarchy_failures=$((hierarchy_failures + 1))
+      rm -f "$scratch_path"
+      remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+      continue
+    fi
+    if ! mv -f -- "$scratch_path" "$hierarchy_path"; then
+      echo "ERROR: could not publish fresh UI hierarchy while waiting for $expected_description"
+      return 1
+    fi
     if python3 - "$hierarchy_path" "$expected_description" <<'PY'
 import sys, xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
@@ -7233,86 +8428,198 @@ PY
 # so the scroll gesture must be derived from the ScrollView itself, not from an
 # off-screen TUNE row.
 scroll_track_edit_to_layer_gain() {
-  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}"
+  local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}" target="${4:-gain}"
   local coordinates swipe_x swipe_from swipe_to gesture_direction
+  local scroll_direction="auto" next_scroll_direction
+  if [[ "$target" != "gain" && "$target" != "region" ]]; then
+    echo "ERROR: unsupported Track Edit scroll target: $target"
+    return 2
+  fi
   for ((attempt=1; attempt<=max_swipes; attempt++)); do
     if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
-    if python3 - "$hierarchy_path" <<'PY'
-import sys
-import xml.etree.ElementTree as ET
-nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {n.attrib.get("content-desc", "") for n in nodes}
-raise SystemExit(0 if {
-    "Track Edit region",
-    "Track Edit layer gain value",
-    "Track Edit layer gain decrease",
-    "Track Edit layer tuning value",
-    "Track Edit layer pan value",
-}.issubset(descriptions) else 1)
-PY
-    then
-      echo "Track Edit REGION/GAIN/TUNE/PAN fields are visible after $((attempt - 1)) bounded scroll gesture(s)."
-      return 0
-    fi
-
-    if ! coordinates="$(python3 - "$hierarchy_path" <<'PY'
+    if python3 - "$hierarchy_path" "$target" <<'PY_TRACK_EDIT_TARGET'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
-descriptions = {node.attrib.get("content-desc", "") for node in nodes}
-scroll_views = []
-for node in nodes:
-    if node.attrib.get("class") != "android.widget.ScrollView" \
-            or node.attrib.get("scrollable") != "true":
-        continue
+path, target = sys.argv[1], sys.argv[2]
+nodes = list(ET.parse(path).getroot().iter("node"))
+
+def rect(node):
     match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                          node.attrib.get("bounds", ""))
-    if match is None:
+    return tuple(map(int, match.groups())) if match else None
+
+candidates = []
+for node in nodes:
+    if node.attrib.get("class") != "android.widget.ScrollView" or node.attrib.get("scrollable") != "true":
         continue
-    left, top, right, bottom = map(int, match.groups())
-    if right - left < 100 or bottom - top < 220:
+    box = rect(node)
+    if box and box[2] - box[0] >= 100 and box[3] - box[1] >= 220:
+        candidates.append(((box[2]-box[0])*(box[3]-box[1]), node, box))
+if not candidates:
+    raise SystemExit(1)
+_, scroll, viewport = max(candidates, key=lambda item: item[0])
+left, top, right, bottom = viewport
+
+def visible(description, minimum=28):
+    for node in scroll.iter("node"):
+        if node.attrib.get("content-desc", "") != description:
+            continue
+        if node.attrib.get("visible-to-user") == "false":
+            continue
+        box = rect(node)
+        if box is None:
+            continue
+        x1, y1, x2, y2 = box
+        if min(right, x2) - max(left, x1) >= 80 and min(bottom, y2) - max(top, y1) >= minimum:
+            return True
+    return False
+
+if target == "region":
+    required = [
+        "Track Edit region",
+        "Track Edit layer region start decrease",
+        "Track Edit layer region start increase",
+        "Track Edit layer region end decrease",
+        "Track Edit layer region end increase",
+    ]
+else:
+    required = [
+        "Track Edit layer gain value",
+        "Track Edit layer gain decrease",
+        "Track Edit layer tuning value",
+        "Track Edit layer pan value",
+    ]
+raise SystemExit(0 if all(visible(value) for value in required) else 1)
+PY_TRACK_EDIT_TARGET
+    then
+      echo "Track Edit $target target controls are visible after $((attempt - 1)) bounded scroll gesture(s)."
+      return 0
+    fi
+
+    if ! coordinates="$(python3 - "$hierarchy_path" "$target" "$scroll_direction" <<'PY_TRACK_EDIT_SCROLL'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, target, previous_direction = sys.argv[1], sys.argv[2], sys.argv[3]
+nodes = list(ET.parse(path).getroot().iter("node"))
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+candidates = []
+for node in nodes:
+    if node.attrib.get("class") != "android.widget.ScrollView" or node.attrib.get("scrollable") != "true":
         continue
-    scroll_views.append(((right-left)*(bottom-top), left, top, right, bottom))
-if not scroll_views:
+    box = rect(node)
+    if box and box[2] - box[0] >= 100 and box[3] - box[1] >= 220:
+        candidates.append(((box[2]-box[0])*(box[3]-box[1]), node, box))
+if not candidates:
     raise SystemExit("No visible scrollable Track Edit viewport found")
-_, left, top, right, bottom = max(scroll_views)
+_, scroll, viewport = max(candidates, key=lambda item: item[0])
+left, top, right, bottom = viewport
+
+def visible(predicate, minimum=28):
+    for node in scroll.iter("node"):
+        if not predicate(node.attrib.get("content-desc", "")):
+            continue
+        box = rect(node)
+        if box is None or node.attrib.get("visible-to-user") == "false":
+            continue
+        x1, y1, x2, y2 = box
+        if min(right, x2) - max(left, x1) >= 80 and min(bottom, y2) - max(top, y1) >= minimum:
+            return True
+    return False
+
+waveform = visible(lambda value: value == "Track Edit Samples waveform", 55)
+# Even a clipped velocity marker means the viewport is at the lower
+# end; use its smallest visible intersection to reverse out of that endpoint.
+velocity = visible(lambda value: value == "Track Edit velocity"
+                   or value.startswith("Track Edit layer velocity "), 1)
+gain = visible(lambda value: value == "Track Edit layer gain value", 28)
+tuning = visible(lambda value: value == "Track Edit layer tuning value", 28)
+pan = visible(lambda value: value == "Track Edit layer pan value", 28)
+region = visible(lambda value: value == "Track Edit region", 28)
+
+# Finger-up scrolls forward from the waveform/sample preamble to the REGION
+# and GAIN/TUNE/PAN rows. Finger-down returns toward earlier rows. These are
+# separate acceptance targets: the full REGION row and all three parameter
+# rows cannot always fit in the same viewport, so do not oscillate chasing both.
+if target == "region":
+    scroll_forward = waveform or (not region and not (gain or tuning or pan))
+else:
+    # Lock the first evidence-derived direction for this recovery pass. When
+    # returning from the velocity row, the first reverse swipe can expose TUNE
+    # and PAN while GAIN remains just above the viewport. Reversing direction
+    # merely because velocity is no longer visible oscillates forever between
+    # those two states. Keep reversing until the full GAIN/TUNE/PAN contract is
+    # satisfied; when approaching from waveform/region, keep moving forward.
+    if previous_direction == "forward":
+        scroll_forward = True
+    elif previous_direction == "reverse":
+        scroll_forward = False
+    elif velocity:
+        scroll_forward = False
+    elif gain:
+        scroll_forward = True
+    elif tuning or pan:
+        scroll_forward = False
+    elif waveform or region:
+        scroll_forward = True
+    else:
+        scroll_forward = True
+
 height = bottom - top
 margin = max(45, min(90, height // 5))
-# A visible waveform identifies the upper end of Samples content; a visible
-# velocity row identifies its lower end. Swipe up to reveal lower fields from
-# the top, or swipe down to return toward GAIN/TUNE/PAN from the lower end.
-at_top = "Track Edit Samples waveform" in descriptions
-at_bottom = ("Track Edit velocity" in descriptions
-             or any(value.startswith("Track Edit layer velocity ")
-                    for value in descriptions))
-if at_bottom and not at_top:
-    start_y, end_y = top + margin, bottom - margin
-    direction = "toward the upper layer controls"
+if target == "region":
+    # REGION sits directly after the waveform and before GAIN/TUNE/PAN. A
+    # full-height swipe jumps between the ScrollView endpoints and can never
+    # make the REGION text and its buttons simultaneously visible. Use bounded
+    # incremental steps to stop at the intermediate region viewport.
+    distance = max(100, min(180, height // 4))
+    if scroll_forward:
+        start_y = bottom - margin
+        end_y = max(top + margin, start_y - distance)
+        direction = "toward REGION controls"
+    else:
+        start_y = top + margin
+        end_y = min(bottom - margin, start_y + distance)
+        direction = "back toward REGION controls"
 else:
-    start_y, end_y = bottom - margin, top + margin
-    direction = "toward REGION/GAIN/TUNE/PAN"
-if abs(start_y - end_y) < 100:
+    if scroll_forward:
+        start_y, end_y = bottom - margin, top + margin
+        direction = "toward GAIN/TUNE/PAN"
+    else:
+        start_y, end_y = top + margin, bottom - margin
+        direction = "toward earlier layer controls"
+if abs(start_y - end_y) < 85:
     raise SystemExit("Track Edit scroll gesture is too short")
-print((left+right)//2, start_y, end_y, direction)
-PY
+print((left + right) // 2, start_y, end_y,
+      "forward" if scroll_forward else "reverse", direction)
+PY_TRACK_EDIT_SCROLL
 )"; then
-      echo "ERROR: could not derive a safe gesture from the live Track Edit ScrollView"
+      echo "ERROR: could not derive a bounded Track Edit scroll toward $target"
       cat "$hierarchy_path" || true
       return 1
     fi
-    read -r swipe_x swipe_from swipe_to gesture_direction <<< "$coordinates"
-    echo "Scrolling Track Edit $gesture_direction: x=$swipe_x y=$swipe_from->$swipe_to"
+    read -r swipe_x swipe_from swipe_to next_scroll_direction gesture_direction <<< "$coordinates"
+    if [[ "$target" == "gain" ]]; then
+      scroll_direction="$next_scroll_direction"
+    fi
+    echo "Scrolling Track Edit $gesture_direction for $target: x=$swipe_x y=$swipe_from->$swipe_to"
     if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
-      echo "ERROR: Track Edit layer viewport scroll gesture failed"
+      echo "ERROR: Track Edit $target viewport scroll gesture failed"
       return 1
     fi
     sleep 0.35
   done
 
   if ! dump_device_ui "$remote_path" "$hierarchy_path"; then return 1; fi
-  echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not become visible after $max_swipes bounded scroll gestures"
+  echo "ERROR: Track Edit $target controls did not become visible after $max_swipes bounded scroll gestures"
   cat "$hierarchy_path" || true
   return 1
 }
@@ -7729,6 +9036,207 @@ capture_stable_picker_state() {
   cat /tmp/mpc-groovebox-uiautomator-dump.log 2>/dev/null || true
   return 1
 }
+# Verify that the screenshot captured for a fresh picker hierarchy belongs to
+# a compatible viewport. A stale landscape screenshot can make otherwise-valid
+# portrait bounds look clipped (or hide that the picker rotated between captures).
+verify_documentsui_pair_geometry() {
+  local hierarchy_path="$1" screenshot_path="$2"
+  python3 - "$hierarchy_path" "$screenshot_path" <<'PY_PICKER_PAIR_GEOMETRY'
+import re
+import struct
+import sys
+import xml.etree.ElementTree as ET
+
+hierarchy_path, screenshot_path = sys.argv[1:]
+root = ET.parse(hierarchy_path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("paired hierarchy is not rooted in Android DocumentsUI")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     nodes[0].attrib.get("bounds", ""))
+if match is None:
+    raise SystemExit(f"DocumentsUI root has invalid bounds: {nodes[0].attrib.get('bounds')!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit("DocumentsUI root has a non-positive viewport")
+with open(screenshot_path, "rb") as image:
+    header = image.read(24)
+if len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+    raise SystemExit("paired DocumentsUI screenshot is not a valid PNG header")
+width, height = struct.unpack(">II", header[16:24])
+if width <= 0 or height <= 0 or left < 0 or top < 0 or right > width or bottom > height:
+    raise SystemExit(
+        f"DocumentsUI viewport {(left, top, right, bottom)} exceeds paired screenshot {width}x{height}")
+print(f"DocumentsUI hierarchy/screenshot geometry matches: viewport={right-left}x{bottom-top}, screenshot={width}x{height}")
+PY_PICKER_PAIR_GEOMETRY
+}
+
+# Reuse one fresh DocumentsUI hierarchy only for the narrowly validated
+# ACTION_CREATE_DOCUMENT Save As form. Repeated UiAutomator tree requests can stall
+# on this Android 16 emulator even though the first tree is current and complete.
+# Capture its screenshot immediately, before any interaction, and require the
+# exact filename field plus an enabled SAVE action; do not relax file/result checks.
+capture_verified_fresh_save_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Save As hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_SAVE_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+filename = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/title"
+    and node.attrib.get("class") == "android.widget.EditText"
+    and node.attrib.get("text", "").strip() == expected_filename
+    and node.attrib.get("enabled") == "true"
+]
+save = [
+    node for node in nodes
+    if node.attrib.get("resource-id") == "android:id/button1"
+    and node.attrib.get("text", "").strip().upper() == "SAVE"
+    and node.attrib.get("class") == "android.widget.Button"
+    and node.attrib.get("enabled") == "true"
+    and node.attrib.get("clickable") == "true"
+]
+if len(filename) != 1 or len(save) != 1:
+    raise SystemExit(
+        f"Save As form did not expose unique enabled filename/SAVE controls: "
+        f"filename={len(filename)} save={len(save)}")
+viewport = bounds(nodes[0])
+if viewport is None or viewport[2] <= viewport[0] or viewport[3] <= viewport[1]:
+    raise SystemExit(f"DocumentsUI root has invalid viewport bounds: {nodes[0].attrib!r}")
+for label, node in (("filename", filename[0]), ("SAVE", save[0])):
+    rect = bounds(node)
+    if (rect is None or rect[2] <= rect[0] or rect[3] <= rect[1]
+            or rect[0] < viewport[0] or rect[1] < viewport[1]
+            or rect[2] > viewport[2] or rect[3] > viewport[3]):
+        raise SystemExit(f"{label} control is invalid or outside the DocumentsUI viewport: {node.attrib!r}")
+print("Fresh Save As hierarchy validated:", expected_filename)
+PY_SAVE_PAIR
+  then
+    echo "ERROR: fresh Save As hierarchy failed the strict filename/SAVE contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Save As hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Save As screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Save As screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Save As hierarchy/screenshot without a second UiAutomator dump."
+}
+
+# The Open picker uses the same strict fresh-pair strategy as Save As once
+# the requested file has appeared. Avoid redundant stabilizing dumps after a
+# real, actionable file row is already present in a newly captured hierarchy.
+capture_verified_fresh_open_picker_pair() {
+  local hierarchy_path="$1" screenshot_path="$2" expected_filename="$3"
+  local screenshot_candidate="${screenshot_path%.png}-fresh-pair-candidate.png"
+  if ! test -s "$hierarchy_path"; then
+    echo "ERROR: fresh Open picker hierarchy is missing: $hierarchy_path"
+    return 1
+  fi
+  if ! python3 - "$hierarchy_path" "$expected_filename" <<'PY_OPEN_PAIR'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh hierarchy is not rooted in Android DocumentsUI")
+
+def rect(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+directory = next((n for n in nodes
+                  if n.attrib.get("resource-id") == "com.android.documentsui:id/dir_list"), None)
+labels = [n for n in nodes
+          if n.attrib.get("resource-id") == "android:id/title"
+          and n.attrib.get("text", "").strip() == expected_filename]
+parents = {child: parent for parent in nodes for child in list(parent)}
+rows = []
+for label in labels:
+    current = label
+    while current is not None and current.attrib.get("resource-id") != "com.android.documentsui:id/item_root":
+        current = parents.get(current)
+    row_rect = rect(current) if current is not None else None
+    directory_rect = rect(directory) if directory is not None else None
+    if current is None or row_rect is None or directory_rect is None:
+        continue
+    if current.attrib.get("clickable") != "true" or current.attrib.get("enabled") != "true":
+        continue
+    left, top, right, bottom = row_rect
+    dl, dt, dr, db = directory_rect
+    if right > left and bottom > top and left < dr and dl < right and top < db and dt < bottom:
+        rows.append((label, current))
+if len(rows) != 1:
+    raise SystemExit(
+        f"expected one visible, actionable document row for {expected_filename!r}; found {len(rows)}")
+print("Fresh Open picker hierarchy validated:", expected_filename)
+PY_OPEN_PAIR
+  then
+    echo "ERROR: fresh Open picker hierarchy failed the strict file-row contract"
+    return 1
+  fi
+  rm -f "$screenshot_candidate"
+  if ! capture_ui_screenshot "$screenshot_candidate" 10; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not capture screenshot for validated fresh Open picker hierarchy"
+    return 1
+  fi
+  if ! test -s "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: Open picker screenshot for fresh hierarchy is empty"
+    return 1
+  fi
+  if ! verify_documentsui_pair_geometry "$hierarchy_path" "$screenshot_candidate"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: paired DocumentsUI screenshot does not contain its live viewport"
+    return 1
+  fi
+  if ! mv -f -- "$screenshot_candidate" "$screenshot_path"; then
+    rm -f "$screenshot_candidate"
+    echo "ERROR: could not publish paired Open picker screenshot: $screenshot_path"
+    return 1
+  fi
+  echo "Accepted fresh paired Open picker hierarchy/screenshot without a redundant stabilizing dump."
+}
+
 tap_ui_picker_folder_until_child() {
   local hierarchy_path="$1" remote_path="$2" folder_label="$3" child_label="$4"
   local evidence_prefix="${5:-document-tree}" root_stability_timeout="${6:-6}"
@@ -8378,7 +9886,7 @@ TRACK_EDIT_REGION_END_RESTORED_REMOTE="/sdcard/mpc-groovebox-track-edit-region-e
 TRACK_EDIT_REGION_CHECK_XML="/tmp/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 TRACK_EDIT_REGION_CHECK_REMOTE="/sdcard/mpc-groovebox-track-edit-region-check-uiautomator.xml"
 
-if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8; then
+if ! scroll_track_edit_to_layer_gain "$TRACK_EDIT_REGION_BEFORE_XML" "$TRACK_EDIT_REGION_BEFORE_REMOTE" 8 region; then
   echo "ERROR: Track Edit REGION/GAIN/TUNE/PAN fields did not return to the visible upper-layer viewport"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_BEFORE_REMOTE" "$TRACK_EDIT_REGION_BEFORE_XML"; then
@@ -9418,48 +10926,373 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-places-section.png 10; the
 fi
 echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
 
-if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser scan local audio files"; then exit 1; fi
-# The prior app-side UI audit can leave Browser search/filter state behind.
-# Reset both controls explicitly so the fixture visibility check starts from a
-# deterministic catalog view rather than the audit's last navigation context.
+# BROW-001 finishes on PLACES. Refresh that real state before using coordinates,
+# then explicitly return to CONTENT; never replay taps from a hierarchy captured
+# before the section switch.
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not refresh Browser hierarchy after BROW-001"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_SECTION_XML" "Browser CONTENT tab"; then
+  echo "ERROR: Browser CONTENT tab was not actionable after Places isolation"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_SECTION_XML" "$BROWSER_SECTION_REMOTE" \
+    "MPC Browser navigation CONTENT SAMPLES" 12; then
+  echo "ERROR: Browser did not return to its CONTENT/SAMPLES destination"; exit 1
+fi
+if ! dump_device_ui "$BROWSER_SECTION_REMOTE" "$BROWSER_SECTION_XML"; then
+  echo "ERROR: could not capture fresh Browser CONTENT hierarchy"; exit 1
+fi
+if ! assert_browser_section_hierarchy "$BROWSER_SECTION_XML" CONTENT; then
+  echo "ERROR: fresh Browser CONTENT state did not satisfy the section contract"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_SECTION_XML" "MPC Browser scan local audio files"; then exit 1; fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser state after starting local audio scan"; exit 1
+fi
+# Reset search/filter using a hierarchy captured after the section change.
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+  echo "ERROR: could not capture Browser state after clearing search"; exit 1
+fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
-if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 20; then
-  echo "ERROR: clearing inherited Browser state did not reveal the indexed local WAV"
+
+# The pinned Browser actions consume viewport height. Scroll the actual results
+# ScrollView in bounded steps, recapturing after each gesture, until the exact
+# root WAV row is visibly exposed. Preserve the strict row assertion.
+local_wav_visible=0
+for scroll_attempt in 1 2 3 4 5; do
+  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
+    echo "ERROR: could not capture Browser results on scroll attempt $scroll_attempt"; exit 1
+  fi
+  if python3 - "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+path, name = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+def intersection(a, b):
+    if a is None or b is None: return None
+    r = (max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3]))
+    return r if r[0] < r[2] and r[1] < r[3] else None
+expected = "MPC Browser file " + name
+for node in nodes:
+    if node.attrib.get("content-desc") != expected or node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+        continue
+    row = bounds(node)
+    parent = parents.get(node)
+    while parent is not None and parent.attrib.get("content-desc") != "MPC Browser results list":
+        parent = parents.get(parent)
+    if parent is not None and intersection(row, bounds(parent)) is not None:
+        raise SystemExit(0)
+raise SystemExit(1)
+PY
+  then
+    local_wav_visible=1
+    break
+  fi
+  # Derive the gesture from the live scroll viewport, not stale fixed bounds.
+  if ! scroll_coordinates="$(python3 - "$BROWSER_LOCAL_XML" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("content-desc") != "MPC Browser results list": continue
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    if not match: break
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 80: break
+    print((left + right) // 2, bottom - 18, top + 18)
+    raise SystemExit(0)
+raise SystemExit("visible Browser results ScrollView is missing or has invalid bounds")
+PY
+  )"; then
+    echo "ERROR: could not derive live Browser results scroll coordinates"; exit 1
+  fi
+  read -r scroll_x scroll_from scroll_to <<< "$scroll_coordinates"
+  if ! adb_bounded 10 shell input swipe "$scroll_x" "$scroll_from" "$scroll_x" "$scroll_to" 350; then
+    echo "ERROR: could not scroll Browser results on attempt $scroll_attempt"; exit 1
+  fi
+  sleep 1
+done
+if [[ "$local_wav_visible" != "1" ]]; then
+  echo "ERROR: root WAV $LOCAL_SAMPLE_NAME was not visible after bounded Browser results scrolling"
+  cat "$BROWSER_LOCAL_XML" || true
   exit 1
 fi
 
 echo "Running BROW-003 real local Content category provider boundaries..."
 assert_browser_content_category() {
-  local hierarchy="$1" category="$2" expected="$3"
-  python3 - "$hierarchy" "$category" "$expected" "$LOCAL_SAMPLE_NAME" <<'PY'
+  local hierarchy="$1" category="$2" expected="$3" expected_name="${4:-$LOCAL_SAMPLE_NAME}"
+  python3 - "$hierarchy" "$category" "$expected" "$expected_name" \
+      "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME" \
+      "$BROWSER_CATEGORY_PATH_FIXTURES_SEEDED" <<'PY'
 import sys
 import xml.etree.ElementTree as ET
 
-path, category, expected, sample_name = sys.argv[1:]
+path, category, expected, expected_name, root_name, drum_name, demo_name, path_fixtures = sys.argv[1:]
 root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 descriptions = {node.attrib.get("content-desc", "") for node in nodes}
 texts = [node.attrib.get("text", "") for node in nodes]
 if f"MPC Browser current location: CONTENT • {category}" not in descriptions:
     raise SystemExit(f"Content location did not resolve to {category}")
-file_rows = [d for d in descriptions if d == f"MPC Browser file {sample_name}"
-             or d.startswith(f"MPC Browser file {sample_name} ")]
+
+def file_rows(name):
+    prefix = f"MPC Browser file {name}"
+    return [description for description in descriptions
+            if description == prefix or description.startswith(prefix + " ")]
+
+fixture_names = (root_name, drum_name, demo_name)
 if expected == "AVAILABLE":
-    if not file_rows:
-        raise SystemExit(f"real local WAV missing from supported CONTENT/{category}")
+    if category in ("SAMPLES", "MY FILES"):
+        if not any(description.startswith("MPC Browser file ")
+                   for description in descriptions):
+            raise SystemExit(f"CONTENT/{category} has no visible indexed WAV rows")
+    elif not file_rows(expected_name):
+        raise SystemExit(f"expected real local WAV {expected_name!r} missing from CONTENT/{category}")
+    if category in ("DRUMS", "DEMOS"):
+        wrong_category = demo_name if category == "DRUMS" else drum_name
+        for forbidden in (root_name, wrong_category):
+            if file_rows(forbidden):
+                raise SystemExit(
+                    f"CONTENT/{category} leaked WAV outside its real folder: {forbidden!r}")
+    # For SAMPLES/MY FILES, all expected fixtures are verified across the
+    # caller's fresh, viewport-aware scroll snapshots; a single UiAutomator tree
+    # intentionally contains only the rows currently materialized by the list.
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" in descriptions:
         raise SystemExit(f"supported CONTENT/{category} reported unavailable")
 else:
-    if file_rows:
-        raise SystemExit(f"unsupported CONTENT/{category} fabricated a WAV row")
+    leaked = [name for name in fixture_names if file_rows(name)]
+    if leaked:
+        raise SystemExit(f"unsupported CONTENT/{category} fabricated WAV rows: {leaked!r}")
     if "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" not in descriptions:
         raise SystemExit(f"unsupported CONTENT/{category} didn't report provider limitation")
-    if not any("No real local provider is available" in text for text in texts):
+    if not any("No real local provider is available" in text
+               or "MediaStore folder paths" in text for text in texts):
         raise SystemExit(f"unsupported CONTENT/{category} has no actionable limitation detail")
 print(f"Browser CONTENT/{category}: {expected.lower()} provider behavior verified.")
 PY
+}
+
+scroll_browser_results_until_names() {
+  local hierarchy="$1" remote="$2" category="$3"
+  shift 3
+  local -a expected_names=("$@")
+  local seen_names="|" visible_names name scroll_coordinates scroll_x scroll_from scroll_to
+  local all_seen attempt
+
+  for ((attempt=1; attempt<=9; attempt++)); do
+    if ! dump_device_ui_retry "$remote" "$hierarchy" 8 3; then
+      echo "ERROR: could not refresh CONTENT/$category results viewport on scan $attempt"
+      return 1
+    fi
+    if ! grep -Fq -- "MPC Browser current location: CONTENT • $category" "$hierarchy"; then
+      echo "ERROR: fresh Browser hierarchy left CONTENT/$category while scanning rows"
+      return 1
+    fi
+    if ! visible_names="$(python3 - "$hierarchy" "${expected_names[@]}" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, *expected_names = sys.argv[1:]
+expected = set(expected_names)
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def bounds(node):
+    match = re.fullmatch(
+        r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+        node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersection(a, b):
+    if a is None or b is None:
+        return None
+    rect = (max(a[0], b[0]), max(a[1], b[1]),
+            min(a[2], b[2]), min(a[3], b[3]))
+    return rect if rect[0] < rect[2] and rect[1] < rect[3] else None
+
+scroll = next((node for node in nodes
+               if node.attrib.get("content-desc") == "MPC Browser results list"), None)
+if scroll is None or bounds(scroll) is None:
+    raise SystemExit("fresh Browser results ScrollView is missing or has invalid bounds")
+
+visible = set()
+unexpected = set()
+for node in nodes:
+    description = node.attrib.get("content-desc", "")
+    prefix = "MPC Browser file "
+    if not description.startswith(prefix):
+        continue
+    row = bounds(node)
+    parent = parents.get(node)
+    while parent is not None and parent is not scroll:
+        parent = parents.get(parent)
+    if parent is not scroll or intersection(row, bounds(scroll)) is None:
+        continue
+    name = description[len(prefix):]
+    if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+        raise SystemExit(f"visible Browser file row is not actionable: {name!r}")
+    if name not in expected:
+        unexpected.add(name)
+    else:
+        visible.add(name)
+if unexpected:
+    raise SystemExit(f"unexpected indexed WAV rows in CONTENT results: {sorted(unexpected)!r}")
+for name in expected_names:
+    if name in visible:
+        print(name)
+PY
+)"; then
+      echo "ERROR: could not inspect visible CONTENT/$category file rows"
+      return 1
+    fi
+
+    while IFS= read -r name; do
+      [[ -n "$name" ]] || continue
+      if [[ "$seen_names" != *"|$name|"* ]]; then
+        seen_names+="$name|"
+        echo "CONTENT/$category visible file verified: $name"
+      fi
+    done <<< "$visible_names"
+
+    all_seen=1
+    for name in "${expected_names[@]}"; do
+      if [[ "$seen_names" != *"|$name|"* ]]; then
+        all_seen=0
+        break
+      fi
+    done
+    if (( all_seen )); then
+      echo "CONTENT/$category: all expected indexed WAV rows were visible in fresh viewport snapshots."
+      return 0
+    fi
+
+    if ! scroll_coordinates="$(python3 - "$hierarchy" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+for node in root.iter("node"):
+    if node.attrib.get("content-desc") != "MPC Browser results list":
+        continue
+    match = re.fullmatch(
+        r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+        node.attrib.get("bounds", ""))
+    if not match:
+        break
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom - top < 80:
+        break
+    print((left + right) // 2, bottom - 18, top + 18)
+    raise SystemExit(0)
+raise SystemExit("visible Browser results ScrollView is missing or has invalid bounds")
+PY
+)"; then
+      echo "ERROR: could not derive live CONTENT/$category scroll coordinates"
+      return 1
+    fi
+    read -r scroll_x scroll_from scroll_to <<< "$scroll_coordinates"
+    if ! adb_bounded 10 shell input swipe "$scroll_x" "$scroll_from" "$scroll_x" "$scroll_to" 350; then
+      echo "ERROR: could not scroll CONTENT/$category results on attempt $attempt"
+      return 1
+    fi
+    sleep 1
+  done
+
+  echo "ERROR: CONTENT/$category did not expose every expected indexed WAV after bounded scrolling"
+  echo "Rows observed: ${seen_names}"
+  cat "$hierarchy" || true
+  return 1
+}
+
+assert_browser_modified_date_state() {
+  local hierarchy="$1" filename="$2" expected_show="$3"
+  python3 - "$hierarchy" "$filename" "$expected_show" <<'PY_BROWSER_DATE_ROW'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, filename, expected_show = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+parents = {child: parent for parent in nodes for child in list(parent)}
+
+def bounds(node):
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         node.attrib.get("bounds", ""))
+    return tuple(map(int, match.groups())) if match else None
+
+def intersects(a, b):
+    return a is not None and b is not None and max(a[0], b[0]) < min(a[2], b[2]) \
+        and max(a[1], b[1]) < min(a[3], b[3])
+
+scroll = next((n for n in nodes
+               if n.attrib.get("content-desc") == "MPC Browser results list"), None)
+if scroll is None or bounds(scroll) is None:
+    raise SystemExit("Browser results viewport missing")
+expected_desc = "MPC Browser file " + filename
+rows = [n for n in nodes
+        if n.attrib.get("content-desc") in (expected_desc, expected_desc + " selected")
+        and n.attrib.get("clickable") == "true"
+        and n.attrib.get("enabled") == "true"
+        and intersects(bounds(n), bounds(scroll))]
+if len(rows) != 1:
+    raise SystemExit(f"expected one visible, actionable Browser row {filename!r}; found {len(rows)}")
+row = rows[0]
+texts = []
+for node in nodes:
+    parent = node
+    while parent is not None and parent is not row:
+        parent = parents.get(parent)
+    if parent is row:
+        text = node.attrib.get("text", "").strip()
+        if text:
+            texts.append(text)
+has_date = any("MODIFIED " in text or "DATE UNKNOWN" in text for text in texts)
+expected = expected_show == "1"
+if has_date != expected:
+    raise SystemExit(
+        f"modified-date presentation mismatch for {filename!r}: "
+        f"expected show={expected}, row texts={texts!r}")
+if not any("WAV" in text for text in texts):
+    raise SystemExit(f"Browser metadata line is missing from row {filename!r}: {texts!r}")
+print(f"Browser modified-date row verified: {filename}, show={expected}, metadata={texts!r}")
+PY_BROWSER_DATE_ROW
+}
+
+read_browser_modified_date_checked() {
+  python3 - "$1" <<'PY_BROWSER_DATE_CHECKBOX'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+matches = [n for n in root.iter("node")
+           if n.attrib.get("content-desc") == "MPC Browser Option Show modified date"]
+if len(matches) != 1:
+    raise SystemExit(f"expected one modified-date checkbox, found {len(matches)}")
+node = matches[0]
+if node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+    raise SystemExit(f"modified-date checkbox is not actionable: {node.attrib!r}")
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                     node.attrib.get("bounds", ""))
+if not match:
+    raise SystemExit(f"modified-date checkbox has invalid bounds: {node.attrib!r}")
+left, top, right, bottom = map(int, match.groups())
+if right <= left or bottom <= top:
+    raise SystemExit(f"modified-date checkbox has empty bounds: {node.attrib!r}")
+print("1" if node.attrib.get("checked") == "true" else "0")
+PY_BROWSER_DATE_CHECKBOX
 }
 
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
@@ -9467,17 +11300,36 @@ if ! tap_ui_description "$BROWSER_LOCAL_XML" "Browser CONTENT tab"; then
 fi
 for category in DRUMS INSTRUMENTS DEMOS; do
   category_lower="$(printf '%s' "$category" | tr '[:upper:]' '[:lower:]')"
+  category_expected="UNAVAILABLE"
+  expected_name="$LOCAL_SAMPLE_NAME"
+  if [[ "$emulator_sdk" =~ ^[0-9]+$ ]] && (( emulator_sdk >= 29 )); then
+    if [[ "$category" == "DRUMS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DRUMS_NAME"
+    elif [[ "$category" == "DEMOS" ]]; then
+      category_expected="AVAILABLE"
+      expected_name="$BROWSER_DEMOS_NAME"
+    fi
+  fi
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
-  if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
-    echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable local provider"; exit 1
+  if [[ "$category_expected" == "AVAILABLE" ]]; then
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser file $expected_name" 12; then
+      echo "ERROR: indexed category WAV $expected_name missing from CONTENT/$category"; exit 1
+    fi
+  else
+    if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+        "MPC Browser status CATEGORY PROVIDER NOT IMPLEMENTED" 10; then
+      echo "ERROR: Browser CONTENT/$category must explicitly report its unavailable provider"; exit 1
+    fi
   fi
   if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
     echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
   fi
-  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "UNAVAILABLE"; then
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" \
+      "$category_expected" "$expected_name"; then
     echo "ERROR: Browser CONTENT/$category category/results contract failed"; exit 1
   fi
   if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-content-$category_lower.png" 10; then
@@ -9489,18 +11341,20 @@ for category in SAMPLES "MY FILES"; do
   if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser navigation CONTENT $category"; then
     echo "ERROR: supported Browser CONTENT/$category navigation row was not actionable"; exit 1
   fi
+  # These locations contain three real fixtures; the last one can be below the
+  # visible ScrollView after category navigation. Wait on the stable location
+  # marker, then verify each exact indexed row across fresh, viewport-aware dumps.
   if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser file $LOCAL_SAMPLE_NAME" 12; then
-    echo "ERROR: real WAV fixture did not appear in supported CONTENT/$category"; exit 1
+      "MPC Browser current location: CONTENT • $category" 12; then
+    echo "ERROR: Browser did not enter supported CONTENT/$category"; exit 1
   fi
-  if ! dump_device_ui "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML"; then
-    echo "ERROR: could not capture Browser CONTENT/$category hierarchy"; exit 1
-  fi
-  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE"; then
+  if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "$category" \
+      "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+  if ! assert_browser_content_category "$BROWSER_LOCAL_XML" "$category" "AVAILABLE" ""; then
     echo "ERROR: Browser CONTENT/$category provider/results contract failed"; exit 1
   fi
 done
-echo "BROW-003 local Content categories show real WAVs only in supported providers."
+echo "BROW-003 local Content categories filter real MediaStore paths; Instruments remains unavailable."
 
 # Exercise the real on-screen Search field against the indexed MediaStore rows.
 # Positive and negative queries must change the visible result set, not only the
@@ -9537,11 +11391,16 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
   exit 1
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser clear search"; then exit 1; fi
+# Clearing Search restores the full catalog, whose last alphabetical row may be
+# below the visible results viewport. Wait for the first visible fixture, then
+# verify all three exact files across fresh viewport-aware snapshots.
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
-  echo "ERROR: clearing Search did not restore indexed results"
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
+  echo "ERROR: clearing Search did not restore the indexed Browser catalog"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
 # File-type filters must act on actual results too: PROJECTS yields none for
 # the WAV-only loader, while ALL and SAMPLES restore the real WAV row.
@@ -9553,16 +11412,93 @@ if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
 fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter ALL"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: ALL filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser filter SAMPLES"; then exit 1; fi
 if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "MPC Browser file $LOCAL_SAMPLE_NAME" 10; then
+    "MPC Browser file $BROWSER_DEMOS_NAME" 10; then
   echo "ERROR: SAMPLES filter failed to restore indexed WAV results"
   exit 1
 fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+
+echo "Running BROW-013 real modified-date option → metadata → restore acceptance..."
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not refresh Browser before modified-date option acceptance"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options button was not actionable for modified-date acceptance"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser Option Show modified date" 10; then
+  echo "ERROR: modified-date checkbox did not appear in Browser Options"; exit 1
+fi
+initial_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: modified-date checkbox could not be toggled"; exit 1
+fi
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not verify changed modified-date checkbox"; exit 1
+fi
+toggled_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$toggled_modified_date" == "$initial_modified_date" ]]; then
+  echo "ERROR: modified-date checkbox did not change checked state"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-options-changed.png" 10; then
+  echo "ERROR: modified-date changed-state screenshot failed"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after modified-date toggle"; exit 1
+fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+if ! assert_browser_modified_date_state "$BROWSER_LOCAL_XML" "$BROWSER_DEMOS_NAME" "$toggled_modified_date"; then
+  echo "ERROR: modified-date toggle did not update real Browser metadata"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-metadata-changed.png" 10; then
+  echo "ERROR: modified-date result metadata screenshot failed"; exit 1
+fi
+
+# Reopen the real dialog to confirm the selected preference is persisted, then
+# restore the original value so subsequent Browser/sample tests remain isolated.
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options"; then
+  echo "ERROR: Browser Options did not reopen for preference-persistence check"; exit 1
+fi
+if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
+    "MPC Browser Option Show modified date" 10; then
+  echo "ERROR: modified-date checkbox did not return after reopening options"; exit 1
+fi
+reopened_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$reopened_modified_date" != "$toggled_modified_date" ]]; then
+  echo "ERROR: modified-date preference did not persist when Browser Options reopened"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Option Show modified date"; then
+  echo "ERROR: modified-date checkbox could not restore its original state"; exit 1
+fi
+if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
+  echo "ERROR: could not verify restored modified-date checkbox"; exit 1
+fi
+restored_modified_date="$(read_browser_modified_date_checked "$BROWSER_LOCAL_XML")"
+if [[ "$restored_modified_date" != "$initial_modified_date" ]]; then
+  echo "ERROR: modified-date checkbox failed to restore original state"; exit 1
+fi
+if ! tap_ui_description "$BROWSER_LOCAL_XML" "MPC Browser Options close"; then
+  echo "ERROR: could not close Browser Options after restoring modified-date preference"; exit 1
+fi
+if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
+    "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
+if ! assert_browser_modified_date_state "$BROWSER_LOCAL_XML" "$BROWSER_DEMOS_NAME" "$initial_modified_date"; then
+  echo "ERROR: modified-date metadata failed to restore its original presentation"; exit 1
+fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-browser-modified-date-metadata-restored.png" 10; then
+  echo "ERROR: modified-date restore screenshot failed"; exit 1
+fi
+echo "BROW-013 modified-date checkbox, real metadata rendering, persistence and inverse restore passed."
 
 # The sample follows two pinned Browser actions in a short ScrollView. Scroll it
 # fully into the hit area instead of tapping a clipped row at the viewport edge.
@@ -9609,6 +11545,29 @@ print(f"Browser selection preserved current Pad/Layer sample: {actual}")
 PY
 }
 
+assert_browser_assignment_status_is_concise() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, sample_name, pad, layer = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = [node for node in root.iter("node")
+         if node.attrib.get("content-desc") == "MPC Browser provider status"]
+if len(nodes) != 1:
+    raise SystemExit(
+        f"expected one Browser provider-status node, found {len(nodes)}")
+expected = (
+    f"ASSIGNED • {sample_name} → PAD {int(pad):02d} / LAYER {int(layer):02d}")
+actual = nodes[0].attrib.get("text", "")
+if actual != expected:
+    raise SystemExit(
+        f"Browser assignment status must be concise and exact: "
+        f"expected={expected!r}, actual={actual!r}")
+print(f"Browser assignment status is concise: {actual}")
+PY
+}
+
 browser_sample_before_selection="$(read_browser_current_sample "$BROWSER_LOCAL_XML")" || {
   echo "ERROR: could not read Pad/Layer sample before Browser selection"; exit 1;
 }
@@ -9643,6 +11602,10 @@ fi
 if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "ASSIGNED" "PAD 01 / LAYER 01" 20; then
   echo "ERROR: native sampler assignment did not report the correct target"
+  exit 1
+fi
+if ! assert_browser_assignment_status_is_concise "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" 1 1; then
+  echo "ERROR: Browser assignment exposed low-level audio diagnostics instead of a concise result status"
   exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-local-results.png 10; then
@@ -9734,18 +11697,30 @@ printf '%s\n' "$picker_activity" > /tmp/mpc-groovebox-picker-select-source-activ
 # remote file and host file each attempt, then rejects empty/malformed XML, so
 # this can never fall back to a stale tree from the previous activity.
 picker_hierarchy_ready=0
-for picker_hierarchy_attempt in {1..4}; do
-  if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8; then
+for picker_hierarchy_attempt in {1..2}; do
+  if dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed \
+      && python3 - "$PICKER_UI_XML" <<'PY_DOCUMENTSUI_ROOT'
+import sys
+import xml.etree.ElementTree as ET
+
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+if not nodes or nodes[0].attrib.get("package") != "com.android.documentsui":
+    raise SystemExit("fresh compressed hierarchy is not rooted in Android DocumentsUI")
+if not any(n.attrib.get("content-desc") in {"Show roots", "Show navigation drawer"}
+           for n in nodes):
+    raise SystemExit("fresh compressed DocumentsUI tree lacks its real root-navigation action")
+PY_DOCUMENTSUI_ROOT
+  then
     picker_hierarchy_ready=1
     break
   fi
-  if (( picker_hierarchy_attempt < 4 )); then
-    echo "WARN: initial DocumentsUI hierarchy is not ready (attempt $picker_hierarchy_attempt/4); retrying a fresh bounded capture"
+  if (( picker_hierarchy_attempt < 2 )); then
+    echo "WARN: initial DocumentsUI hierarchy is not ready (compressed attempt $picker_hierarchy_attempt/2); retrying a fresh bounded capture"
     sleep 1
   fi
 done
 if [[ "$picker_hierarchy_ready" != "1" ]]; then
-  echo "ERROR: could not capture initial Android Document Picker hierarchy after 4 fresh, bounded attempts"
+  echo "ERROR: could not capture initial Android Document Picker hierarchy after 2 fresh, bounded compressed captures"
   adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
     | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 \
     > /tmp/mpc-groovebox-picker-select-source-activity-final.txt || true
@@ -9928,6 +11903,10 @@ if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
   echo "ERROR: picker-return assignment status did not identify the selected WAV and preserved Pad 01 / Layer 01 target"
   exit 1
 fi
+if ! assert_browser_assignment_status_is_concise "$PICKER_RETURN_XML" "$PICKER_SAMPLE_NAME" 1 1; then
+  echo "ERROR: picker-return Browser status exposed low-level audio diagnostics"
+  exit 1
+fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-picker-assignment.png 10; then
   echo "ERROR: could not capture post-picker assignment screen"
   exit 1
@@ -9937,6 +11916,187 @@ if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
   exit 1
 fi
 echo "Android Document Picker select → return → Pad/Layer assignment passed."
+
+# BROW-010 cancellation: Back must return from the real DocumentsUI WAV picker
+# without assigning anything, losing the Browser destination, or replacing the
+# current sample. The state oracle compares live accessibility snapshots and a
+# native sampler identity emitted by onActivityResult; it never fakes a result.
+echo "Running Android Document Picker cancel → Browser state-preservation test..."
+PICKER_CANCEL_OPEN_XML="/tmp/mpc-groovebox-browser-picker-cancel-open-uiautomator.xml"
+PICKER_CANCEL_OPEN_REMOTE="/sdcard/mpc-groovebox-browser-picker-cancel-open-uiautomator.xml"
+PICKER_CANCEL_OPEN_PNG="/tmp/mpc-groovebox-browser-picker-cancel-open.png"
+PICKER_CANCEL_RETURN_XML="/tmp/mpc-groovebox-browser-picker-cancelled-uiautomator.xml"
+PICKER_CANCEL_RETURN_REMOTE="/sdcard/mpc-groovebox-browser-picker-cancelled-uiautomator.xml"
+PICKER_CANCEL_RETURN_PNG="/tmp/mpc-groovebox-browser-picker-cancelled.png"
+
+read_browser_picker_cancel_state() {
+  python3 - "$1" <<'PY_BROWSER_PICKER_CANCEL_STATE'
+import json
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+
+def visible(node):
+    # uiautomator dump omits visible-to-user; use measured positive bounds and
+    # honor the attribute when a provider does expose it.
+    if node.attrib.get("visible-to-user", "true").lower() in {"false", "0"}:
+        return False
+    match = re.fullmatch(r"\[(-?\d+),(-?\d+)\]\[(-?\d+),(-?\d+)\]",
+                         node.attrib.get("bounds", ""))
+    if not match:
+        return False
+    left, top, right, bottom = map(int, match.groups())
+    return right > left and bottom > top
+
+def unique(description):
+    matches = [node for node in nodes
+               if node.attrib.get("content-desc", "") == description and visible(node)]
+    if len(matches) != 1:
+        raise SystemExit(
+            f"expected exactly one visible Browser field {description!r}, found {len(matches)}")
+    return matches[0].attrib.get("text", "")
+
+locations = [node for node in nodes
+             if node.attrib.get("content-desc", "").startswith(
+                 "MPC Browser current location: ") and visible(node)]
+if len(locations) != 1:
+    raise SystemExit(f"expected one visible Browser location, found {len(locations)}")
+location = locations[0]
+state = {
+    "sample": unique("MPC Browser current sample"),
+    "target": unique("MPC Browser target Pad and Layer"),
+    "location": location.attrib.get("content-desc", ""),
+    "search": unique("MPC Browser search files"),
+}
+print(json.dumps(state, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+PY_BROWSER_PICKER_CANCEL_STATE
+}
+
+picker_cancel_state_before="$(read_browser_picker_cancel_state "$PICKER_RETURN_XML")" || {
+  echo "ERROR: could not read the Browser state before picker cancellation"; exit 1;
+}
+if ! grep -Fq -- '"sample":"CURRENT SAMPLE • Browser-Picker-Return.wav"' <<<"$picker_cancel_state_before" \
+    || ! grep -Fq -- '"target":"TARGET • PAD 01 / LAYER 01"' <<<"$picker_cancel_state_before"; then
+  echo "ERROR: picker-cancel test baseline is not the known assigned WAV on Pad 01 / Layer 01"
+  echo "$picker_cancel_state_before"; exit 1
+fi
+picker_cancel_marker_before="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+  | grep -F -c -- 'BROWSER_WAV_PICKER_CANCELLED' || true)"
+if ! tap_ui_description "$PICKER_RETURN_XML" \
+    "MPC Browser LOAD source file with Android Document Picker"; then
+  echo "ERROR: could not open the real WAV picker for cancellation acceptance"; exit 1
+fi
+
+picker_cancel_activity=""
+for picker_cancel_attempt in {1..15}; do
+  picker_cancel_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then break; fi
+  sleep 1
+done
+if ! grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then
+  echo "ERROR: DocumentsUI never became the resumed Activity for cancellation acceptance"
+  printf '%s\n' "$picker_cancel_activity"; exit 1
+fi
+if ! dump_device_ui_retry "$PICKER_CANCEL_OPEN_REMOTE" "$PICKER_CANCEL_OPEN_XML" 8 4; then
+  echo "ERROR: could not capture a fresh DocumentsUI hierarchy before Back cancellation"; exit 1
+fi
+if ! capture_ui_screenshot "$PICKER_CANCEL_OPEN_PNG" 10; then
+  echo "ERROR: could not capture DocumentsUI before Back cancellation"; exit 1
+fi
+if [[ ! -s "$PICKER_CANCEL_OPEN_XML" || ! -s "$PICKER_CANCEL_OPEN_PNG" ]]; then
+  echo "ERROR: picker-open PNG/XML evidence is missing"; exit 1
+fi
+
+picker_cancel_app_resumed=0
+picker_cancel_back_count=0
+for picker_cancel_back_attempt in {1..5}; do
+  picker_cancel_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$picker_cancel_activity"; then
+    picker_cancel_app_resumed=1
+    break
+  fi
+  if ! grep -Fq -- "com.android.documentsui" <<<"$picker_cancel_activity"; then
+    echo "ERROR: unexpected Activity while cancelling Browser WAV picker"
+    printf '%s\n' "$picker_cancel_activity"; exit 1
+  fi
+  if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
+    echo "ERROR: Android Back failed while cancelling Browser WAV picker"; exit 1
+  fi
+  picker_cancel_back_count=$((picker_cancel_back_count + 1))
+  sleep 0.5
+done
+if [[ "$picker_cancel_app_resumed" != "1" ]]; then
+  picker_cancel_activity="$(adb_bounded 5 shell dumpsys activity activities 2>/dev/null \
+    | grep -E 'mResumedActivity|topResumedActivity' | tail -n 1 || true)"
+  if grep -Fq -- "$PACKAGE" <<<"$picker_cancel_activity"; then picker_cancel_app_resumed=1; fi
+fi
+if [[ "$picker_cancel_app_resumed" != "1" ]]; then
+  echo "ERROR: Back did not return to the app from DocumentsUI"
+  printf '%s\n' "$picker_cancel_activity"; exit 1
+fi
+
+picker_cancel_marker_found=0
+for picker_cancel_wait in {1..15}; do
+  picker_cancel_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  picker_cancel_count="$(grep -F -c -- 'BROWSER_WAV_PICKER_CANCELLED' <<<"$picker_cancel_logs" || true)"
+  if [[ "$picker_cancel_count" =~ ^[0-9]+$ ]] && (( picker_cancel_count > picker_cancel_marker_before )); then
+    picker_cancel_marker_found=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$picker_cancel_marker_found" != "1" ]]; then
+  echo "ERROR: onActivityResult did not report a fresh Browser WAV picker cancellation"
+  tail -n 120 <<<"$picker_cancel_logs"; exit 1
+fi
+picker_cancel_line="$(grep -F -- 'BROWSER_WAV_PICKER_CANCELLED' <<<"$picker_cancel_logs" | tail -n 1)"
+for expected in \
+  'resultCode=0' \
+  'targetPad=0' \
+  'targetLayer=0' \
+  'sampleName=Browser-Picker-Return.wav'; do
+  if ! grep -Fq -- "$expected" <<<"$picker_cancel_line"; then
+    echo "ERROR: cancellation did not preserve native Pad/Layer/sample evidence: $expected"
+    echo "$picker_cancel_line"; exit 1
+  fi
+done
+
+if ! dump_device_ui_retry "$PICKER_CANCEL_RETURN_REMOTE" "$PICKER_CANCEL_RETURN_XML" 8 4; then
+  echo "ERROR: could not capture a fresh Browser hierarchy after picker cancellation"; exit 1
+fi
+if ! capture_ui_screenshot "$PICKER_CANCEL_RETURN_PNG" 10; then
+  echo "ERROR: could not capture Browser after picker cancellation"; exit 1
+fi
+if [[ ! -s "$PICKER_CANCEL_RETURN_XML" || ! -s "$PICKER_CANCEL_RETURN_PNG" ]]; then
+  echo "ERROR: picker-cancel return PNG/XML evidence is missing"; exit 1
+fi
+picker_cancel_state_after="$(read_browser_picker_cancel_state "$PICKER_CANCEL_RETURN_XML")" || {
+  echo "ERROR: Browser state hierarchy after picker cancellation is invalid"; exit 1;
+}
+if [[ "$picker_cancel_state_after" != "$picker_cancel_state_before" ]]; then
+  echo "ERROR: Browser target, sample identity, location or search changed across picker cancellation"
+  echo "BEFORE: $picker_cancel_state_before"
+  echo "AFTER:  $picker_cancel_state_after"
+  exit 1
+fi
+if ! python3 - "$PICKER_CANCEL_RETURN_PNG" <<'PY_BROWSER_CANCEL_SCREENSHOT'
+import os
+import sys
+if os.path.getsize(sys.argv[1]) < 25000:
+    raise SystemExit("post-cancel Browser screenshot is blank or transition-sized")
+print("Verified post-cancel Browser screenshot bytes:", os.path.getsize(sys.argv[1]))
+PY_BROWSER_CANCEL_SCREENSHOT
+then
+  echo "ERROR: post-cancel Browser screenshot was not a rendered screen"; exit 1
+fi
+echo "BROW-010 cancellation passed: Back returned to Browser; target Pad/Layer, native sample, Browser location/search and fresh visual evidence are unchanged."
+
+
 
 # SAMP-008: exercise the destructive Sample Edit crop through real UI touches.
 # The picker-return fixture is assigned to PAD 01 / LAYER 01 and remains in
@@ -10184,6 +12344,10 @@ PY
 }
 
 run_sample_chop_acceptance() {
+  if [[ "$#" -ne 6 ]]; then
+    echo "ERROR: run_sample_chop_acceptance expected 6 arguments, got $#"
+    return 2
+  fi
   local chop_count="$1" source_frames="$2" input_xml="$3"
   local screenshot="$4" host_xml="$5" remote_xml="$6"
   local marker_before marker_line first_slice_end
@@ -10222,6 +12386,9 @@ SAMPLE_CHOPPED_8_REMOTE="/sdcard/mpc-groovebox-sample-chop-8-slices-uiautomator.
 SAMPLE_CHOPPED_16_PNG="/tmp/mpc-groovebox-sample-chop-16-slices.png"
 SAMPLE_CHOPPED_16_XML="/tmp/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
 SAMPLE_CHOPPED_16_REMOTE="/sdcard/mpc-groovebox-sample-chop-16-slices-uiautomator.xml"
+# Scratch hierarchy for full-region resets; never overwrite the archived CH4/8/16 snapshots.
+SAMPLE_CHOP_NAV_XML="/tmp/sample-chop-navigation-uiautomator.xml"
+SAMPLE_CHOP_NAV_REMOTE="/sdcard/sample-chop-navigation-uiautomator.xml"
 
 if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
     "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CHOPPED_PNG" \
@@ -10232,19 +12399,19 @@ if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
 if ! tap_ui_description "$SAMPLE_CHOPPED_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: Sample Edit FULL action was not actionable before CH8"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 8 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOPPED_XML" "$SAMPLE_CHOPPED_8_PNG" \
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_8_PNG" \
     "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE"; then exit 1; fi
 
 if ! tap_ui_description "$SAMPLE_CHOPPED_8_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: Sample Edit FULL action was not actionable before CH16"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_8_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
 if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
-    "$SAMPLE_CHOPPED_8_XML" "$SAMPLE_CHOPPED_16_PNG" \
+    "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOPPED_16_PNG" \
     "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE"; then exit 1; fi
 
 # SAMP-010: zoom must change only the WaveformView viewport; PLAY must use native Pad triggering.
@@ -10253,8 +12420,26 @@ if ! run_sample_chop_acceptance 16 "$sample_crop_expected_frames" \
 if ! tap_ui_description "$SAMPLE_CHOPPED_16_XML" "Sample Edit restore full sample region"; then
   echo "ERROR: SAMP-010 could not restore the Pad 01 source region after CH16"; exit 1
 fi
-if ! wait_for_sample_edit_region_state "$SAMPLE_CHOPPED_16_XML" "$SAMPLE_CHOPPED_16_REMOTE" \
+if ! wait_for_sample_edit_region_state "$SAMPLE_CHOP_NAV_XML" "$SAMPLE_CHOP_NAV_REMOTE" \
     "0 $sample_crop_expected_frames $sample_crop_expected_frames" 45; then exit 1; fi
+
+assert_sample_chop_evidence_snapshot() {
+  local label="$1" hierarchy="$2" chop_count="$3" actual expected_end expected
+  expected_end=$((sample_crop_expected_frames / chop_count))
+  expected="0 $expected_end $sample_crop_expected_frames"
+  if ! actual="$(read_sample_edit_region_frames "$hierarchy" 2>/dev/null)"; then
+    echo "ERROR: SAMP-009 $label evidence hierarchy no longer contains a valid region snapshot"
+    return 1
+  fi
+  if [[ "$actual" != "$expected" ]]; then
+    echo "ERROR: SAMP-009 $label evidence hierarchy was overwritten: expected '$expected', got '$actual'"
+    return 1
+  fi
+  echo "SAMP-009 $label evidence hierarchy preserved: $actual"
+}
+if ! assert_sample_chop_evidence_snapshot CH4 "$SAMPLE_CHOPPED_XML" 4; then exit 1; fi
+if ! assert_sample_chop_evidence_snapshot CH8 "$SAMPLE_CHOPPED_8_XML" 8; then exit 1; fi
+if ! assert_sample_chop_evidence_snapshot CH16 "$SAMPLE_CHOPPED_16_XML" 16; then exit 1; fi
 
 SAMPLE_ZOOM_BEFORE_PNG="/tmp/mpc-groovebox-sample-zoom-before.png"
 SAMPLE_ZOOM_BEFORE_XML="/tmp/mpc-groovebox-sample-zoom-before-uiautomator.xml"
@@ -10274,7 +12459,7 @@ SAMPLE_ZOOM_AUDITION_PNG="/tmp/mpc-groovebox-sample-zoom-audition.png"
 SAMPLE_ZOOM_AUDITION_XML="/tmp/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
 SAMPLE_ZOOM_AUDITION_REMOTE="/sdcard/mpc-groovebox-sample-zoom-audition-uiautomator.xml"
 
-sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CHOPPED_16_XML")" || {
+sample_zoom_before_state="$(read_sample_edit_region_frames "$SAMPLE_CHOP_NAV_XML")" || {
   echo "ERROR: SAMP-010 could not read the full-region baseline"; exit 1;
 }
 if [[ "$sample_zoom_before_state" != "0 $sample_crop_expected_frames $sample_crop_expected_frames" ]]; then
@@ -11110,6 +13295,12 @@ PROJECT_ROUTE_PNG="/tmp/mpc-groovebox-project-route.png"
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
+PROJECT_SAVE_PAIR_XML="/tmp/mpc-groovebox-project-save-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_PAIR_PNG="/tmp/mpc-groovebox-project-save-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11117,6 +13308,8 @@ PROJECT_MUTATED_PNG="/tmp/mpc-groovebox-project-mutated.png"
 PROJECT_OPEN_XML="/tmp/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-open-picker-uiautomator.xml"
 PROJECT_OPEN_PNG="/tmp/mpc-groovebox-project-open-picker.png"
+PROJECT_OPEN_PAIR_XML="/tmp/mpc-groovebox-project-open-picker-fresh-pair-uiautomator.xml"
+PROJECT_OPEN_PAIR_PNG="/tmp/mpc-groovebox-project-open-picker-fresh-pair.png"
 PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
@@ -11344,6 +13537,10 @@ show_project_route_extended() {
 PROJECT_SAVE_XML="/tmp/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_REMOTE="/sdcard/mpc-groovebox-project-save-picker-uiautomator.xml"
 PROJECT_SAVE_PNG="/tmp/mpc-groovebox-project-save-picker.png"
+PROJECT_SAVE_B_INITIAL_XML="/tmp/mpc-groovebox-project-save-b-initial-uiautomator.xml"
+PROJECT_SAVE_B_INITIAL_PNG="/tmp/mpc-groovebox-project-save-b-initial.png"
+PROJECT_SAVE_B_PAIR_XML="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair-uiautomator.xml"
+PROJECT_SAVE_B_PAIR_PNG="/tmp/mpc-groovebox-project-save-b-picker-fresh-pair.png"
 PROJECT_SAVED_XML="/tmp/mpc-groovebox-project-saved-view-hierarchy.xml"
 PROJECT_SAVED_PNG="/tmp/mpc-groovebox-project-saved.png"
 PROJECT_MUTATED_XML="/tmp/mpc-groovebox-project-mutated-view-hierarchy.xml"
@@ -11408,6 +13605,38 @@ echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
   echo "ERROR: native Main shell did not publish fresh Android View-tree evidence"; exit 1
 fi
+# This emulator has no physical MPC Studio MkII. Assert the rendered Toolbar
+# reports both MIDI ports unavailable even though AndroidMidiBridge is allocated.
+if ! python3 - "$PROJECT_MAIN_READY_XML" <<'PY_MIDI_TOOLBAR_STATE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+for name in ("IN", "OUT"):
+    expected = f"MPC Toolbar MIDI {name} unavailable"
+    matches = [n for n in nodes
+               if n.attrib.get("content-desc") == expected
+               and n.attrib.get("visible-to-user") == "true"]
+    if len(matches) != 1:
+        ready = [n.attrib.get("content-desc", "") for n in nodes
+                 if n.attrib.get("content-desc", "").startswith(f"MPC Toolbar MIDI {name} ")]
+        raise SystemExit(
+            f"expected one visible disconnected MIDI {name} indicator; got {ready!r}")
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
+                         matches[0].attrib.get("bounds", ""))
+    if not match:
+        raise SystemExit(f"MIDI {name} indicator has invalid bounds: {matches[0].attrib!r}")
+    left, top, right, bottom = map(int, match.groups())
+    if right <= left or bottom <= top:
+        raise SystemExit(f"MIDI {name} indicator has empty bounds: {matches[0].attrib!r}")
+print("MIDI Toolbar IN/OUT both report unavailable with no connected MkII.")
+PY_MIDI_TOOLBAR_STATE
+then
+  echo "ERROR: MIDI Toolbar readiness does not match the disconnected emulator"; exit 1
+fi
+
 snapshot_project_view_tree_marker_baselines
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Toolbar Menu"; then
   echo "ERROR: real Toolbar Menu touch failed using current Main bounds"; exit 1
@@ -11449,9 +13678,20 @@ done
 if [ "$project_save_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
   echo "ERROR: could not capture stable DocumentsUI state for Project Save As"; exit 1
 fi
+# Preserve the exact just-validated hierarchy/screenshot pair before the live
+# hierarchy and screenshot paths are reused by polling and later Save As cases.
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable initial Save As evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_PAIR_XML" "$PROJECT_SAVE_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_SAVE_PAIR_XML"; then
+  echo "ERROR: immutable Save As evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable initial Save As hierarchy/screenshot pair."
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
   echo "ERROR: Save As did not prefill the project filename"; exit 1
 fi
@@ -11503,12 +13743,23 @@ done
 if [ "$project_open_picker_ready" -ne 1 ]; then
   echo "ERROR: Android DocumentsUI did not appear for Project Open"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_OPEN_REMOTE" "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" 8; then
-  echo "ERROR: could not capture stable DocumentsUI state for Project Open"; exit 1
-fi
 if ! wait_for_ui_text "$PROJECT_OPEN_XML" "$PROJECT_OPEN_REMOTE" "Untitled.mpcproj" 30; then
   echo "ERROR: saved Project file is not discoverable in Android DocumentsUI"; exit 1
 fi
+if ! capture_verified_fresh_open_picker_pair "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: could not capture validated fresh DocumentsUI state for Project Open"; exit 1
+fi
+# Keep this exact actionable row and its paired screenshot immutable as later
+# picker navigations reuse the working paths.
+if ! cp -f -- "$PROJECT_OPEN_XML" "$PROJECT_OPEN_PAIR_XML" \
+    || ! cp -f -- "$PROJECT_OPEN_PNG" "$PROJECT_OPEN_PAIR_PNG"; then
+  echo "ERROR: could not preserve immutable Project Open evidence pair"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_OPEN_PAIR_XML" "$PROJECT_OPEN_PAIR_PNG" \
+    || ! grep -Fq -- 'text="Untitled.mpcproj"' "$PROJECT_OPEN_PAIR_XML"; then
+  echo "ERROR: immutable Project Open evidence pair failed its geometry/filename contract"; exit 1
+fi
+echo "Preserved immutable Project Open hierarchy/screenshot pair."
 if ! tap_ui_picker_result_row "$PROJECT_OPEN_XML" "Untitled.mpcproj" auto label; then
   echo "ERROR: could not select the previously saved Project file"; exit 1
 fi
@@ -11588,7 +13839,7 @@ wait_for_project_picker_item() {
 
 # Rename the real ACTION_CREATE_DOCUMENT filename field using live bounds.
 replace_project_save_as_filename() {
-  local hierarchy_path="$1" remote_path="$2" new_name="$3"
+  local hierarchy_path="$1" remote_path="$2" new_name="$3" screenshot_path="$4"
   local coordinates tap_x tap_y old_length index
   if ! coordinates="$(python3 - "$hierarchy_path" <<'PY_PROJECT_FILENAME_FIELD'
 import sys
@@ -11624,11 +13875,16 @@ PY_PROJECT_FILENAME_FIELD
     if ! adb_bounded 5 shell input keyevent KEYCODE_DEL; then return 1; fi
   done
   if ! adb_bounded 10 shell input text "$new_name"; then return 1; fi
-  if ! dump_device_ui "$remote_path" "$hierarchy_path" 15; then return 1; fi
-  if ! wait_for_ui_text "$hierarchy_path" "$remote_path" "$new_name" 15; then
-    echo "ERROR: DocumentsUI did not expose the intended second-document name $new_name"; return 1
+  # Android 16 can stall the standard tree dump in a resumed DocumentsUI picker.
+  # Use the existing bounded compressed-tree retry path, then validate the exact
+  # filename EditText, enabled/clickable SAVE action, bounds and paired screenshot.
+  if ! dump_device_ui_retry "$remote_path" "$hierarchy_path" 8 2 compressed; then
+    echo "ERROR: no fresh compressed hierarchy after entering Save As filename $new_name"; return 1
   fi
-  echo "Verified measured Save As filename field contains $new_name"
+  if ! capture_verified_fresh_save_picker_pair "$hierarchy_path" "$screenshot_path" "$new_name"; then
+    echo "ERROR: second-document Save As failed strict filename/SAVE/viewport acceptance for $new_name"; return 1
+  fi
+  echo "Verified measured Save As filename and SAVE target for $new_name on a fresh compressed hierarchy."
 }
 
 # Android Back may navigate up or dismiss an input method without cancelling
@@ -11783,25 +14039,29 @@ PROJECT_DOC_B_NAME="mpc-isolation-${BASHPID}.mpcproj"
 echo "Running real two-document Save As/Open isolation: A=Untitled.mpcproj, B=$PROJECT_DOC_B_NAME"
 project_save_b_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 1; then exit 1; fi
-project_save_b_picker_ready=0
-for ((attempt=1; attempt<=25; attempt++)); do
-  if dump_device_ui "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" \
-      && grep -Fq -- 'package="com.android.documentsui"' "$PROJECT_SAVE_XML"; then
-    project_save_b_picker_ready=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_save_b_picker_ready" -ne 1 ]; then
-  echo "ERROR: Android DocumentsUI did not appear for second-document Save As"; exit 1
+# Reuse the proven bounded compressed-tree path for this second large DocumentsUI
+# surface. There is no cached-tree fallback and the form acceptance stays strict.
+if ! dump_device_ui_retry "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" 8 2 compressed; then
+  echo "ERROR: no fresh compressed DocumentsUI hierarchy for second-document Save As"; exit 1
 fi
-if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 8; then
-  echo "ERROR: could not capture the second-document Save As picker"; exit 1
+if ! capture_verified_fresh_save_picker_pair "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"; then
+  echo "ERROR: second-document Save As form failed strict filename/SAVE/viewport acceptance"; exit 1
 fi
-if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "Untitled.mpcproj" 15; then
-  echo "ERROR: second Save As did not show the current filename"; exit 1
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_INITIAL_XML" \
+    || ! cp -f -- "$PROJECT_SAVE_PNG" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: could not preserve immutable second-document Save As initial form evidence"; exit 1
 fi
-if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME"; then exit 1; fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_INITIAL_XML" "$PROJECT_SAVE_B_INITIAL_PNG"; then
+  echo "ERROR: second-document Save As initial screenshot/hierarchy geometry mismatch"; exit 1
+fi
+if ! replace_project_save_as_filename "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_DOC_B_NAME" "$PROJECT_SAVE_B_PAIR_PNG"; then exit 1; fi
+if ! cp -f -- "$PROJECT_SAVE_XML" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: could not preserve immutable named second-document Save As hierarchy"; exit 1
+fi
+if ! verify_documentsui_pair_geometry "$PROJECT_SAVE_B_PAIR_XML" "$PROJECT_SAVE_B_PAIR_PNG" \
+    || ! grep -Fq -- "text=\"$PROJECT_DOC_B_NAME\"" "$PROJECT_SAVE_B_PAIR_XML"; then
+  echo "ERROR: named second-document Save As evidence pair did not match the intended filename"; exit 1
+fi
 if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then
   echo "ERROR: DocumentsUI Save action was not available for second-document Save As"; exit 1
 fi

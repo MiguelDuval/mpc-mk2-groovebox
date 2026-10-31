@@ -1,5 +1,9 @@
 # MPC 3.9 Reference Index and Research Notebook
 
+## Mandatory screen-reference workflow
+
+For any user-visible MPC-style work, read [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md), choose the matching `VIS-001`–`VIS-082` ID(s), then open and inspect the actual local picture/page capture in [MPC3-UI-REFERENCE-ASSETS/INDEX.md](MPC3-UI-REFERENCE-ASSETS/INDEX.md). Cite the reference ID and local path when specifying, implementing, reviewing, and accepting the screen. Use current OS 3.9 evidence first; identify older/third-party references as supplementary. Explicitly record gaps where no direct screen image is available. Do not skip this step because tests pass or because a previous implementation exists.
+
 ## Purpose
 
 Search this file before making any substantial UI decision.
@@ -10,6 +14,8 @@ Question -> Source -> Finding -> Confidence -> Repository decision -> Test.
 Primary software reference is the official MPC Standalone OS v3.9 guide. Current MPC3 support material is preferred over older MPC2 material when both describe the same feature.
 
 **Action-level implementation index:** consult [MPC3-USER-ACTION-CATALOG.md](MPC3-USER-ACTION-CATALOG.md) before implementing a user-visible MPC action. It links documented behavior, firmware evidence, current Android routes/state, known gaps and acceptance tests. Update the relevant action row when implementation or verification status changes.
+
+**Screen-by-screen visual index and local screenshot gallery (expanded 2026-10-29):** use [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) before implementing or accepting any screen. The index covers 82 named contexts. Repository-local page captures, extracted figures and direct screenshots are collected in [MPC3-UI-REFERENCE-ASSETS/INDEX.md](MPC3-UI-REFERENCE-ASSETS/INDEX.md); source/download/render status is in [manifest.json](MPC3-UI-REFERENCE-ASSETS/manifest.json), and the original URLs of the 59 direct catalog images are retained in [direct-image-source-index.json](MPC3-UI-REFERENCE-ASSETS/direct-image-source-index.json). Current OS 3.9 pages are primary; legacy images are explicitly supplementary. The gallery records retrieval failures and does not imply that an image is an exact Gen 1 MPC One capture unless the source proves it.
 
 ## Controller-specific reverse-engineering map — 2026-10-18
 

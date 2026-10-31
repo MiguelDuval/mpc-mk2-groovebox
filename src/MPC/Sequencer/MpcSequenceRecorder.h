@@ -32,6 +32,7 @@ public:
         held_.fill({});
         startTicks_.fill({});
         startVelocities_.fill({});
+        startNotes_.fill({});
         replaceCleared_.fill(false);
         active_ = true;
 
@@ -65,12 +66,18 @@ public:
         }
 
         std::size_t recorded = 0;
+        std::array<bool, domain::kMaxSequenceTracks> touchedTracks{};
         SequenceRecordEvent event{};
 
         while (queue.tryDequeue(event)) {
-            if (event.trackIndex >= replaceCleared_.size()
+            // Queue events cross a real-time producer/consumer boundary. Do not
+            // let malformed byte-sized fields poison the editable Pattern model.
+            if (event.tick < 0
+                    || event.trackIndex >= replaceCleared_.size()
                     || event.trackIndex >= state.activeSequence().tracks.size()
-                    || event.padIndex >= domain::kMaxProgramPads) {
+                    || event.padIndex >= domain::kMaxProgramPads
+                    || event.velocity > 127
+                    || event.pressed > 1) {
                 continue;
             }
 
@@ -83,6 +90,11 @@ public:
 
             const auto trackIndex = static_cast<std::size_t>(event.trackIndex);
             const auto padIndex = static_cast<std::size_t>(event.padIndex);
+            const auto* trackProgram = state.findDrumProgram(track.programId);
+            if (trackProgram == nullptr
+                    || trackProgram->type != domain::ProgramType::Drum) {
+                continue;
+            }
 
             if (event.pressed != 0u) {
                 if (!held_[trackIndex][padIndex]) {
@@ -92,6 +104,10 @@ public:
                             event.velocity == 0
                             ? static_cast<std::uint8_t>(1)
                             : event.velocity;
+                    // Snapshot the mapping at note-on so later track selection or
+                    // program edits cannot redirect this held note at note-off.
+                    startNotes_[trackIndex][padIndex] =
+                            trackProgram->pad(padIndex).midiNote;
                 }
                 continue;
             }
@@ -135,7 +151,7 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+            note.note = startNotes_[trackIndex][padIndex];
             note.velocity = startVelocities_[trackIndex][padIndex];
             note.probability = 127;
             note.ratchet = 1;
@@ -155,10 +171,13 @@ public:
             }
 
             pattern.notes.push_back(note);
+            touchedTracks[trackIndex] = true;
             ++recorded;
         }
 
-        sortTouchedPatterns(state);
+        if (recorded != 0) {
+            sortTouchedPatterns(state, touchedTracks);
+        }
         return recorded;
     }
 
@@ -171,6 +190,7 @@ public:
         }
 
         std::size_t recorded = drain(state, queue);
+        std::array<bool, domain::kMaxSequenceTracks> touchedTracks{};
 
         for (std::size_t trackIndex = 0;
              trackIndex < state.activeSequence().tracks.size()
@@ -225,7 +245,7 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = state.activeDrumProgram().pad(padIndex).midiNote;
+                note.note = startNotes_[trackIndex][padIndex];
                 note.velocity = startVelocities_[trackIndex][padIndex];
                 note.probability = 127;
                 note.ratchet = 1;
@@ -244,15 +264,17 @@ public:
                     replaceCleared_[trackIndex] = true;
                 }
                 track.patterns.front().notes.push_back(note);
+                touchedTracks[trackIndex] = true;
                 ++recorded;
             }
         }
 
-        sortTouchedPatterns(state);
+        sortTouchedPatterns(state, touchedTracks);
         active_ = false;
         held_.fill({});
         startTicks_.fill({});
         startVelocities_.fill({});
+        startNotes_.fill({});
         replaceCleared_.fill(false);
         return recorded;
     }
@@ -288,8 +310,17 @@ private:
         note.tick = static_cast<std::int32_t>(tick);
     }
 
-    void sortTouchedPatterns(MpcProjectState& state) noexcept {
-        for (auto& track : state.activeSequence().tracks) {
+    void sortTouchedPatterns(
+            MpcProjectState& state,
+            const std::array<bool, domain::kMaxSequenceTracks>& touchedTracks) noexcept {
+        auto& tracks = state.activeSequence().tracks;
+        for (std::size_t trackIndex = 0;
+             trackIndex < tracks.size() && trackIndex < touchedTracks.size();
+             ++trackIndex) {
+            if (!touchedTracks[trackIndex]) {
+                continue;
+            }
+            auto& track = tracks[trackIndex];
             if (track.kind != domain::TrackKind::Drum
                     || track.patterns.empty()) {
                 continue;
@@ -311,6 +342,8 @@ private:
                domain::kMaxSequenceTracks> startTicks_{};
     std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
                domain::kMaxSequenceTracks> startVelocities_{};
+    std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
+               domain::kMaxSequenceTracks> startNotes_{};
     std::array<bool, domain::kMaxSequenceTracks> replaceCleared_{};
     PatternRecordMode mode_ = PatternRecordMode::Overdub;
     bool active_ = false;

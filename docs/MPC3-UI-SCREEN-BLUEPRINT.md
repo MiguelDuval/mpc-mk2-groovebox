@@ -7,6 +7,12 @@
 
 This is the implementation blueprint beneath MPC3-UI-MIGRATION-MASTER-SPEC.md.
 
+
+### Mandatory reference-first implementation rule
+
+Every screen/workspace/dialog/control change must start from the matching context(s) in [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md). Open the actual local reference image/page capture through [the screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md); do not rely on memory, a URL alone, or textual interpretation only. Use official OS 3.9 evidence first, cite VIS IDs and local paths in the implementation/PR notes, and compare before/after evidence. When the exact screen is not pictured, document the closest reference and the gap. This gate is mandatory for implementation and acceptance.
+
+
 Each screen is specified by:
 
 - shell regions;
@@ -1322,3 +1328,28 @@ The runtime gesture is synthetic Android MotionEvent dispatch to the real view p
 Build #2713 passed all 57 workflow steps on `cdcfdfb2500b4c6eaebeab5018b4cdce33213462`. APK artifact `11958217657` has SHA-256 `4ca32dee06e76b69314446ab5a12b9ec8bf9a488d84c5d7487f1a4861783f960`; 23-entry visual archive `11958527786` has SHA-256 `09fa5c463ee3f7449f4cf36907b89e38fae3ddafb057d4d1e3257bd99bbd10c5`. The actual Grid image shows the seeded note at step 33 in the visible range 25–40/64, with matching accessibility range.
 
 The loop handle gesture changes the native loop endpoint and restores the original through the same handle gesture. The one-Track fixture's real lane tap verifies selection stays coherent and Arrangement data is unchanged; this does not claim a multi-Track switch. The next audit must exercise Grid BACK → Arrange with selected Track/event/tick/data preserved, then reopen the same event through the real gesture and confirm the same Grid step/window.
+
+
+## 2026-10-27 P0 Mute workspace and reserved-route recovery
+
+The canonical Main surface remains controller-first; it does not gain a permanent 4×4 pad matrix. The Function Bar's **MUTE** action opens a dedicated workspace with a true 4×4, 16-cell grid. The Pad Mute grid reads and toggles the active Drum Program's native Pad mute state; it is unavailable on unsupported Track Types. The Track Mute grid operates on real Sequence Tracks in 16-Track banks, showing empty slots as disabled rather than fabricating Track data.
+
+The five factory Shortcut identities remain unchanged. A shortcut whose backend is still RESERVED must replace the previous workspace with an explicit full-size unavailable screen, keep the reason visible, and offer Back/Menu actions. It must never change only the shortcut highlight or title while leaving the previous workspace underneath.
+
+Acceptance requires an exact-SHA emulator run that validates both 4×4 grids, toggles/restores real Pad and Track mute state, preserves the selected musical context and event data, and uploads matched current-state screenshots and UI hierarchy XML. Physical MPC Studio MkII validation remains a separate gate.
+
+### Exact-SHA emulator acceptance — Android Build #3465
+
+- Verified on product-code SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84`, [run 40591850947](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40591850947); all 57 workflow steps passed.
+- Pad evidence: `mpc-groovebox-mute-pad.png` + `mpc-groovebox-mute-pad-uiautomator.xml`; real 16-target grid, Pad 01 captured as MUTE ON after toggling, other 15 Pads MUTE OFF.
+- Track evidence: `mpc-groovebox-mute-track.png` + `mpc-groovebox-mute-track-uiautomator.xml`; 16 cells, Track 01 captured as MUTE ON after toggling, empty slots disabled as NO TRACK.
+- Exact run artifacts: APK ID `12775051524`, SHA-256 `3b1ea246a0a5e1f069d6fc99eea82952b7ea5624a77712b20c08a063be909e71`; evidence ID `12775747260`, SHA-256 `96bf4e0e085ffb7ee86fe0a7600358473f6c4a6df71148e46dbe2b21d1dd345b`. GitHub metadata and the downloaded archive digest match; screenshots and XML were inspected.
+- Runtime smoke toggled and restored the real native Pad and Track mute values and asserted Sequence/Track/Pad selection plus note data stayed unchanged through Back. Main MUTE replacement/return and truthful Reserved destinations are also runtime-asserted. The archive contains dedicated PNG/XML for the two Mute grids, not separate screenshots for each Reserved route.
+- Physical MPC Studio MkII remains PENDING; emulator acceptance is not a hardware certification.
+
+
+## 2026-10-28 Track Solo playback and UI state — emulator verified
+
+The Main/Track View Function Bar **SOLO** action toggles the selected playable Drum Track's native Solo state and reports real ON/OFF state. Track View rows may display state, but the shared Function Bar remains the semantic mutation surface. Track Types without an actual playback route must remain visibly unavailable; do not simulate Solo with Mute.
+
+Solo/Mute routing is enforced by the native sequencer before events reach the realtime audio callback: when no playable Track is Soloed, all unmuted playable Drum Tracks continue; once any playable Track is Soloed, only those Soloed Tracks route new events; Mute wins over Solo for the same Track. Solo state changes during playback and active-Sequence scope are tested. Android Build #3468 / [run 40663060996](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40663060996) passed on exact SHA `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd`. Physical controller validation is still pending, and the full consolidated branch needs its own exact-head run.

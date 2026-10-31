@@ -3,6 +3,7 @@
 #include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <cassert>
+#include <cstdint>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -309,6 +310,177 @@ int main() {
     assert(!error.empty());
     assert(loaded.id == loadedIdBeforeFailure);
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    // Serialized Pattern timing must be valid on both sides of the contract.
+    // A malformed in-memory note must not be written into a file the decoder
+    // would reject, and a malformed payload must not replace an open Project.
+    domain::Project invalidDurationProject = source;
+    invalidDurationProject.sequences[0].tracks[0].patterns[0]
+            .notes[0].durationTicks = -1;
+    error.clear();
+    assert(persistence::serializeProject(invalidDurationProject, &error).empty());
+    assert(!error.empty());
+
+    const std::string validNoteRecord = "NOTE 120 180 36 97 88 3 -11";
+    const auto noteRecordPosition = serialized.find(validNoteRecord);
+    assert(noteRecordPosition != std::string::npos);
+    std::string malformedNoteBytes = serialized;
+    malformedNoteBytes.replace(
+            noteRecordPosition,
+            validNoteRecord.size(),
+            "NOTE -1 180 36 97 88 3 -11");
+    error.clear();
+    assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    malformedNoteBytes = serialized;
+    malformedNoteBytes.replace(
+            noteRecordPosition,
+            validNoteRecord.size(),
+            "NOTE 120 -1 36 97 88 3 -11");
+    error.clear();
+    assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    // Keep serialization symmetric with the decoder: malformed numeric fields
+    // that the reader rejects must never be written into an unreadable project.
+    domain::Project invalidSampleRate = source;
+    invalidSampleRate.samples.front().sampleRate =
+            std::numeric_limits<double>::quiet_NaN();
+    error.clear();
+    assert(persistence::serializeProject(invalidSampleRate, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidPadGain = source;
+    invalidPadGain.drumPrograms.front().pads[0].level =
+            std::numeric_limits<float>::infinity();
+    error.clear();
+    assert(persistence::serializeProject(invalidPadGain, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidPadMidiNote = source;
+    invalidPadMidiNote.drumPrograms.front().pads[0].midiNote = 128;
+    error.clear();
+    assert(persistence::serializeProject(invalidPadMidiNote, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidTriggerMode = source;
+    invalidTriggerMode.drumPrograms.front().pads[0].triggerMode =
+            static_cast<domain::TriggerMode>(3);
+    error.clear();
+    assert(persistence::serializeProject(invalidTriggerMode, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidLayerVelocity = source;
+    invalidLayerVelocity.drumPrograms.front().pads[0].layer(0).velocityMaximum = 200;
+    error.clear();
+    assert(persistence::serializeProject(invalidLayerVelocity, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidTrackKind = source;
+    invalidTrackKind.sequences.front().tracks.front().kind =
+            static_cast<domain::TrackKind>(5);
+    error.clear();
+    assert(persistence::serializeProject(invalidTrackKind, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidTempo = source;
+    invalidTempo.sequences.front().tempoBpm = 301.0;
+    error.clear();
+    assert(persistence::serializeProject(invalidTempo, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidMeter = source;
+    invalidMeter.sequences.front().numerator = 17;
+    error.clear();
+    assert(persistence::serializeProject(invalidMeter, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidLoop = source;
+    invalidLoop.sequences.front().loopStartTicks = 3000;
+    invalidLoop.sequences.front().loopEndTicks = 2500;
+    error.clear();
+    assert(persistence::serializeProject(invalidLoop, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidGrid = source;
+    invalidGrid.sequences.front().quantizeGridTicks = 241;
+    error.clear();
+    assert(persistence::serializeProject(invalidGrid, &error).empty());
+    assert(!error.empty());
+
+    domain::Project invalidSwing = source;
+    invalidSwing.sequences.front().swingPercent = 101;
+    error.clear();
+    assert(persistence::serializeProject(invalidSwing, &error).empty());
+    assert(!error.empty());
+
+    // Deserialization rejects values that the interactive Sequence setters
+    // cannot produce, and must leave the currently-open Project untouched.
+    const auto sequenceSettingsBeforeFailure =
+            persistence::serializeProject(loaded, &error);
+    std::string invalidSequenceBytes = serialized;
+    const auto tempoToken = invalidSequenceBytes.find("137.125 4 4 3840");
+    assert(tempoToken != std::string::npos);
+    invalidSequenceBytes.replace(tempoToken, std::string("137.125").size(), "301");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidSequenceBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == sequenceSettingsBeforeFailure);
+
+    // The decoder imposes per-collection limits. Serialization rejects a
+    // payload above the same limit before emitting an unreadable project.
+    domain::Project tooManySamples = source;
+    tooManySamples.samples.resize(100001);
+    for (std::size_t index = 0; index < tooManySamples.samples.size(); ++index) {
+        tooManySamples.samples[index].id =
+                "oversized-sample-" + std::to_string(index);
+        tooManySamples.samples[index].assetId.value =
+                static_cast<std::uint32_t>(index + 1);
+    }
+    error.clear();
+    assert(persistence::serializeProject(tooManySamples, &error).empty());
+    assert(!error.empty());
+
+    domain::Project duplicatePatternId = source;
+    auto duplicatePattern = duplicatePatternId.sequences.front().tracks.front().patterns.front();
+    duplicatePattern.name = "Duplicate identifier must be rejected";
+    duplicatePatternId.sequences.front().tracks.front().patterns.push_back(duplicatePattern);
+    error.clear();
+    assert(persistence::serializeProject(duplicatePatternId, &error).empty());
+    assert(!error.empty());
+
+    domain::Project validTwoPatterns = source;
+    auto secondPattern = validTwoPatterns.sequences.front().tracks.front().patterns.front();
+    secondPattern.id = "pattern-distinct-02";
+    secondPattern.name = "Second unplaced Pattern";
+    validTwoPatterns.sequences.front().tracks.front().patterns.push_back(secondPattern);
+    auto malformedDuplicatePatternId = persistence::serializeProject(validTwoPatterns);
+    const std::string secondPatternTag = R"(PATTERN "pattern-distinct-02")";
+    const auto secondPatternPos = malformedDuplicatePatternId.find(secondPatternTag);
+    assert(secondPatternPos != std::string::npos);
+    malformedDuplicatePatternId.replace(
+            secondPatternPos,
+            secondPatternTag.size(),
+            R"(PATTERN "pattern-shared-01")");
+    domain::Project untouchedAfterDuplicateId = source;
+    const auto beforeDuplicateIdFailure = persistence::serializeProject(untouchedAfterDuplicateId);
+    error.clear();
+    assert(!persistence::deserializeProject(
+            malformedDuplicatePatternId, untouchedAfterDuplicateId, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(untouchedAfterDuplicateId)
+            == beforeDuplicateIdFailure);
+
+    domain::Project duplicateAssetIds = source;
+    auto secondSample = duplicateAssetIds.samples.front();
+    secondSample.id = "sample-distinct-02";
+    duplicateAssetIds.samples.push_back(secondSample);
+    error.clear();
+    assert(persistence::serializeProject(duplicateAssetIds, &error).empty());
+    assert(!error.empty());
 
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());

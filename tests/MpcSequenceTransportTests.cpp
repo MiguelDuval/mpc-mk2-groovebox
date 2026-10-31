@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 
 namespace {
 
@@ -38,6 +39,47 @@ void testNonLoopPositionDoesNotWrap() {
     assert(clock.positionAtTimestamp(3000000000) == 1919);
 }
 
+void testExtremeLoopPositionsDoNotOverflow() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.loopEnabled = true;
+    sequence.loopStartTicks = 960;
+    sequence.loopEndTicks = 2880;
+
+    mpc::sequencer::MpcSequenceTransportClock clock;
+    constexpr std::int64_t timestamp = 1'000'000'000;
+
+    clock.start(sequence, std::numeric_limits<std::int64_t>::min(), timestamp);
+    assert(clock.snapshot().positionTicks == 1792);
+    assert(clock.positionAtTimestamp(timestamp) == 1792);
+
+    clock.start(sequence, std::numeric_limits<std::int64_t>::max(), timestamp);
+    assert(clock.snapshot().positionTicks == 2047);
+    assert(clock.positionAtTimestamp(timestamp) == 2047);
+}
+
+void testOutOfRangeTempoCannotOverflowClockConversion() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    sequence.loopEnabled = false;
+    sequence.lengthTicks = std::numeric_limits<std::int32_t>::max();
+
+    mpc::sequencer::MpcSequenceTransportClock clock;
+    constexpr std::int64_t timestamp = 1'000'000'000;
+
+    sequence.tempoBpm = std::numeric_limits<double>::max();
+    clock.start(sequence, 0, timestamp);
+    assert(clock.snapshot().tempoMilliBpm == 300'000);
+    // At 300 BPM and 960 PPQN, one second advances exactly 4800 ticks.
+    assert(clock.positionAtTimestamp(timestamp + 1'000'000'000) == 4800);
+
+    sequence.tempoBpm = std::numeric_limits<double>::quiet_NaN();
+    clock.start(sequence, 0, timestamp);
+    assert(clock.snapshot().tempoMilliBpm == 120'000);
+    // A non-finite tempo takes the documented conservative 120 BPM fallback.
+    assert(clock.positionAtTimestamp(timestamp + 1'000'000'000) == 1920);
+}
+
 void testStopFreezesPosition() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -61,6 +103,8 @@ void testStopFreezesPosition() {
 int main() {
     testLoopedPosition();
     testNonLoopPositionDoesNotWrap();
+    testExtremeLoopPositionsDoNotOverflow();
+    testOutOfRangeTempoCannotOverflowClockConversion();
     testStopFreezesPosition();
     return 0;
 }

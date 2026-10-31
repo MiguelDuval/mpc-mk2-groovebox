@@ -1,4 +1,5 @@
 #include "MPC/MpcProjectPersistence.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <algorithm>
 #include <cmath>
@@ -7,10 +8,12 @@
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <set>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace mpc::persistence {
 namespace {
@@ -242,21 +245,227 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
     return true;
 }
 
+bool validatePatternData(const domain::Project& project, std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        for (const auto& track : sequence.tracks) {
+            for (const auto& pattern : track.patterns) {
+                if (pattern.lengthTicks <= 0) {
+                    return setError(error, "Pattern length must be positive");
+                }
+                for (const auto& note : pattern.notes) {
+                    if (note.tick < 0 || note.tick >= pattern.lengthTicks
+                            || note.durationTicks < 0
+                            || note.durationTicks > pattern.lengthTicks
+                            || note.note > 127 || note.velocity > 127
+                            || note.probability > 127
+                            || note.ratchet < 1 || note.ratchet > 8) {
+                        return setError(error, "MIDI note range is invalid for its Pattern");
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateEntityIdentifiers(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.id.empty()) {
+        return setError(error, "Project identifier must not be empty");
+    }
+
+    std::set<std::string> sampleIds;
+    std::set<std::uint32_t> assignedSampleIds;
+    for (const auto& sample : project.samples) {
+        if (sample.id.empty() || !sampleIds.insert(sample.id).second) {
+            return setError(error, "Sample identifiers must be nonempty and unique");
+        }
+        if (sample.assetId.isAssigned()
+                && !assignedSampleIds.insert(sample.assetId.value).second) {
+            return setError(error, "Assigned sample asset identifiers must be unique");
+        }
+    }
+
+    std::set<std::string> programIds;
+    for (const auto& program : project.drumPrograms) {
+        if (program.id.empty() || !programIds.insert(program.id).second) {
+            return setError(error, "Drum Program identifiers must be nonempty and unique");
+        }
+    }
+
+    std::set<std::string> sequenceIds;
+    for (const auto& sequence : project.sequences) {
+        if (sequence.id.empty() || !sequenceIds.insert(sequence.id).second) {
+            return setError(error, "Sequence identifiers must be nonempty and unique");
+        }
+
+        std::set<std::string> trackIds;
+        for (const auto& track : sequence.tracks) {
+            if (track.id.empty() || !trackIds.insert(track.id).second) {
+                return setError(error, "Track identifiers must be nonempty and unique within a Sequence");
+            }
+
+            std::set<std::string> patternIds;
+            for (const auto& pattern : track.patterns) {
+                if (pattern.id.empty() || !patternIds.insert(pattern.id).second) {
+                    return setError(error, "Pattern identifiers must be nonempty and unique within a Track");
+                }
+            }
+
+            std::set<std::string> placementIds;
+            for (const auto& placement : track.placements) {
+                if (placement.id.empty() || !placementIds.insert(placement.id).second) {
+                    return setError(error, "Placement identifiers must be nonempty and unique within a Track");
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSequenceSettings(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)
+                || sequence.tempoBpm < 20.0
+                || sequence.tempoBpm > 300.0) {
+            return setError(error, "Sequence tempo is outside the supported 20-300 BPM range");
+        }
+        if (!sequencer::isValidTimeSignature(
+                    sequence.numerator, sequence.denominator)) {
+            return setError(error, "Sequence time signature is out of range");
+        }
+        if (sequence.lengthTicks <= 0) {
+            return setError(error, "Sequence length must be positive");
+        }
+        if (sequence.loopStartTicks < 0
+                || sequence.loopEndTicks <= sequence.loopStartTicks
+                || sequence.loopEndTicks > sequence.lengthTicks) {
+            return setError(error, "Sequence loop range is invalid");
+        }
+        switch (sequence.quantizeGridTicks) {
+            case 60:
+            case 120:
+            case 240:
+            case 480:
+            case 960:
+                break;
+            default:
+                return setError(error, "Sequence quantize grid is out of range");
+        }
+        if (sequence.swingPercent < 0 || sequence.swingPercent > 100) {
+            return setError(error, "Sequence swing is out of range");
+        }
+    }
+    return true;
+}
+
+bool validateSerializableCollectionSizes(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.samples.size() > kMaxSamples
+            || project.drumPrograms.size() > kMaxPrograms
+            || project.sequences.size() > kMaxSequences) {
+        return setError(error, "Project collection exceeds the supported item limit");
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.tracks.size() > kMaxTracks) {
+            return setError(error, "Track count exceeds the supported item limit");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (track.patterns.size() > kMaxPatternsPerTrack
+                    || track.placements.size() > kMaxPlacementsPerTrack) {
+                return setError(error, "Pattern/placement count exceeds the supported item limit");
+            }
+            for (const auto& pattern : track.patterns) {
+                if (pattern.notes.size() > kMaxNotesPerPattern) {
+                    return setError(error, "Pattern note count exceeds the supported item limit");
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSerializableNumericFields(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sample : project.samples) {
+        // The decoder already rejects NaN and infinities for this field.
+        if (!std::isfinite(sample.sampleRate)) {
+            return setError(error, "Sample rate must be finite");
+        }
+    }
+
+    for (const auto& program : project.drumPrograms) {
+        if (static_cast<unsigned int>(program.type) > 3) {
+            return setError(error, "Program type is out of range");
+        }
+
+        for (const auto& pad : program.pads) {
+            if (pad.midiNote > 127
+                    || static_cast<unsigned int>(pad.triggerMode) > 2) {
+                return setError(error, "Pad MIDI note or trigger mode is out of range");
+            }
+            if (!std::isfinite(pad.tuningSemitones)
+                    || !std::isfinite(pad.level)
+                    || !std::isfinite(pad.pan)
+                    || !std::isfinite(pad.velocityScale)
+                    || !std::isfinite(pad.envelopeAttackMs)
+                    || !std::isfinite(pad.envelopeDecayMs)
+                    || !std::isfinite(pad.envelopeSustain)
+                    || !std::isfinite(pad.envelopeReleaseMs)
+                    || !std::isfinite(pad.filterCutoffHz)) {
+                return setError(error, "Pad numeric fields must be finite");
+            }
+
+            for (const auto& layer : pad.layers) {
+                if (!std::isfinite(layer.gain)
+                        || !std::isfinite(layer.pan)
+                        || !std::isfinite(layer.tuningSemitones)) {
+                    return setError(error, "Sample-layer numeric fields must be finite");
+                }
+                if (layer.velocityMinimum > 127 || layer.velocityMaximum > 127) {
+                    return setError(error, "Sample-layer velocity range is out of range");
+                }
+            }
+        }
+    }
+
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)) {
+            return setError(error, "Sequence tempo must be finite");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (static_cast<unsigned int>(track.type) > 3
+                    || static_cast<unsigned int>(track.kind) > 4) {
+                return setError(error, "Track type or kind is out of range");
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
             std::set<std::string> ids;
-            for (std::size_t i = 0; i < track.placements.size(); ++i) {
-                const auto& placement = track.placements[i];
-                const auto pattern = std::find_if(
-                        track.patterns.begin(), track.patterns.end(),
-                        [&placement](const domain::Pattern& value) {
-                            return value.id == placement.patternId;
-                        });
+            std::map<std::string, std::int32_t> patternLengths;
+            for (const auto& pattern : track.patterns) {
+                // Preserve the existing first-match semantics for legacy
+                // duplicate IDs while avoiding a linear Pattern scan per clip.
+                patternLengths.emplace(pattern.id, pattern.lengthTicks);
+            }
+            std::vector<std::pair<std::int64_t, std::int64_t>> timelineRanges;
+            timelineRanges.reserve(track.placements.size());
+            for (const auto& placement : track.placements) {
+                const auto pattern = patternLengths.find(placement.patternId);
                 if (placement.id.empty() || !ids.insert(placement.id).second) {
                     return setError(error, "Pattern placement id is empty or duplicated");
                 }
-                if (pattern == track.patterns.end()) {
+                if (pattern == patternLengths.end()) {
                     return setError(error, "Pattern placement references a missing Pattern");
                 }
                 const auto timelineEnd = static_cast<std::int64_t>(placement.startTick)
@@ -266,18 +475,23 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
                 if (placement.startTick < 0 || placement.lengthTicks <= 0
                         || placement.sourceOffsetTicks < 0
                         || timelineEnd > sequence.lengthTicks
-                        || sourceEnd > pattern->lengthTicks) {
+                        || sourceEnd > pattern->second) {
                     return setError(error, "Pattern placement range is invalid");
                 }
-                for (std::size_t j = 0; j < i; ++j) {
-                    const auto& other = track.placements[j];
-                    const auto otherEnd = static_cast<std::int64_t>(other.startTick)
-                            + static_cast<std::int64_t>(other.lengthTicks);
-                    if (static_cast<std::int64_t>(placement.startTick) < otherEnd
-                            && static_cast<std::int64_t>(other.startTick) < timelineEnd) {
-                        return setError(error, "Pattern placements overlap on one Track");
-                    }
+                timelineRanges.emplace_back(placement.startTick, timelineEnd);
+            }
+
+            // The placements can arrive in any order. Sorting timeline intervals
+            // gives an O(n log n) overlap check; comparing each interval with every
+            // earlier placement made a valid 65,536-clip Arrangement quadratic and
+            // could stall project save/open for billions of comparisons.
+            std::sort(timelineRanges.begin(), timelineRanges.end());
+            std::int64_t furthestPreviousEnd = -1;
+            for (const auto& [start, end] : timelineRanges) {
+                if (start < furthestPreviousEnd) {
+                    return setError(error, "Pattern placements overlap on one Track");
                 }
+                furthestPreviousEnd = std::max(furthestPreviousEnd, end);
             }
         }
     }
@@ -288,7 +502,16 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validatePlacements(project, error)) return {};
+    // Apply cardinality limits before building identifier sets from caller-owned
+    // vectors; oversized Projects should be rejected without large temporary allocations.
+    if (!validateSerializableCollectionSizes(project, error)
+            || !validateSequenceSettings(project, error)
+            || !validateEntityIdentifiers(project, error)
+            || !validateSerializableNumericFields(project, error)
+            || !validatePatternData(project, error)
+            || !validatePlacements(project, error)) {
+        return {};
+    }
     std::ostringstream out;
     out << std::setprecision(std::numeric_limits<double>::max_digits10);
     out << "MPCMK2_PROJECT " << kCurrentProjectFormatVersion << '\n';
@@ -362,7 +585,12 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     }
 
     out << "END_PROJECT\n";
-    return out.str();
+    auto bytes = out.str();
+    if (bytes.size() > kMaxProjectFileBytes) {
+        setError(error, "Serialized project exceeds the supported file-size limit");
+        return {};
+    }
+    return bytes;
 }
 
 bool deserializeProject(
@@ -504,7 +732,12 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validatePlacements(candidate, error)) return false;
+    if (!validateSequenceSettings(candidate, error)
+            || !validateEntityIdentifiers(candidate, error)
+            || !validatePatternData(candidate, error)
+            || !validatePlacements(candidate, error)) {
+        return false;
+    }
 
     project = std::move(candidate);
     return true;

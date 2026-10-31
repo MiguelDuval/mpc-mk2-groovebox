@@ -95,6 +95,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final String TRACK_TYPE_CHANGE_RESERVED_STATUS =
             "TRACK TYPE CHANGE • RESERVED • no existing-track conversion operation";
     private static final String BROWSER_STORAGE_PREFERENCES = "mpc_browser_storage";
+    private static final String PREF_BROWSER_SHOW_FILE_SIZE = "show_file_size";
+    private static final String PREF_BROWSER_SHOW_MODIFIED_DATE = "show_modified_date";
     private static final String MPC_UI_PREFERENCES = "mpc_ui_preferences";
     private static final String PREF_SHORTCUT_MODES = "shortcut_modes_v1";
     private static final String PREF_USER_TREE_URI = "user_tree_uri";
@@ -192,6 +194,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final List<AudioDeviceInfo> inputDevices = new ArrayList<>();
     private boolean audioSettingsBinding;
     private FrameLayout content;
+    private GridLayout muteGrid;
+    private TextView muteContextLabel;
+    private TextView muteTrackBankLabel;
+    private Button muteTrackPreviousBankButton;
+    private Button muteTrackNextBankButton;
+    private int muteTrackBank = 0;
+    private boolean muteTrackMode = false;
     private Uri currentProjectUri;
     private String currentProjectName = "Untitled";
     // Latch an explicit provider write denial even if Android retains its URI grant.
@@ -270,6 +279,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private SequenceTimelineView sequenceTimeline;
     private SequenceTimelineView mainArrangementPreview;
     private MpcArrangeView arrangementView;
+    private TextView arrangementZoomOutButton;
     private TextView arrangementEventSelectionView;
     private Button arrangementMoveEarlierButton;
     private Button arrangementMoveLaterButton;
@@ -343,6 +353,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_STEPS;
     private int sequenceGridStartPad = 0;
     private int sequenceGridVisiblePads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
+    private final MpcGridZoomHistory sequenceGridHorizontalZoomHistory =
+            new MpcGridZoomHistory();
+    private final MpcGridZoomHistory sequenceGridVerticalZoomHistory =
+            new MpcGridZoomHistory();
     private int sequenceStepPage = 0;
     private int launcherBank = 0;
     private String lastLauncherLedSignature = "";
@@ -601,12 +615,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int trackIndex, long sourceTick, int noteNumber);
     private static native String nativeSequencePasteArrangementEvent(int trackIndex, long targetTick);
     private static native boolean nativeSequenceIsTrackMuted(int trackIndex);
+    private static native boolean nativeSequenceCanSoloTrack(int trackIndex);
+    private static native boolean nativeSequenceIsTrackSoloed(int trackIndex);
+    private static native String nativeSequenceToggleTrackSolo(int trackIndex);
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
     private static native String nativeSequenceTrackStatus(int trackIndex);
     private static native boolean nativeSequenceIsSelectedTrackArmed();
     private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
+    private static native boolean nativeSequenceIsPadMuted(int padIndex);
     private static native String nativeSequenceTogglePadMute(int padIndex);
     private static native String nativeSequenceToggleTrackMute(int trackIndex);
     private static native String nativeSequenceStart();
@@ -934,7 +952,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final double tempo = startupComplete
                 ? nativeSequenceGetTempo()
                 : 120.0;
-        final boolean midiReady = midiBridge != null;
+        final boolean midiReady = midiBridge != null && midiBridge.isConnected();
         final boolean audioReady = startupComplete && NATIVE_LIBRARY_LOADED;
         pullDownPanel.setContext(
                 "UNTITLED",
@@ -1543,6 +1561,56 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    // Reserved factory destinations still get a real full-size workspace. The
+    // previous workspace must not remain visible under a changed shortcut highlight.
+    private void showUnavailableModePage(
+            MpcUiState.Mode mode, String title, String explanation) {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "UNAVAILABLE_" + mode.name();
+        navigationController.navigate(mode);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
+        navigationController.setActionAvailable(false);
+        pageTitle.setText(title);
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setContentDescription("MPC Unavailable workspace " + title);
+        page.setPadding(dp(18), dp(12), dp(18), dp(12));
+
+        TextView heading = label(title, 18, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        heading.setContentDescription("MPC unavailable mode title " + title);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        TextView unavailable = label("RESERVED / UNAVAILABLE", 12, ACCENT_2);
+        unavailable.setTypeface(Typeface.DEFAULT_BOLD);
+        unavailable.setContentDescription("MPC unavailable status " + title);
+        page.addView(unavailable, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        TextView detail = label(explanation, 12, MUTED);
+        detail.setGravity(Gravity.TOP | Gravity.START);
+        detail.setPadding(0, dp(8), 0, dp(12));
+        detail.setContentDescription("MPC unavailable explanation " + title);
+        page.addView(detail, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        Button back = actionButton("BACK", v -> navigateBackFromShell());
+        back.setContentDescription("MPC unavailable workspace Back");
+        page.addView(back, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+    }
+
     private void navigateToMode(MpcUiState.Mode mode) {
         shortcutConfigVisible = false;
         switch (mode) {
@@ -1571,9 +1639,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showSamplePage();
                 break;
             case CHANNEL_MIXER:
-                navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
-                setBottomStatus("CHANNEL MIXER • RESERVED until track-strip mixer backend");
-                updateMpcShellState();
+                showUnavailableModePage(
+                        mode,
+                        "CHANNEL MIXER",
+                        "A real multi-channel mixer requires track level, pan, routing, sends and insert state. Those controls are not available yet.");
+                break;
+            case MUTE:
+                showMutePage();
                 break;
             case PAD_MIXER:
                 showMixPage();
@@ -1597,11 +1669,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showAudioSettingsPage();
                 break;
             default:
-                navigationController.navigate(mode);
-                navigationController.setActionAvailable(false);
-                setBottomStatus(
-                        mode.label() + " • RESERVED / UNAVAILABLE");
-                updateMpcShellState();
+                showUnavailableModePage(
+                        mode,
+                        mode.label(),
+                        "This mode is reserved until its real data model and interactive backend are implemented.");
                 break;
         }
     }
@@ -1641,7 +1712,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             automationTopButton.setText("AUTO");
         }
 
-        final boolean midiReady = midiBridge != null;
+        final boolean midiReady = midiBridge != null && midiBridge.isConnected();
         updateTopMidiStatus(midiInTopStatus, midiReady);
         updateTopMidiStatus(midiOutTopStatus, midiReady);
     }
@@ -1758,6 +1829,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             final boolean armed = nativeSequenceIsSelectedTrackArmed();
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+            final boolean soloAvailable = nativeSequenceCanSoloTrack(trackIndex);
+            final boolean soloed = soloAvailable
+                    && nativeSequenceIsTrackSoloed(trackIndex);
             compactTrackContext.setText(String.format(
                     Locale.ROOT,
                     "TRACK %02d • %s\nREC %s • MUTE %s",
@@ -1770,7 +1844,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 compactTrackStateLabel.setText(
                         "REC " + (armed ? "ON" : "OFF")
                                 + " • MUTE " + (muted ? "ON" : "OFF")
-                                + " • SOLO —");
+                                + " • SOLO " + (soloAvailable
+                                        ? (soloed ? "ON" : "OFF") : "—"));
             }
 
             if (compactProgramContext != null) {
@@ -1943,9 +2018,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showMainPage();
                     });
             addTrackStepperFunction(trackCount > 0);
-            addFunction("MUTE", trackCount > 0,
-                    v -> toggleSelectedTrackMute());
-            addFunction("SOLO", false, null);
+            Button muteWorkspace = addFunction(
+                    "MUTE", trackCount > 0, v -> showMutePage());
+            muteWorkspace.setContentDescription(
+                    "MPC Function Bar Open Mute workspace");
+            addTrackSoloFunction(trackCount > 0);
             return;
         }
 
@@ -1960,9 +2037,34 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showTrackViewPage();
                     });
             addTrackStepperFunction(trackCount > 0);
-            addFunction("MUTE", trackCount > 0,
-                    v -> toggleSelectedTrackMute());
-            addFunction("SOLO", false, null);
+            Button muteWorkspace = addFunction(
+                    "MUTE", trackCount > 0, v -> showMutePage());
+            muteWorkspace.setContentDescription(
+                    "MPC Function Bar Open Mute workspace");
+            addTrackSoloFunction(trackCount > 0);
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.MUTE) {
+            Button back = addFunction("BACK", true, v -> navigateBackFromShell());
+            back.setContentDescription("MPC Mute Back to previous workspace");
+            Button padMute = addFunction(
+                    "PAD MUTE", true, v -> setMuteTargetMode(false));
+            padMute.setContentDescription("MPC Mute Function Bar Pad targets");
+            Button trackMute = addFunction(
+                    "TRACK MUTE", trackCount > 0, v -> setMuteTargetMode(true));
+            trackMute.setContentDescription("MPC Mute Function Bar Track targets");
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.CHANNEL_MIXER
+                || mode == MpcUiState.Mode.SOUNDS
+                || mode == MpcUiState.Mode.XYFX
+                || mode == MpcUiState.Mode.RESERVED) {
+            Button back = addFunction("BACK", true, v -> navigateBackFromShell());
+            back.setContentDescription("MPC unavailable mode Back");
+            Button menu = addFunction("MENU", true, v -> showMenuPage());
+            menu.setContentDescription("MPC unavailable mode Menu");
             return;
         }
 
@@ -2352,6 +2454,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
     }
 
+    private Button addTrackSoloFunction(boolean tracksAvailable) {
+        final int selectedTrack = startupComplete
+                && NATIVE_LIBRARY_LOADED
+                && tracksAvailable
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : -1;
+        final boolean canSolo = selectedTrack >= 0
+                && nativeSequenceCanSoloTrack(selectedTrack);
+        final boolean soloed = canSolo
+                && nativeSequenceIsTrackSoloed(selectedTrack);
+        Button solo = addFunction(
+                "SOLO",
+                canSolo,
+                canSolo ? v -> toggleSelectedTrackSolo() : null);
+        solo.setSelected(soloed);
+        solo.setContentDescription(canSolo
+                ? "MPC Function Bar Track Solo " + (soloed ? "ON" : "OFF")
+                : "MPC Function Bar Track Solo unavailable: selected Track has no active Drum playback route");
+        if (soloed) {
+            solo.setBackground(strokeBackground(
+                    Color.rgb(74, 124, 88),
+                    ACTIVE,
+                    MPC_FLAT_RADIUS_DP));
+        }
+        return solo;
+    }
+
     private Button addFunction(String text, boolean enabled, View.OnClickListener listener) {
         Button b = actionButton(text, listener);
         b.setEnabled(enabled);
@@ -2405,7 +2533,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void navigateBackFromShell() {
         if (navigationController != null && navigationController.back()) {
-            navigateToMode(navigationController.state().mode());
+            // Page builders establish sensible defaults for fresh navigation,
+            // but those defaults must not overwrite the context just restored
+            // from the previous workspace's history frame.
+            final MpcUiState restored = navigationController.state();
+            navigateToMode(restored.mode());
+            navigationController.setSubcontext(restored.subcontext());
+            navigationController.setDataDialFocus(restored.dataDialFocus());
+            navigationController.setZoomFocus(restored.zoomFocus());
+            navigationController.setActionAvailable(restored.actionAvailable());
+            if (restored.mode() == MpcUiState.Mode.MAIN) {
+                refreshMainDataDialFocusVisuals();
+            }
+            updateMpcShellState();
+            Log.i(TAG, "MPC_NAV_BACK_RESTORED mode=" + restored.mode()
+                    + " subcontext=" + restored.subcontext()
+                    + " dataDialFocus=" + restored.dataDialFocus()
+                    + " zoomFocus=" + restored.zoomFocus()
+                    + " actionAvailable=" + restored.actionAvailable());
             return;
         }
         showMainPage();
@@ -2456,6 +2601,32 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         } else {
             showMainPage();
         }
+    }
+
+    private void toggleSelectedTrackSolo() {
+        if (!startupComplete || !NATIVE_LIBRARY_LOADED) {
+            return;
+        }
+
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        if (!nativeSequenceCanSoloTrack(track)) {
+            setBottomStatus(
+                    "Track Solo unavailable: selected Track has no active Drum playback route");
+            refreshMpcFunctionBar();
+            return;
+        }
+
+        setBottomStatus(nativeSequenceToggleTrackSolo(track));
+        if ("TRACK_VIEW".equals(currentPage)) {
+            showTrackViewPage();
+            return;
+        }
+        if ("MAIN".equals(currentPage)) {
+            showMainPage();
+            return;
+        }
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
     }
 
     private void toggleSelectedTrackMute() {
@@ -5833,6 +6004,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         browserView = new MpcBrowserView(this);
+        browserView.setShowFileSize(getSharedPreferences(
+                BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(PREF_BROWSER_SHOW_FILE_SIZE, true));
+        browserView.setShowModifiedDate(getSharedPreferences(
+                BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
+                .getBoolean(PREF_BROWSER_SHOW_MODIFIED_DATE, false));
         browserView.setListener(new MpcBrowserView.Listener() {
             @Override
             public void onSectionSelected(String section) {
@@ -6457,9 +6634,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final String restarted = nativeAudioStart();
                     setAudioStateFromResult(restarted);
                     if (loadSucceeded) {
+                        // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
                         final String assignmentStatus = String.format(Locale.ROOT,
-                                "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                                file.displayName(), targetPad + 1, targetLayer + 1, restarted);
+                                "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                                file.displayName(), targetPad + 1, targetLayer + 1);
                         setBottomStatus(assignmentStatus);
                         if (browserView != null) {
                             browserView.setProviderStatus(assignmentStatus);
@@ -6468,7 +6646,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             }
                         }
                     } else {
-                        final String failure = "Local WAV load failed • " + loaded + " | " + restarted;
+                        final String failure = "Local WAV load failed • " + loaded;
                         setBottomStatus(failure);
                         if (browserView != null) browserView.setProviderStatus(failure);
                     }
@@ -6579,20 +6757,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         body.setContentDescription("MPC Browser Options");
 
         TextView notice = label(
-                "FILE PROVIDER: PARTIAL • options are exposed as MPC taxonomy only; "
-                        + "unsupported provider behaviors remain inactive.",
+                "FILE PROVIDER: PARTIAL • file size and modified-date visibility are active; "
+                        + "created date, subfolder, system-folder and cleanup options remain RESERVED / UNAVAILABLE.",
                 10, MUTED);
         notice.setPadding(0, 0, 0, dp(10));
         body.addView(notice);
 
+        final android.content.SharedPreferences browserOptionsPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
         for (String labelText : labels) {
             android.widget.CheckBox check = new android.widget.CheckBox(this);
             check.setText(labelText);
             check.setTextColor(TEXT);
             check.setTextSize(11);
             check.setContentDescription("MPC Browser Option " + labelText);
-            check.setEnabled(false);
-            check.setAlpha(0.55f);
+            if ("Show file size".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserOptionsPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, true));
+                check.setOnCheckedChangeListener((button, checked) -> {
+                    browserOptionsPreferences.edit()
+                            .putBoolean(PREF_BROWSER_SHOW_FILE_SIZE, checked)
+                            .apply();
+                    final MpcBrowserView activeBrowser = browserView;
+                    if (activeBrowser != null) activeBrowser.setShowFileSize(checked);
+                    setBottomStatus("BROWSER • FILE SIZE " + (checked ? "SHOWN" : "HIDDEN"));
+                });
+            } else if ("Show modified date".equals(labelText)) {
+                check.setEnabled(true);
+                check.setAlpha(1.0f);
+                check.setChecked(browserOptionsPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, false));
+                check.setOnCheckedChangeListener((button, checked) -> {
+                    browserOptionsPreferences.edit()
+                            .putBoolean(PREF_BROWSER_SHOW_MODIFIED_DATE, checked)
+                            .apply();
+                    final MpcBrowserView activeBrowser = browserView;
+                    if (activeBrowser != null) activeBrowser.setShowModifiedDate(checked);
+                    setBottomStatus("BROWSER • MODIFIED DATE " + (checked ? "SHOWN" : "HIDDEN"));
+                });
+            } else {
+                check.setEnabled(false);
+                check.setAlpha(0.55f);
+            }
             body.addView(check, new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
         }
@@ -6722,6 +6930,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " viewportStart=" + arrangementView.viewportStartBarForAudit());
                 }
             }
+
+            @Override
+            public void onViewportChanged(int previousStartBar, int currentStartBar) {
+                updateArrangementZoomAccessibilityDescription();
+                if (uiAuditSmokeMode) {
+                    final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+                    Log.i(TAG, "UI_ARRANGE_PAN_STATE: action=PAN"
+                            + " from=" + previousStartBar
+                            + " to=" + currentStartBar
+                            + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                            + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
+                }
+            }
         });
 
         LinearLayout page = page();
@@ -6733,7 +6954,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.zoomOut();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("ZOOM_OUT");
                 });
+        arrangementZoomOutButton = zoomOutButton;
         zoomOutButton.setTextSize(9);
         header.addView(sectionLabelView(
                 "ARRANGEMENT",
@@ -6744,6 +6967,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.zoomIn();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("ZOOM_IN");
                 });
         zoomInButton.setTextSize(9);
         header.addView(zoomInButton, new LinearLayout.LayoutParams(dp(48), dp(34)));
@@ -6752,6 +6976,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 v -> {
                     arrangementView.resetZoom();
                     refreshArrangeView();
+                    logArrangementZoomStateForAudit("RESET");
                 });
         resetZoomButton.setTextSize(9);
         header.addView(resetZoomButton, new LinearLayout.LayoutParams(dp(42), dp(34)));
@@ -7292,6 +7517,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " track=" + trackIndex + " tick=" + tick + " note=" + noteNumber
                 + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
     }
+    private void logArrangementZoomStateForAudit(String action) {
+        if (!uiAuditSmokeMode || arrangementView == null) return;
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        Log.i(TAG, "UI_ARRANGE_ZOOM_STATE: action=" + action
+                + " track=" + trackIndex
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
+                + " data=" + nativeSequenceGetTrackArrangementData(trackIndex));
+    }
 
     private String arrangementTrackName(String status, int trackIndex) {
         if (status == null || status.isEmpty()) {
@@ -7726,6 +7960,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeSequenceGetDenominator(),
                 nativeSequencePositionTicks(),
                 nativeSequenceIsPlaying());
+        updateArrangementZoomAccessibilityDescription();
+    }
+
+    private void updateArrangementZoomAccessibilityDescription() {
+        if (arrangementZoomOutButton == null || arrangementView == null) {
+            return;
+        }
+        arrangementZoomOutButton.setContentDescription(
+                "Arrangement ZOOM OUT visible bars="
+                        + arrangementView.visibleBarsForAudit()
+                        + " viewport start bar=" + arrangementView.viewportStartBarForAudit());
     }
 
     private void showTrackViewPage() {
@@ -7969,9 +8214,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 controls.addView(muteButton, new LinearLayout.LayoutParams(
                         0, dp(30), 0.78f));
 
-                TextView solo = trackViewReservedControl(
-                        "SOLO",
-                        "Track View track solo unavailable");
+                final boolean soloAvailable =
+                        nativeSequenceCanSoloTrack(trackIndex);
+                final boolean soloed = soloAvailable
+                        && nativeSequenceIsTrackSoloed(trackIndex);
+                TextView solo = label(
+                        soloAvailable
+                                ? (soloed ? "SOLO ON" : "SOLO OFF")
+                                : "SOLO —",
+                        8,
+                        soloed ? TEXT : MUTED);
+                solo.setGravity(Gravity.CENTER);
+                solo.setTypeface(Typeface.DEFAULT_BOLD);
+                solo.setContentDescription(soloAvailable
+                        ? "Track View track " + (i + 1)
+                                + " solo state " + (soloed ? "ON" : "OFF")
+                        : "Track View track solo unavailable • Track " + (i + 1));
+                solo.setBackground(strokeBackground(
+                        soloed ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
+                        soloed ? ACTIVE : LINE,
+                        MPC_FLAT_RADIUS_DP));
                 controls.addView(solo, new LinearLayout.LayoutParams(
                         0, dp(30), 0.82f));
 
@@ -8229,6 +8491,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showSequenceGridPage() {
+        // A new Grid context must not inherit inverse-zoom history from a prior visit.
+        sequenceGridHorizontalZoomHistory.clear();
+        sequenceGridVerticalZoomHistory.clear();
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
@@ -9711,6 +9976,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 totalSteps,
                 sequenceGridStartPad,
                 sequenceGridVisiblePads);
+        // Expose the custom Canvas viewport to accessibility. Its cells are
+        // drawn pixels rather than child Views, so UIAutomator cannot otherwise
+        // verify that vertical zoom changed the visible Pad range.
+        sequenceGridView.setContentDescription(String.format(
+                Locale.ROOT,
+                "MPC Grid View drum event grid; Grid visible pad range: pads %02d through %02d of 16",
+                16 - sequenceGridStartPad,
+                17 - sequenceGridStartPad - sequenceGridVisiblePads));
         sequenceGridView.setState(
                 nativeSequenceGetGridVelocities(firstStep, gridTicks),
                 localPlayhead);
@@ -9753,15 +10026,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void zoomSequenceGridHorizontal(int delta) {
-        if (sequenceGridView == null) return;
+        if (sequenceGridView == null || delta == 0) return;
+        final int totalSteps = Math.max(1, sequenceGridTotalSteps());
+        final MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(
+                sequenceGridVisibleSteps, sequenceGridStartStep, totalSteps);
+        final boolean zoomIn = delta > 0;
+        final MpcGridZoomHistory.Window restored =
+                sequenceGridHorizontalZoomHistory.restoreOpposite(zoomIn, before);
+        if (restored != null) {
+            sequenceGridVisibleSteps = restored.visibleCount;
+            sequenceGridStartStep = restored.start;
+            refreshSequenceGrid();
+            setGridHorizontalZoomStatus();
+            return;
+        }
+
         final int oldVisible = sequenceGridVisibleSteps;
-        final int nextVisible = delta > 0
+        final int nextVisible = zoomIn
                 ? MpcSequenceZoomPolicy.zoomGridStepsIn(oldVisible)
                 : MpcSequenceZoomPolicy.zoomGridStepsOut(oldVisible);
-        final int totalSteps = sequenceGridTotalSteps();
-        final int clampedVisible = Math.max(
-                1,
-                Math.min(nextVisible, Math.max(1, totalSteps)));
+        final int clampedVisible = Math.max(1, Math.min(nextVisible, totalSteps));
         if (clampedVisible == oldVisible) return;
 
         final int center = sequenceGridStartStep + oldVisible / 2;
@@ -9769,12 +10053,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sequenceGridStartStep = Math.max(
                 0,
                 Math.min(
-                        sequenceGridTotalSteps() - sequenceGridVisibleSteps,
+                        totalSteps - sequenceGridVisibleSteps,
                         center - sequenceGridVisibleSteps / 2));
+        final MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(
+                sequenceGridVisibleSteps, sequenceGridStartStep, totalSteps);
+        sequenceGridHorizontalZoomHistory.record(zoomIn, before, after);
         refreshSequenceGrid();
+        setGridHorizontalZoomStatus();
+    }
+
+    private void setGridHorizontalZoomStatus() {
         setBottomStatus(
                 "GRID ZOOM H • "
-                        + sequenceGridStartStep + 1
+                        + (sequenceGridStartStep + 1)
                         + "–"
                         + Math.min(
                                 sequenceGridTotalSteps(),
@@ -9782,23 +10073,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void zoomSequenceGridVertical(int delta) {
-        if (sequenceGridView == null) return;
+        if (sequenceGridView == null || delta == 0) return;
+        final int totalPads = MpcSequenceZoomPolicy.MAX_GRID_VISIBLE_PADS;
+        final MpcGridZoomHistory.Window before = new MpcGridZoomHistory.Window(
+                sequenceGridVisiblePads, sequenceGridStartPad, totalPads);
+        final boolean zoomIn = delta > 0;
+        final MpcGridZoomHistory.Window restored =
+                sequenceGridVerticalZoomHistory.restoreOpposite(zoomIn, before);
+        if (restored != null) {
+            sequenceGridVisiblePads = restored.visibleCount;
+            sequenceGridStartPad = restored.start;
+            refreshSequenceGrid();
+            setGridVerticalZoomStatus();
+            return;
+        }
+
         final int oldVisible = sequenceGridVisiblePads;
-        final int nextVisible = delta > 0
+        final int nextVisible = zoomIn
                 ? MpcSequenceZoomPolicy.zoomGridPadsIn(oldVisible)
                 : MpcSequenceZoomPolicy.zoomGridPadsOut(oldVisible);
         if (nextVisible == oldVisible) return;
 
-        final int selectedRow = Math.max(
-                0,
-                Math.min(15, 15 - selectedPad));
+        final int selectedRow = Math.max(0, Math.min(15, 15 - selectedPad));
         sequenceGridVisiblePads = nextVisible;
         sequenceGridStartPad = Math.max(
                 0,
                 Math.min(
                         sequenceGridMaxStartPad(),
                         selectedRow - sequenceGridVisiblePads / 2));
+        final MpcGridZoomHistory.Window after = new MpcGridZoomHistory.Window(
+                sequenceGridVisiblePads, sequenceGridStartPad, totalPads);
+        sequenceGridVerticalZoomHistory.record(zoomIn, before, after);
         refreshSequenceGrid();
+        setGridVerticalZoomStatus();
+    }
+
+    private void setGridVerticalZoomStatus() {
         setBottomStatus(
                 "GRID ZOOM V • PADS "
                         + (16 - sequenceGridStartPad)
@@ -10237,6 +10547,475 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sequenceUiHandler.removeCallbacks(sequenceUiUpdater);
             sequenceUiUpdater = null;
         }
+    }
+
+    private void showMutePage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "MUTE";
+        navigationController.navigate(MpcUiState.Mode.MUTE);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(
+                muteTrackMode
+                        ? MpcUiState.DataDialFocus.TRACK
+                        : MpcUiState.DataDialFocus.PAD);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("MUTE");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setContentDescription("MPC Mute workspace");
+        page.setPadding(dp(8), dp(6), dp(8), dp(2));
+
+        LinearLayout header = row();
+        TextView title = label("MUTE", 13, TEXT);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setGravity(Gravity.CENTER_VERTICAL);
+        header.addView(title, new LinearLayout.LayoutParams(dp(58), dp(40)));
+
+        Button padTargets = actionButton("PADS", v -> setMuteTargetMode(false));
+        padTargets.setContentDescription("MPC Mute switch to pad targets");
+        header.addView(padTargets, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        Button trackTargets = actionButton("TRACKS", v -> setMuteTargetMode(true));
+        trackTargets.setContentDescription("MPC Mute switch to track targets");
+        header.addView(trackTargets, new LinearLayout.LayoutParams(0, dp(38), 1));
+
+        muteTrackPreviousBankButton = actionButton("◀", v -> moveMuteTrackBank(-1));
+        muteTrackPreviousBankButton.setContentDescription("MPC Mute previous Track bank");
+        header.addView(muteTrackPreviousBankButton,
+                new LinearLayout.LayoutParams(dp(44), dp(38)));
+
+        muteTrackBankLabel = label("", 9, TEXT);
+        muteTrackBankLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        muteTrackBankLabel.setGravity(Gravity.CENTER);
+        header.addView(muteTrackBankLabel,
+                new LinearLayout.LayoutParams(dp(70), dp(38)));
+
+        muteTrackNextBankButton = actionButton("▶", v -> moveMuteTrackBank(1));
+        muteTrackNextBankButton.setContentDescription("MPC Mute next Track bank");
+        header.addView(muteTrackNextBankButton,
+                new LinearLayout.LayoutParams(dp(44), dp(38)));
+
+        page.addView(header, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+
+        muteContextLabel = label("", 10, MUTED);
+        muteContextLabel.setGravity(Gravity.CENTER_VERTICAL);
+        muteContextLabel.setContentDescription("MPC Mute target context");
+        page.addView(muteContextLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
+        muteGrid = new GridLayout(this);
+        muteGrid.setColumnCount(4);
+        muteGrid.setRowCount(4);
+        muteGrid.setContentDescription("MPC Mute 4x4 grid");
+        page.addView(muteGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        content.addView(page);
+        refreshMuteGrid();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+    }
+
+    private void setMuteTargetMode(boolean trackMode) {
+        muteTrackMode = trackMode;
+        final int count = startupComplete
+                ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
+        final int bankCount = Math.max(1, (count + 15) / 16);
+        muteTrackBank = Math.max(0, Math.min(muteTrackBank, bankCount - 1));
+        navigationController.setDataDialFocus(
+                trackMode
+                        ? MpcUiState.DataDialFocus.TRACK
+                        : MpcUiState.DataDialFocus.PAD);
+        navigationController.setActionAvailable(true);
+        refreshMuteGrid();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+    }
+
+    private void moveMuteTrackBank(int delta) {
+        final int count = startupComplete
+                ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
+        final int bankCount = Math.max(1, (count + 15) / 16);
+        muteTrackBank = Math.max(0, Math.min(bankCount - 1, muteTrackBank + delta));
+        refreshMuteGrid();
+    }
+
+    private void refreshMuteGrid() {
+        if (muteGrid == null) return;
+        muteGrid.removeAllViews();
+
+        final int trackCount = startupComplete
+                ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
+        final int selectedTrack = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        final boolean drumTrack = startupComplete
+                && "DRUM".equalsIgnoreCase(nativeSequenceGetTrackType(selectedTrack));
+        final int bankCount = Math.max(1, (trackCount + 15) / 16);
+
+        if (muteContextLabel != null) {
+            if (muteTrackMode) {
+                final int firstTrack = muteTrackBank * 16 + 1;
+                final int lastTrack = Math.min(trackCount, muteTrackBank * 16 + 16);
+                muteContextLabel.setText(
+                        "TRACK MUTE • BANK " + (muteTrackBank + 1)
+                                + " • TRACKS " + (trackCount == 0
+                                        ? "NONE" : firstTrack + "–" + lastTrack));
+            } else {
+                muteContextLabel.setText(drumTrack
+                        ? "PAD MUTE • ACTIVE DRUM PROGRAM • 16 TARGETS"
+                        : "PAD MUTE • SELECT A DRUM TRACK TO ENABLE PAD TARGETS");
+            }
+        }
+
+        if (muteTrackBankLabel != null) {
+            muteTrackBankLabel.setText("BANK " + (muteTrackBank + 1) + "/" + bankCount);
+            muteTrackBankLabel.setVisibility(muteTrackMode ? View.VISIBLE : View.GONE);
+        }
+        if (muteTrackPreviousBankButton != null) {
+            muteTrackPreviousBankButton.setVisibility(
+                    muteTrackMode ? View.VISIBLE : View.GONE);
+            muteTrackPreviousBankButton.setEnabled(muteTrackMode && muteTrackBank > 0);
+        }
+        if (muteTrackNextBankButton != null) {
+            muteTrackNextBankButton.setVisibility(
+                    muteTrackMode ? View.VISIBLE : View.GONE);
+            muteTrackNextBankButton.setEnabled(
+                    muteTrackMode && muteTrackBank + 1 < bankCount);
+        }
+
+        for (int cell = 0; cell < 16; cell++) {
+            final int padIndex = cell;
+            final int trackIndex = muteTrackBank * 16 + cell;
+            final boolean available = muteTrackMode
+                    ? trackIndex < trackCount
+                    : drumTrack;
+            final boolean muted = available && (muteTrackMode
+                    ? nativeSequenceIsTrackMuted(trackIndex)
+                    : nativeSequenceIsPadMuted(padIndex));
+
+            final String targetDescription;
+            final String displayText;
+            if (muteTrackMode) {
+                if (available) {
+                    targetDescription = "MPC Mute track "
+                            + String.format(Locale.ROOT, "%02d", trackIndex + 1);
+                    displayText = String.format(
+                            Locale.ROOT, "TRACK %02d\n%s",
+                            trackIndex + 1, muted ? "MUTE ON" : "MUTE OFF");
+                } else {
+                    targetDescription = "MPC Mute track slot "
+                            + String.format(Locale.ROOT, "%02d", cell + 1)
+                            + " unavailable";
+                    displayText = String.format(Locale.ROOT, "%02d\nNO TRACK", cell + 1);
+                }
+            } else {
+                targetDescription = "MPC Mute pad "
+                        + String.format(Locale.ROOT, "%02d", padIndex + 1);
+                displayText = String.format(
+                        Locale.ROOT, "PAD %02d\n%s",
+                        padIndex + 1,
+                        !available ? "UNAVAILABLE" : muted ? "MUTE ON" : "MUTE OFF");
+            }
+
+            Button target = actionButton(displayText, v -> {
+                if (!available) {
+                    setBottomStatus(muteTrackMode
+                            ? "TRACK MUTE • empty Track slot"
+                            : "PAD MUTE • select a Drum Track first");
+                    return;
+                }
+                if (muteTrackMode) {
+                    setBottomStatus(nativeSequenceToggleTrackMute(trackIndex));
+                } else {
+                    setBottomStatus(nativeSequenceTogglePadMute(padIndex));
+                }
+                refreshMuteGrid();
+                refreshMpcCompactContext();
+            });
+            target.setContentDescription(targetDescription);
+            target.setTextSize(11);
+            target.setTypeface(Typeface.DEFAULT_BOLD);
+            target.setGravity(Gravity.CENTER);
+            target.setEnabled(available);
+            target.setAlpha(available ? 1.0f : 0.42f);
+            target.setTextColor(muted ? Color.WHITE : TEXT);
+            target.setBackground(strokeBackground(
+                    muted ? Color.rgb(54, 105, 69) : MPC_PANEL_DARK,
+                    muted ? Color.rgb(79, 159, 99) : MPC_PANEL_BORDER,
+                    MPC_FLAT_RADIUS_DP));
+
+            GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+            params.width = 0;
+            params.height = 0;
+            params.columnSpec = GridLayout.spec(cell % 4, 1f);
+            params.rowSpec = GridLayout.spec(cell / 4, 1f);
+            params.setMargins(dp(3), dp(3), dp(3), dp(3));
+            muteGrid.addView(target, params);
+        }
+    }
+
+    private boolean muteGridHasExpectedTargetsForAudit(boolean trackMode) {
+        if (!"MUTE".equals(currentPage)
+                || navigationController == null
+                || navigationController.state().mode() != MpcUiState.Mode.MUTE) {
+            return false;
+        }
+        View found = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute 4x4 grid");
+        if (!(found instanceof GridLayout)) return false;
+        GridLayout grid = (GridLayout) found;
+        if (grid.getRowCount() != 4 || grid.getColumnCount() != 4
+                || grid.getChildCount() != 16) {
+            return false;
+        }
+
+        final int trackCount = Math.max(0, nativeSequenceGetTrackCount());
+        for (int cell = 0; cell < 16; cell++) {
+            View child = grid.getChildAt(cell);
+            if (!(child instanceof Button) || !child.isShown()) return false;
+            final boolean expectedEnabled = !trackMode
+                    ? "DRUM".equalsIgnoreCase(
+                            nativeSequenceGetTrackType(
+                                    Math.max(0, nativeSequenceGetSelectedTrack())))
+                    : muteTrackBank * 16 + cell < trackCount;
+            if (child.isEnabled() != expectedEnabled) return false;
+            final CharSequence description = child.getContentDescription();
+            if (description == null) return false;
+            if (!trackMode) {
+                final String expected = "MPC Mute pad "
+                        + String.format(Locale.ROOT, "%02d", cell + 1);
+                if (!expected.contentEquals(description)) return false;
+            } else if (expectedEnabled) {
+                final String expected = "MPC Mute track "
+                        + String.format(Locale.ROOT, "%02d", muteTrackBank * 16 + cell + 1);
+                if (!expected.contentEquals(description)) return false;
+            } else if (!description.toString().startsWith("MPC Mute track slot ")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean muteTargetButtonShowsStateForAudit(View view, boolean muted) {
+        return view instanceof Button
+                && ((Button) view).getText().toString().contains(
+                        muted ? "MUTE ON" : "MUTE OFF")
+                && view.isShown()
+                && view.isEnabled();
+    }
+
+    private void awaitMuteUiEvidenceCapture(
+            String marker, String releaseFileName, Runnable continuation) {
+        if (!uiAuditSmokeMode) {
+            continuation.run();
+            return;
+        }
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), releaseFileName);
+        releaseSignal.delete();
+        Log.i(TAG, marker);
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                continuation.run();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Mute workspace evidence capture timed out"
+                        + " | marker=" + marker);
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void verifyMuteWorkspaceAndRestoreForAudit(Runnable continuation) {
+        if (destroyed || !startupComplete || navigationController == null
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Mute workspace audit requires Track View");
+            return;
+        }
+        final MpcUiState stateBefore = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackIndex = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final boolean trackMutedBefore = nativeSequenceIsTrackMuted(trackIndex);
+        final boolean padMutedBefore = nativeSequenceIsPadMuted(0);
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String noteSnapshotBefore = captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+
+        View openMute = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Function Bar Open Mute workspace");
+        if (openMute == null || !openMute.isShown() || !openMute.isEnabled()
+                || !openMute.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Function Bar did not open Mute workspace"
+                    + " | button=" + describeAuditView(openMute));
+            return;
+        }
+        if (!muteGridHasExpectedTargetsForAudit(false)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Mute Pad workspace is not a real 4x4/16-target grid");
+            return;
+        }
+        View padButton = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute pad 01");
+        if (!(padButton instanceof Button) || !padButton.isEnabled()
+                || !muteTargetButtonShowsStateForAudit(padButton, padMutedBefore)
+                || !padButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad 01 mute action is not available"
+                    + " | button=" + describeAuditView(padButton));
+            return;
+        }
+        final boolean padMutedAfter = nativeSequenceIsPadMuted(0);
+        View changedPadButton = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute pad 01");
+        if (padMutedAfter == padMutedBefore
+                || !muteTargetButtonShowsStateForAudit(changedPadButton, padMutedAfter)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mute tap did not change native/project state"
+                    + " | before=" + padMutedBefore + " after=" + padMutedAfter
+                    + " | button=" + describeAuditView(changedPadButton));
+            return;
+        }
+        awaitMuteUiEvidenceCapture(
+                "UI_MUTE_PAD_CAPTURE_READY: padIndex=1 mutedBefore=" + padMutedBefore
+                        + " mutedAfterToggle=" + padMutedAfter,
+                "mpc-mute-pad-capture-release",
+                () -> continueMuteAuditAfterPadCapture(
+                        continuation, stateBefore, sequenceBefore, trackIndex, padBefore,
+                        trackMutedBefore, padMutedBefore, padMutedAfter, noteSnapshotBefore));
+    }
+
+    private void continueMuteAuditAfterPadCapture(
+            Runnable continuation,
+            MpcUiState stateBefore,
+            int sequenceBefore,
+            int trackIndex,
+            int padBefore,
+            boolean trackMutedBefore,
+            boolean padMutedBefore,
+            boolean padMutedAfter,
+            String noteSnapshotBefore) {
+        if (destroyed) return;
+        View padButton = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute pad 01");
+        if (navigationController.state().mode() != MpcUiState.Mode.MUTE
+                || nativeSequenceIsPadMuted(0) != padMutedAfter
+                || !muteTargetButtonShowsStateForAudit(padButton, padMutedAfter)
+                || !padButton.performClick()
+                || nativeSequenceIsPadMuted(0) != padMutedBefore) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mute state was not preserved/restored");
+            return;
+        }
+        muteTrackBank = Math.max(0, trackIndex / 16);
+        View trackMode = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute switch to track targets");
+        if (trackMode == null || !trackMode.performClick()
+                || !muteGridHasExpectedTargetsForAudit(true)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Mute did not expose a 4x4/16-slot grid"
+                    + " | switch=" + describeAuditView(trackMode));
+            return;
+        }
+        final String trackDescription = "MPC Mute track "
+                + String.format(Locale.ROOT, "%02d", trackIndex + 1);
+        View trackButton = findViewWithContentDescription(
+                getWindow().getDecorView(), trackDescription);
+        if (!(trackButton instanceof Button)
+                || !trackButton.isEnabled()
+                || !muteTargetButtonShowsStateForAudit(trackButton, trackMutedBefore)
+                || !trackButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: selected Track mute target is not actionable"
+                    + " | button=" + describeAuditView(trackButton));
+            return;
+        }
+        final boolean trackMutedAfter = nativeSequenceIsTrackMuted(trackIndex);
+        View changedTrackButton = findViewWithContentDescription(
+                getWindow().getDecorView(), trackDescription);
+        if (trackMutedAfter == trackMutedBefore
+                || !muteTargetButtonShowsStateForAudit(changedTrackButton, trackMutedAfter)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Mute tap did not change native/project state"
+                    + " | before=" + trackMutedBefore + " after=" + trackMutedAfter
+                    + " | button=" + describeAuditView(changedTrackButton));
+            return;
+        }
+        awaitMuteUiEvidenceCapture(
+                "UI_MUTE_TRACK_CAPTURE_READY: trackIndex=" + (trackIndex + 1)
+                        + " mutedBefore=" + trackMutedBefore
+                        + " mutedAfterToggle=" + trackMutedAfter,
+                "mpc-mute-track-capture-release",
+                () -> completeMuteWorkspaceRoundTrip(
+                        continuation, stateBefore, sequenceBefore, trackIndex, padBefore,
+                        trackMutedBefore, trackMutedAfter, padMutedBefore, noteSnapshotBefore,
+                        trackDescription));
+    }
+
+    private void completeMuteWorkspaceRoundTrip(
+            Runnable continuation,
+            MpcUiState stateBefore,
+            int sequenceBefore,
+            int trackIndex,
+            int padBefore,
+            boolean trackMutedBefore,
+            boolean trackMutedAfter,
+            boolean padMutedBefore,
+            String noteSnapshotBefore,
+            String trackDescription) {
+        if (destroyed) return;
+        View trackButton = findViewWithContentDescription(
+                getWindow().getDecorView(), trackDescription);
+        if (navigationController.state().mode() != MpcUiState.Mode.MUTE
+                || nativeSequenceIsTrackMuted(trackIndex) != trackMutedAfter
+                || !muteTargetButtonShowsStateForAudit(trackButton, trackMutedAfter)
+                || !trackButton.performClick()
+                || nativeSequenceIsTrackMuted(trackIndex) != trackMutedBefore
+                || nativeSequenceIsPadMuted(0) != padMutedBefore
+                || !muteGridHasExpectedTargetsForAudit(true)
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || nativeSequenceGetIndex() != sequenceBefore
+                || selectedPadIndexForUi() != padBefore) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Mute workspace did not restore both native mute states");
+            return;
+        }
+        View back = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute Back to previous workspace");
+        if (back == null || !back.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Mute workspace Back action is unavailable");
+            return;
+        }
+        final boolean notesUnchanged = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(
+                        Math.max(1, nativeSequenceGetQuantizeGrid())));
+        if (navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || nativeSequenceGetIndex() != sequenceBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
+                || navigationController.state().selectedSequence() != stateBefore.selectedSequence()
+                || nativeSequenceIsTrackMuted(trackIndex) != trackMutedBefore
+                || nativeSequenceIsPadMuted(0) != padMutedBefore
+                || !notesUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Mute Back lost musical selection or restored data"
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | selectedPad=" + selectedPadIndexForUi()
+                    + " | notesUnchanged=" + notesUnchanged);
+            return;
+        }
+        Log.i(TAG, "UI_MUTE_GRID_ROUNDTRIP_COMPLETE: padGrid=4x4/16 trackGrid=4x4/16"
+                + " padMuteRestored=" + padMutedBefore
+                + " trackMuteRestored=" + trackMutedBefore
+                + " selectionPreserved=true notesUnchanged=true backToTrackView=true");
+        continuation.run();
     }
 
     private void showMixPage() {
@@ -10735,11 +11514,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 title,
                 v -> {
                     if (!entry.available) {
-                        navigationController.navigate(MpcUiState.Mode.RESERVED);
-                        navigationController.setActionAvailable(false);
-                        setBottomStatus(
-                                entry.label + " • RESERVED / UNAVAILABLE");
-                        updateMpcShellState();
+                        showUnavailableModePage(
+                                entry.mode,
+                                entry.label,
+                                "This factory destination is not implemented yet. The workspace remains unavailable rather than showing another mode's content.");
                         return;
                     }
                     navigateToMode(entry.mode);
@@ -12577,6 +13355,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (resultCode != RESULT_OK || data == null) {
+            if (resultCode == RESULT_CANCELED) {
+                // Cancellation is a no-result transition, never a sample load.
+                // Capture the destination and read the sampler identity before clearing it.
+                final int cancelledTargetPad = browserPickerTargetPad >= 0
+                        ? browserPickerTargetPad : Math.max(0, Math.min(15, selectedPad));
+                final int cancelledTargetLayer = browserPickerTargetLayer >= 0
+                        ? browserPickerTargetLayer : Math.max(0, Math.min(7, selectedLayer));
+                final String currentSampleName = startupComplete
+                        ? nativeAudioGetPadSampleName(cancelledTargetPad, cancelledTargetLayer)
+                        : "unavailable";
+                Log.i(TAG, "BROWSER_WAV_PICKER_CANCELLED"
+                        + " resultCode=" + resultCode
+                        + " targetPad=" + cancelledTargetPad
+                        + " targetLayer=" + cancelledTargetLayer
+                        + " sampleName=" + (currentSampleName == null ? "" : currentSampleName));
+            } else {
+                Log.i(TAG, "BROWSER_WAV_PICKER_NO_RESULT"
+                        + " resultCode=" + resultCode
+                        + " dataPresent=" + (data != null));
+            }
             browserPickerTargetPad = -1;
             browserPickerTargetLayer = -1;
             return;
@@ -12636,10 +13434,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (loaded != null
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
+                // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
                 final String assignmentStatus = String.format(
                         Locale.ROOT,
-                        "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                        sampleName, targetPad + 1, targetLayer + 1, restarted);
+                        "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                        sampleName, targetPad + 1, targetLayer + 1);
                 setBottomStatus(assignmentStatus);
                 // Keep the Browser's own result/status surface in sync with
                 // the state change made through Android Document Provider.
@@ -12647,7 +13446,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     browserView.setProviderStatus(assignmentStatus);
                 }
             } else {
-                final String loadFailure = loaded + " | " + restarted;
+                final String loadFailure = "Local WAV load failed • " + loaded;
                 setBottomStatus(loadFailure);
                 if (browserView != null) {
                     browserView.setProviderStatus(loadFailure);
@@ -12659,8 +13458,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String restarted = nativeAudioStart();
             setAudioStateFromResult(restarted);
             final String pickerFailure = "Sample load failed: "
-                    + e.getClass().getSimpleName() + ": " + e.getMessage()
-                    + " | " + restarted;
+                    + e.getClass().getSimpleName() + ": " + e.getMessage();
             setBottomStatus(pickerFailure);
             if (browserView != null) {
                 browserView.setProviderStatus(pickerFailure);
@@ -13516,6 +14314,314 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        verifyMainMuteRouteForAudit(
+                this::continueUiAuditAfterMainMuteRoute);
+    }
+
+    private void verifyMainMuteRouteForAudit(Runnable continuation) {
+        if (destroyed || !startupComplete || navigationController == null
+                || !"MAIN".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE route audit has no active Main workspace");
+            return;
+        }
+
+        final MpcUiState stateBefore = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String noteSnapshotBefore =
+                captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+
+        final View muteButton = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Function Bar Open Mute workspace");
+        if (muteButton == null || !muteButton.isShown()
+                || !muteButton.isEnabled() || !muteButton.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar MUTE did not open its workspace"
+                    + " | button=" + describeAuditView(muteButton));
+            return;
+        }
+
+        final View muteWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute workspace");
+        final View mainWorkspaceLeftBehind = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track and Arrangement workspace");
+        if (!"MUTE".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MUTE
+                || muteWorkspace == null || !muteWorkspace.isShown()
+                || mainWorkspaceLeftBehind != null
+                || !muteGridHasExpectedTargetsForAudit(false)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE did not replace Main with the real 4x4/16-target workspace"
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(muteWorkspace)
+                    + " | staleMainWorkspace=" + describeAuditView(mainWorkspaceLeftBehind)
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi());
+            return;
+        }
+
+        final View back = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Mute Back to previous workspace");
+        if (back == null || !back.isShown() || !back.isEnabled()
+                || !back.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE Back is unavailable"
+                    + " | button=" + describeAuditView(back));
+            return;
+        }
+
+        final boolean notesUnchanged = noteSnapshotBefore.equals(
+                captureTrackViewGridNoteSnapshotForAudit(
+                        Math.max(1, nativeSequenceGetQuantizeGrid())));
+        final View restoredMainSection = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Mode Sequence section");
+        final View restoredMainWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "Main Track and Arrangement workspace");
+        if (navigationController.state().mode() != MpcUiState.Mode.MAIN
+                || !"MAIN".equals(currentPage)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedSequence() != stateBefore.selectedSequence()
+                || navigationController.state().selectedTrack() != stateBefore.selectedTrack()
+                || restoredMainSection == null || !restoredMainSection.isShown()
+                || restoredMainWorkspace == null || !restoredMainWorkspace.isShown()
+                || !notesUnchanged) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main MUTE Back lost Main or musical context"
+                    + " | currentPage=" + currentPage
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | notesUnchanged=" + notesUnchanged
+                    + " | workspace=" + describeAuditView(restoredMainWorkspace));
+            return;
+        }
+
+        Log.i(TAG, "UI_MAIN_MUTE_ROUTE_COMPLETE: grid=4x4/16 "
+                + "workspaceReplaced=true backRestoredMain=true "
+                + "selectionPreserved=true notesUnchanged=true");
+        verifyTrackSoloToggleAndRestoreForAudit(continuation);
+    }
+
+    private void verifyTrackSoloToggleAndRestoreForAudit(Runnable continuation) {
+        if (destroyed || !startupComplete || navigationController == null
+                || !"MAIN".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo audit has no active Main workspace");
+            return;
+        }
+
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+        final int gridTicks = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String noteSnapshotBefore =
+                captureTrackViewGridNoteSnapshotForAudit(gridTicks);
+        if (!nativeSequenceCanSoloTrack(trackBefore)) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo audit fixture has no playable Drum Track"
+                    + " | track=" + trackBefore
+                    + " | type=" + nativeSequenceGetTrackType(trackBefore));
+            return;
+        }
+
+        final boolean soloBefore = nativeSequenceIsTrackSoloed(trackBefore);
+        final String beforeDescription = "MPC Function Bar Track Solo "
+                + (soloBefore ? "ON" : "OFF");
+        final View beforeButton = findViewWithContentDescription(
+                getWindow().getDecorView(), beforeDescription);
+        if (beforeButton == null || !beforeButton.isShown()
+                || !beforeButton.isEnabled() || beforeButton.isSelected() != soloBefore) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar Track Solo is not actionable"
+                    + " | expected=" + beforeDescription
+                    + " | button=" + describeAuditView(beforeButton));
+            return;
+        }
+
+        captureTrackSoloStateForAudit(
+                trackBefore, sequenceBefore, padBefore, gridTicks, soloBefore,
+                noteSnapshotBefore, "before", () -> {
+                    final View currentBeforeButton = findViewWithContentDescription(
+                            getWindow().getDecorView(), beforeDescription);
+                    if (nativeSequenceIsTrackSoloed(trackBefore) != soloBefore
+                            || currentBeforeButton == null || !currentBeforeButton.isEnabled()
+                            || currentBeforeButton.isSelected() != soloBefore
+                            || !currentBeforeButton.performClick()) {
+                        Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo could not toggle from its captured baseline"
+                                + " | before=" + soloBefore
+                                + " | button=" + describeAuditView(currentBeforeButton));
+                        return;
+                    }
+
+                    final boolean soloAfterToggle = nativeSequenceIsTrackSoloed(trackBefore);
+                    final String toggledDescription = "MPC Function Bar Track Solo "
+                            + (soloAfterToggle ? "ON" : "OFF");
+                    final View toggledButton = findViewWithContentDescription(
+                            getWindow().getDecorView(), toggledDescription);
+                    final boolean notesUnchangedAfterToggle = noteSnapshotBefore.equals(
+                            captureTrackViewGridNoteSnapshotForAudit(
+                                    Math.max(1, nativeSequenceGetQuantizeGrid())));
+                    if (soloAfterToggle == soloBefore
+                            || toggledButton == null || !toggledButton.isShown()
+                            || !toggledButton.isEnabled()
+                            || toggledButton.isSelected() != soloAfterToggle
+                            || nativeSequenceGetIndex() != sequenceBefore
+                            || nativeSequenceGetSelectedTrack() != trackBefore
+                            || selectedPadIndexForUi() != padBefore
+                            || !notesUnchangedAfterToggle) {
+                        Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo did not change real state or preserve context"
+                                + " | before=" + soloBefore
+                                + " | after=" + soloAfterToggle
+                                + " | button=" + describeAuditView(toggledButton)
+                                + " | sequence=" + nativeSequenceGetIndex()
+                                + " | track=" + nativeSequenceGetSelectedTrack()
+                                + " | pad=" + selectedPadIndexForUi()
+                                + " | notesUnchanged=" + notesUnchangedAfterToggle);
+                        return;
+                    }
+
+                    captureTrackSoloStateForAudit(
+                            trackBefore, sequenceBefore, padBefore, gridTicks, soloAfterToggle,
+                            noteSnapshotBefore, "toggled", () -> {
+                                final View capturedToggleButton = findViewWithContentDescription(
+                                        getWindow().getDecorView(), toggledDescription);
+                                if (nativeSequenceIsTrackSoloed(trackBefore) != soloAfterToggle
+                                        || capturedToggleButton == null
+                                        || !capturedToggleButton.isEnabled()
+                                        || !capturedToggleButton.performClick()) {
+                                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state could not be restored"
+                                            + " | button=" + describeAuditView(capturedToggleButton));
+                                    return;
+                                }
+
+                                final boolean soloRestored = nativeSequenceIsTrackSoloed(trackBefore);
+                                final View restoredButton = findViewWithContentDescription(
+                                        getWindow().getDecorView(), beforeDescription);
+                                final boolean notesUnchangedAfterRestore = noteSnapshotBefore.equals(
+                                        captureTrackViewGridNoteSnapshotForAudit(
+                                                Math.max(1, nativeSequenceGetQuantizeGrid())));
+                                if (soloRestored != soloBefore
+                                        || restoredButton == null || !restoredButton.isShown()
+                                        || restoredButton.isSelected() != soloBefore
+                                        || nativeSequenceGetIndex() != sequenceBefore
+                                        || nativeSequenceGetSelectedTrack() != trackBefore
+                                        || selectedPadIndexForUi() != padBefore
+                                        || !notesUnchangedAfterRestore
+                                        || !"MAIN".equals(currentPage)
+                                        || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+                                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo restore changed native state or musical context"
+                                            + " | before=" + soloBefore
+                                            + " | restored=" + soloRestored
+                                            + " | button=" + describeAuditView(restoredButton)
+                                            + " | sequence=" + nativeSequenceGetIndex()
+                                            + " | track=" + nativeSequenceGetSelectedTrack()
+                                            + " | pad=" + selectedPadIndexForUi()
+                                            + " | notesUnchanged=" + notesUnchangedAfterRestore);
+                                    return;
+                                }
+
+                                Log.i(TAG, "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE: toggled=true restored=true "
+                                        + "nativeState=true selectionPreserved=true notesUnchanged=true "
+                                        + "offOnEvidencePairs=true");
+                                continuation.run();
+                            });
+                });
+    }
+
+    private void captureTrackSoloStateForAudit(
+            int trackIndex,
+            int sequenceIndex,
+            int padIndex,
+            int gridTicks,
+            boolean expectedSolo,
+            String noteSnapshotBefore,
+            String phase,
+            Runnable continuation) {
+        final String stateDescription = "MPC Function Bar Track Solo "
+                + (expectedSolo ? "ON" : "OFF");
+        final View stateButton = findViewWithContentDescription(
+                getWindow().getDecorView(), stateDescription);
+        if (stateButton == null || !stateButton.isShown()
+                || !stateButton.isEnabled()
+                || stateButton.isSelected() != expectedSolo
+                || nativeSequenceIsTrackSoloed(trackIndex) != expectedSolo
+                || nativeSequenceGetIndex() != sequenceIndex
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || selectedPadIndexForUi() != padIndex
+                || !noteSnapshotBefore.equals(captureTrackViewGridNoteSnapshotForAudit(gridTicks))
+                || !"MAIN".equals(currentPage)
+                || navigationController == null
+                || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state is not stable for evidence capture"
+                    + " | phase=" + phase
+                    + " | expectedSolo=" + expectedSolo
+                    + " | button=" + describeAuditView(stateButton));
+            return;
+        }
+
+        if (!uiAuditSmokeMode) {
+            continuation.run();
+            return;
+        }
+
+        final String releaseName = "mpc-track-solo-" + phase + "-capture-release";
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), releaseName);
+        if (releaseSignal.exists() && !releaseSignal.delete()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not clear stale Track Solo evidence release signal"
+                    + " | phase=" + phase);
+            return;
+        }
+        Log.i(TAG, "UI_TRACK_SOLO_CAPTURE_READY: phase=" + phase
+                + " solo=" + expectedSolo + " trackIndex=" + (trackIndex + 1));
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                if (!releaseSignal.delete()) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: could not remove Track Solo evidence release signal"
+                            + " | phase=" + phase);
+                    return;
+                }
+                final View capturedButton = findViewWithContentDescription(
+                        getWindow().getDecorView(), stateDescription);
+                if (nativeSequenceIsTrackSoloed(trackIndex) != expectedSolo
+                        || capturedButton == null || !capturedButton.isShown()
+                        || !capturedButton.isEnabled()
+                        || capturedButton.isSelected() != expectedSolo
+                        || nativeSequenceGetIndex() != sequenceIndex
+                        || nativeSequenceGetSelectedTrack() != trackIndex
+                        || selectedPadIndexForUi() != padIndex
+                        || !noteSnapshotBefore.equals(
+                                captureTrackViewGridNoteSnapshotForAudit(gridTicks))
+                        || !"MAIN".equals(currentPage)
+                        || navigationController == null
+                        || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state changed during evidence capture"
+                            + " | phase=" + phase
+                            + " | expectedSolo=" + expectedSolo
+                            + " | actualSolo=" + nativeSequenceIsTrackSoloed(trackIndex)
+                            + " | button=" + describeAuditView(capturedButton));
+                    return;
+                }
+                continuation.run();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo screenshot/accessibility capture timed out"
+                        + " | phase=" + phase);
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
+    }
+
+    private void continueUiAuditAfterMainMuteRoute() {
+        if (destroyed) return;
         View browserShortcut = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC shortcut BROWSER");
         if (browserShortcut == null || !browserShortcut.performClick()) {
@@ -13954,9 +15060,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         final View optionsDialogRoot = optionsDialog.getWindow().getDecorView();
-        if (findViewWithContentDescription(
-                optionsDialogRoot, "MPC Browser Option Show file size") == null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options dialog hierarchy");
+        View fileSizeOption = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show file size");
+        if (!(fileSizeOption instanceof android.widget.CheckBox)
+                || !fileSizeOption.isEnabled() || browserView == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option is not actionable");
+            return;
+        }
+        final android.content.SharedPreferences browserOptionPreferences =
+                getSharedPreferences(BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE);
+        final boolean initialShowFileSize = browserView.isShowFileSize();
+        if (((android.widget.CheckBox) fileSizeOption).isChecked() != initialShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, true) != initialShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not restore saved state");
+            return;
+        }
+        fileSizeOption.performClick();
+        final boolean toggledShowFileSize = !initialShowFileSize;
+        if (((android.widget.CheckBox) fileSizeOption).isChecked() != toggledShowFileSize
+                || browserView.isShowFileSize() != toggledShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, initialShowFileSize) != toggledShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option did not change presentation and preference");
+            return;
+        }
+
+        View modifiedDateOption = findViewWithContentDescription(
+                optionsDialogRoot, "MPC Browser Option Show modified date");
+        final boolean initialShowModifiedDate = browserView.isShowModifiedDate();
+        if (!(modifiedDateOption instanceof android.widget.CheckBox)
+                || !modifiedDateOption.isEnabled()
+                || ((android.widget.CheckBox) modifiedDateOption).isChecked() != initialShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, false) != initialShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option did not restore saved state");
+            return;
+        }
+        modifiedDateOption.performClick();
+        final boolean toggledShowModifiedDate = !initialShowModifiedDate;
+        if (((android.widget.CheckBox) modifiedDateOption).isChecked() != toggledShowModifiedDate
+                || browserView.isShowModifiedDate() != toggledShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, initialShowModifiedDate)
+                        != toggledShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option did not change presentation and preference");
             return;
         }
 
@@ -13966,28 +15114,108 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close");
             return;
         }
+        showBrowserOptionsDialog();
+        final AlertDialog reopenedOptionsDialog = browserOptionsDialog;
+        if (reopenedOptionsDialog == null || !reopenedOptionsDialog.isShowing()
+                || reopenedOptionsDialog.getWindow() == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options did not reopen");
+            return;
+        }
+        final View reopenedOptionsRoot = reopenedOptionsDialog.getWindow().getDecorView();
+        final View reopenedModifiedDateOption = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Option Show modified date");
+        if (!(reopenedModifiedDateOption instanceof android.widget.CheckBox)
+                || !reopenedModifiedDateOption.isEnabled()
+                || ((android.widget.CheckBox) reopenedModifiedDateOption).isChecked()
+                        != toggledShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date preference was not restored on dialog reopen");
+            return;
+        }
+        final View reopenedFileSizeOption = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Option Show file size");
+        if (!(reopenedFileSizeOption instanceof android.widget.CheckBox)
+                || !reopenedFileSizeOption.isEnabled()
+                || ((android.widget.CheckBox) reopenedFileSizeOption).isChecked()
+                        != toggledShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size preference was not restored on dialog reopen");
+            return;
+        }
+        reopenedFileSizeOption.performClick();
+        if (((android.widget.CheckBox) reopenedFileSizeOption).isChecked() != initialShowFileSize
+                || browserView.isShowFileSize() != initialShowFileSize
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_FILE_SIZE, !initialShowFileSize) != initialShowFileSize) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser file-size option could not restore baseline");
+            return;
+        }
+        reopenedModifiedDateOption.performClick();
+        if (((android.widget.CheckBox) reopenedModifiedDateOption).isChecked() != initialShowModifiedDate
+                || browserView.isShowModifiedDate() != initialShowModifiedDate
+                || browserOptionPreferences.getBoolean(
+                        PREF_BROWSER_SHOW_MODIFIED_DATE, !initialShowModifiedDate)
+                        != initialShowModifiedDate) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser modified-date option could not restore baseline");
+            return;
+        }
+        final View reopenedClose = findViewWithContentDescription(
+                reopenedOptionsRoot, "MPC Browser Options close");
+        if (reopenedClose == null || !reopenedClose.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser Options close after restore");
+            return;
+        }
+        Log.i(TAG, "BROWSER_OPTIONS_SHOW_FILE_SIZE_VERIFIED before=" + initialShowFileSize
+                + " toggled=" + toggledShowFileSize + " restored=" + browserView.isShowFileSize());
+        Log.i(TAG, "BROWSER_OPTIONS_SHOW_MODIFIED_DATE_VERIFIED before=" + initialShowModifiedDate
+                + " toggled=" + toggledShowModifiedDate
+                + " restored=" + browserView.isShowModifiedDate());
 
-        final View browserStorageAction = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC Browser open Android storage picker");
-        if (browserStorageAction == null || !browserStorageAction.isShown()
-                || !browserStorageAction.isClickable()
-                || browserStorageAction.getWidth() <= dp(200)
-                || browserStorageAction.getHeight() <= dp(36)) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
-                    + " | action=" + describeAuditView(browserStorageAction));
+        // Metadata toggles refresh the Browser result list. That refresh
+        // legitimately replaces the storage-action row; do not inspect or tap its
+        // bounds until the new row has passed a real Android pre-draw/layout pass.
+        continueUiAuditAfterBrowserOptionsLayout();
+    }
+
+    private void continueUiAuditAfterBrowserOptionsLayout() {
+        final View decor = getWindow().getDecorView();
+        final android.view.ViewTreeObserver browserLayoutObserver = decor.getViewTreeObserver();
+        if (!browserLayoutObserver.isAlive()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Browser layout has no live pre-draw observer");
             return;
         }
-        if (uiAuditSmokeMode) {
-            uiAuditAwaitingBrowserStoragePickerResult = true;
-            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
-            if (!browserStorageAction.performClick()) {
-                uiAuditAwaitingBrowserStoragePickerResult = false;
-                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
-            }
-            return;
-        }
-        continueUiAuditAfterBrowserStoragePicker(false);
+        browserLayoutObserver.addOnPreDrawListener(
+                new android.view.ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        if (browserLayoutObserver.isAlive()) {
+                            browserLayoutObserver.removeOnPreDrawListener(this);
+                        }
+                        final View browserStorageAction = findViewWithContentDescription(
+                                decor, "MPC Browser open Android storage picker");
+                        if (browserStorageAction == null || !browserStorageAction.isShown()
+                                || !browserStorageAction.isClickable()
+                                || browserStorageAction.getWidth() <= dp(200)
+                                || browserStorageAction.getHeight() <= dp(36)) {
+                            Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action not hittable"
+                                    + " | action=" + describeAuditView(browserStorageAction));
+                            return true;
+                        }
+                        Log.i(TAG, "BROWSER_STORAGE_ACTION_MEASURED width="
+                                + browserStorageAction.getWidth()
+                                + " height=" + browserStorageAction.getHeight());
+                        if (uiAuditSmokeMode) {
+                            uiAuditAwaitingBrowserStoragePickerResult = true;
+                            Log.i(TAG, "UI_STORAGE_PICKER_LAUNCH_REQUESTED");
+                            if (!browserStorageAction.performClick()) {
+                                uiAuditAwaitingBrowserStoragePickerResult = false;
+                                Log.e(TAG, "UI_INTERACTION_FAILED: Browser storage picker action click");
+                            }
+                            return true;
+                        }
+                        continueUiAuditAfterBrowserStoragePicker(false);
+                        return true;
+                    }
+                });
+        decor.requestLayout();
     }
 
     private void continueUiAuditAfterBrowserStoragePicker(boolean pickerReturned) {
@@ -14669,6 +15897,153 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void continueUiAuditAfterTrackViewMute() {
         if (destroyed) return;
+        verifyMuteWorkspaceAndRestoreForAudit(
+                this::verifyReservedShortcutScreensAndRestoreForAudit);
+    }
+
+    private void verifyReservedShortcutScreensAndRestoreForAudit() {
+        if (destroyed) return;
+        if (!startupComplete || navigationController == null
+                || !"TRACK_VIEW".equals(currentPage)
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut audit has no Track View baseline");
+            return;
+        }
+
+        final MpcUiState baseline = navigationController.state();
+        final int sequenceBefore = nativeSequenceGetIndex();
+        final int trackBefore = nativeSequenceGetSelectedTrack();
+        final int padBefore = selectedPadIndexForUi();
+
+        View padMixerShortcut = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut PAD MIXER");
+        if (padMixerShortcut == null || !padMixerShortcut.isShown()
+                || !padMixerShortcut.isEnabled() || !padMixerShortcut.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer Shortcut is not actionable"
+                    + " | shortcut=" + describeAuditView(padMixerShortcut));
+            return;
+        }
+        final View padMixerWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Pad Mixer");
+        final View padMixerLevel = findViewWithContentDescription(
+                getWindow().getDecorView(), "PAD 1 vertical fader");
+        final View staleTrackViewBeforeBack = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1");
+        if (navigationController.state().mode() != MpcUiState.Mode.PAD_MIXER
+                || !"PAD_MIXER".equals(currentPage)
+                || padMixerWorkspace == null || !padMixerWorkspace.isShown()
+                || padMixerLevel == null || !padMixerLevel.isShown()
+                || !padMixerLevel.isEnabled()
+                || staleTrackViewBeforeBack != null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer Shortcut did not open its real control workspace"
+                    + " | mode=" + navigationController.state().mode()
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(padMixerWorkspace)
+                    + " | pad1Fader=" + describeAuditView(padMixerLevel)
+                    + " | staleTrackView=" + describeAuditView(staleTrackViewBeforeBack));
+            return;
+        }
+        final View padMixerBack = findViewWithExactText(
+                getWindow().getDecorView(), "BACK");
+        if (padMixerBack == null || !padMixerBack.isShown()
+                || !padMixerBack.isEnabled() || !padMixerBack.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedSequence() != baseline.selectedSequence()
+                || navigationController.state().selectedTrack() != baseline.selectedTrack()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Track View track 1") == null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Pad Mixer BACK did not restore Track View context"
+                    + " | currentPage=" + currentPage
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | back=" + describeAuditView(padMixerBack));
+            return;
+        }
+
+        final MpcUiState.Mode[] modes = {
+                MpcUiState.Mode.CHANNEL_MIXER,
+                MpcUiState.Mode.SOUNDS,
+                MpcUiState.Mode.XYFX
+        };
+        final String[] shortcutDescriptions = {
+                "MPC shortcut CHANNEL MIXER",
+                "MPC shortcut SOUNDS",
+                "MPC shortcut XY"
+        };
+
+        for (int i = 0; i < modes.length; i++) {
+            final MpcUiState.Mode expectedMode = modes[i];
+            final String title = expectedMode.label();
+            View shortcut = findViewWithContentDescription(
+                    getWindow().getDecorView(), shortcutDescriptions[i]);
+            if (shortcut == null || !shortcut.isShown() || !shortcut.isEnabled()
+                    || !shortcut.performClick()) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut is not actionable"
+                        + " | mode=" + expectedMode
+                        + " | shortcut=" + describeAuditView(shortcut));
+                return;
+            }
+
+            final View unavailableWorkspace = findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC Unavailable workspace " + title);
+            final View unavailableStatus = findViewWithContentDescription(
+                    getWindow().getDecorView(),
+                    "MPC unavailable status " + title);
+            final View back = findViewWithContentDescription(
+                    getWindow().getDecorView(), "MPC unavailable mode Back");
+            final View staleTrackView = findViewWithContentDescription(
+                    getWindow().getDecorView(), "Track View track 1");
+            if (navigationController.state().mode() != expectedMode
+                    || !("UNAVAILABLE_" + expectedMode.name()).equals(currentPage)
+                    || unavailableWorkspace == null || !unavailableWorkspace.isShown()
+                    || unavailableStatus == null || !unavailableStatus.isShown()
+                    || back == null || !back.isShown() || !back.isEnabled()
+                    || staleTrackView != null) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut did not replace stale workspace"
+                        + " | expectedMode=" + expectedMode
+                        + " | currentPage=" + currentPage
+                        + " | workspace=" + describeAuditView(unavailableWorkspace)
+                        + " | status=" + describeAuditView(unavailableStatus)
+                        + " | back=" + describeAuditView(back)
+                        + " | staleTrackView=" + describeAuditView(staleTrackView));
+                return;
+            }
+
+            if (!back.performClick()
+                    || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                    || !"TRACK_VIEW".equals(currentPage)
+                    || nativeSequenceGetIndex() != sequenceBefore
+                    || nativeSequenceGetSelectedTrack() != trackBefore
+                    || selectedPadIndexForUi() != padBefore
+                    || navigationController.state().selectedSequence() != baseline.selectedSequence()
+                    || navigationController.state().selectedTrack() != baseline.selectedTrack()
+                    || findViewWithContentDescription(
+                            getWindow().getDecorView(), "Track View track 1") == null) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut Back lost previous workspace context"
+                        + " | fromMode=" + expectedMode
+                        + " | currentPage=" + currentPage
+                        + " | sequence=" + nativeSequenceGetIndex()
+                        + " | track=" + nativeSequenceGetSelectedTrack()
+                        + " | pad=" + selectedPadIndexForUi());
+                return;
+            }
+        }
+
+        Log.i(TAG, "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE: "
+                + "padMixerScreen=true padMixerBack=true "
+                + "channelMixerScreen=true soundsScreen=true xyScreen=true "
+                + "priorWorkspaceNotVisible=true selectionPreserved=true");
+        continueUiAuditAfterTrackViewMuteToArrange();
+    }
+
+    private void continueUiAuditAfterTrackViewMuteToArrange() {
+        if (destroyed) return;
         if (!clickMpcToolbarMenuForAudit()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: MENU before ARRANGE");
             return;
@@ -14932,10 +16307,89 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void runUiAuditAfterArrangement() {
         if (destroyed) return;
         if (uiAuditSmokeMode) {
-            awaitArrangeLoopTouchAcceptance();
+            // Keep long real-touch zoom/pan evidence in its own bounded
+            // handshake before beginning the independent loop-brace handshake.
+            awaitArrangeZoomTouchAcceptance();
             return;
         }
         runUiAuditAfterArrangementChecks();
+    }
+
+    private void awaitArrangeZoomTouchAcceptance() {
+        if (destroyed) return;
+        if (arrangementView == null || arrangementView.getWidth() <= 0
+                || arrangementView.getHeight() <= 0) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Arrangement zoom capture has no measured view");
+            return;
+        }
+
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String originalTrackData = String.valueOf(nativeSequenceGetTrackArrangementData(trackIndex));
+        final java.io.File releaseSignal = new java.io.File(
+                getCacheDir(), "mpc-arrange-zoom-touch-capture-release");
+        final java.io.File resultFile = new java.io.File(
+                getCacheDir(), "mpc-arrange-zoom-touch-result");
+        releaseSignal.delete();
+        resultFile.delete();
+        Log.i(TAG, "UI_ARRANGE_ZOOM_TOUCH_CAPTURE_READY: track=" + trackIndex
+                + " visibleBars=" + arrangementView.visibleBarsForAudit()
+                + " viewportStart=" + arrangementView.viewportStartBarForAudit()
+                + " data=" + originalTrackData);
+
+        // Zoom/pan evidence requires fresh external hierarchies and screenshots;
+        // keep its budget bounded and separate from the loop-touch handshake.
+        final long deadline = System.currentTimeMillis() + 75_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                releaseSignal.delete();
+                final String reported = readArrangeLoopTouchResult(resultFile);
+                final String[] values = reported.isEmpty() ? new String[0] : reported.split("\\s+");
+                int expectedVisibleBars = -1;
+                int expectedViewportStart = -1;
+                if (values.length == 2) {
+                    try {
+                        expectedVisibleBars = Integer.parseInt(values[0]);
+                        expectedViewportStart = Integer.parseInt(values[1]);
+                    } catch (NumberFormatException ignored) {
+                        expectedVisibleBars = -1;
+                        expectedViewportStart = -1;
+                    }
+                }
+                final String restoredTrackData = String.valueOf(nativeSequenceGetTrackArrangementData(trackIndex));
+                final boolean restored = expectedVisibleBars > 0
+                        && expectedViewportStart > 0
+                        && arrangementView != null
+                        && "ARRANGE".equals(currentPage)
+                        && arrangementView.visibleBarsForAudit() == expectedVisibleBars
+                        && arrangementView.viewportStartBarForAudit() == expectedViewportStart
+                        && originalTrackData.equals(restoredTrackData);
+                if (!restored) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: external Arrangement zoom restore rejected"
+                            + " | report=" + reported
+                            + " | expectedViewport=" + expectedVisibleBars + "/" + expectedViewportStart
+                            + " | actualViewport=" + (arrangementView == null ? "missing"
+                                    : arrangementView.visibleBarsForAudit() + "/"
+                                            + arrangementView.viewportStartBarForAudit())
+                            + " | nativeDataUnchanged=" + originalTrackData.equals(restoredTrackData)
+                            + " | page=" + currentPage);
+                    return;
+                }
+                resultFile.delete();
+                Log.i(TAG, "UI_ARRANGE_ZOOM_TOUCH_ACCEPTANCE_COMPLETE: visibleBars="
+                        + expectedVisibleBars + " viewportStart=" + expectedViewportStart
+                        + " nativeTrackDataUnchanged=true");
+                awaitArrangeLoopTouchAcceptance();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: external Arrangement zoom touch handshake timed out");
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
     }
 
     private void awaitArrangeLoopTouchAcceptance() {
@@ -15126,7 +16580,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " lastVisibleStep=" + lastVisibleStep
                 + " totalSteps=" + totalSteps);
 
-        final View gridView = findViewWithContentDescription(
+        final View gridView = findViewWithContentDescriptionPrefix(
                 getWindow().getDecorView(), "MPC Grid View drum event grid");
         if (gridView == null) {
             Log.e(TAG, "UI_INTERACTION_FAILED: sequence grid editor");
@@ -16114,6 +17568,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int i = 0; i < group.getChildCount(); i++) {
                 View match = findViewWithContentDescription(
                         group.getChildAt(i), expectedDescription);
+                if (match != null) return match;
+            }
+        }
+        return null;
+    }
+
+    private View findViewWithContentDescriptionPrefix(
+            View view, String expectedPrefix) {
+        if (view == null || expectedPrefix == null) return null;
+
+        final CharSequence actual = view.getContentDescription();
+        if (actual != null && actual.toString().startsWith(expectedPrefix)) {
+            return view;
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View match = findViewWithContentDescriptionPrefix(
+                        group.getChildAt(i), expectedPrefix);
                 if (match != null) return match;
             }
         }
@@ -17469,12 +18943,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     public void onConnection(String description) {
         runOnUiThread(() -> {
-            boolean connected = description != null
-                    && description.startsWith("Connected:");
+            // The connection message is diagnostic text; open ports are the
+            // authoritative readiness signal for the persistent shell.
+            boolean connected = midiBridge != null && midiBridge.isConnected();
             midiState.setText(connected ? "MIDI ON" : "MIDI —");
             midiState.setTextColor(connected ? ACTIVE : MUTED);
             updateTopMidiStatus(midiInTopStatus, connected);
             updateTopMidiStatus(midiOutTopStatus, connected);
+            refreshMpcCompactContext();
             if (connected) {
                 Arrays.fill(hardwareButtonLedStateCache, -1);
                 lastTouchStripLedSignature = "";

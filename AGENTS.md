@@ -26,7 +26,20 @@ Before any implementation work, every coding agent must also read **[`docs/SESSI
 16. **Use the action catalog.** Before changing a user-visible MPC interaction, locate its ID in `docs/MPC3-USER-ACTION-CATALOG.md`; verify the official source, backend route and exact-SHA acceptance evidence. Add/update the row when behavior or status changes. Do not implement from a label or stale matrix alone.
 17. **Use the controller traceability map for hardware work.** Before changing MPC Studio MkII handling, read `docs/MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md` and `docs/MPC-STUDIO-MKII-SEMANTIC-MAP.md`. Extract only physical-controller, protocol and hardware gesture knowledge; never import MPC Desktop or DAW navigation/workflows into our app. Keep source confidence, automated-test evidence and physical-device acceptance separate.
 
-## Project source hierarchy
+#
+
+## Mandatory visual-reference gate — applies to every agent and every UI change
+
+Before implementing, changing, reviewing, or accepting any user-visible MPC-style screen, workspace, dialog, shortcut, control, navigation route, or layout, the agent **must inspect the actual local visual references** in both:
+
+- `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` — select and name the relevant `VIS-001`–`VIS-082` context(s);
+- `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md` and the linked local image/page capture(s) — open and visually inspect the image itself, not only its URL, filename, caption, or extracted text.
+
+Use the official MPC Standalone OS 3.9 manual/reference as the target authority. Older v2.x or third-party images are supplementary only and must not override v3.9 geometry, labels, navigation, or behavior. Compare the current implementation and the proposed result against the same reference. In the PR/checkpoint, record the VIS ID(s), local asset path/source, and before/after screenshot or hierarchy evidence. If no exact screen screenshot exists, name the closest available manual page/reference and explicitly record the evidence gap; never call a text-only manual page a screenshot of the UI. If the asset cannot be opened, stop and report the blocker rather than silently skipping the reference check. These research assets stay in documentation and must not be packaged into the APK.
+
+This gate is mandatory even for agents working from pre-existing plans, cached context, old screenshots, or a branch whose previous CI passed. Passing automated tests does not waive visual-reference review.
+
+# Project source hierarchy
 18. **Use the MPC One ↔ Studio cross-device matrix.** When mapping an MPC One action to the MPC Studio MkII, consult `docs/MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md` as well as the semantic map and protocol traceability document. It defines non-identical gestures, alternate routes, reserved actions and physical-validation gaps. Never silently equate different secondary functions or invent controls the Studio does not have.
 
 

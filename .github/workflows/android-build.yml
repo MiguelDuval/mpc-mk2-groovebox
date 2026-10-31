@@ -624,6 +624,14 @@ jobs:
             /tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml
             /tmp/mpc-groovebox-track-view-muted.png
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
+            /tmp/mpc-groovebox-track-solo-on.png
+            /tmp/mpc-groovebox-track-solo-on-uiautomator.xml
+            /tmp/mpc-groovebox-track-solo-off.png
+            /tmp/mpc-groovebox-track-solo-off-uiautomator.xml
+            /tmp/mpc-groovebox-mute-pad.png
+            /tmp/mpc-groovebox-mute-pad-uiautomator.xml
+            /tmp/mpc-groovebox-mute-track.png
+            /tmp/mpc-groovebox-mute-track-uiautomator.xml
             /tmp/mpc-groovebox-arrange-grid-focus.png
             /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
             /tmp/mpc-groovebox-arrange-back.png
@@ -650,6 +658,26 @@ jobs:
             /tmp/mpc-groovebox-arrange-placement-duplicate-uiautomator.xml
             /tmp/mpc-groovebox-arrange-loop-changed.png
             /tmp/mpc-groovebox-arrange-loop-changed-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-pan-start.png
+            /tmp/mpc-groovebox-arrange-pan-start-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-pan-changed.png
+            /tmp/mpc-groovebox-arrange-pan-changed-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-pan-restored.png
+            /tmp/mpc-groovebox-arrange-pan-restored-uiautomator.xml
+
+            /tmp/mpc-groovebox-arrange-zoom-baseline.png
+            /tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-zoom-in.png
+            /tmp/mpc-groovebox-arrange-zoom-in-uiautomator.xml
+            /tmp/mpc-groovebox-arrange-zoom-out-restored.png
+            /tmp/mpc-groovebox-arrange-zoom-out-restored-uiautomator.xml
+
+            /tmp/mpc-groovebox-grid-zoom-baseline.png
+            /tmp/mpc-groovebox-grid-zoom-baseline-uiautomator.xml
+            /tmp/mpc-groovebox-grid-zoom-horizontal.png
+            /tmp/mpc-groovebox-grid-zoom-horizontal-uiautomator.xml
+            /tmp/mpc-groovebox-grid-zoom-vertical.png
+            /tmp/mpc-groovebox-grid-zoom-vertical-uiautomator.xml
             /tmp/mpc-groovebox-grid-edit-after-draw.png
             /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
             /tmp/mpc-groovebox-browser.png
@@ -713,6 +741,7 @@ jobs:
             /tmp/mpc-groovebox-project*-uiautomator.xml
             /tmp/mpc-groovebox-project*-view-hierarchy.xml
             /tmp/mpc-groovebox-*-cancel*.png
+            /tmp/mpc-groovebox-browser-picker-cancel*-uiautomator.xml
             /tmp/mpc-groovebox-ui.xml
             /tmp/mpc-groovebox-browser-hierarchy.txt
             /tmp/mpc-groovebox-storage-picker-activity.txt
