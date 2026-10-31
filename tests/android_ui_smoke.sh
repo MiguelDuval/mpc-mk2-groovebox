@@ -719,13 +719,19 @@ for required in \
   'verifyTrackSoloToggleAndRestoreForAudit(' \
   'captureTrackSoloStateForAudit(' \
   'UI_TRACK_SOLO_CAPTURE_READY:' \
-  'mpc-track-solo-before-capture-release' \
-  'mpc-track-solo-toggled-capture-release' \
+  'final String releaseName = "mpc-track-solo-" + phase + "-capture-release";' \
   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:' \
   'MPC Function Bar Track Solo ON' \
   'MPC Function Bar Track Solo OFF'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Track Solo state/evidence contract missing: $required"; exit 1
+  fi
+done
+for required in \
+  'mpc-track-solo-before-capture-release' \
+  'mpc-track-solo-toggled-capture-release'; do
+  if ! grep -Fq -- "$required" "$0"; then
+    echo "ERROR: Track Solo smoke capture phase missing: $required"; exit 1
   fi
 done
 if ! grep -Fq -- 'tests/MpcSequencerPlaybackTests.cpp' ".github/workflows/android-build.yml"; then
