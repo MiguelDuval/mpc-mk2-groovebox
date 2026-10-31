@@ -8,11 +8,11 @@
 The original catalogue still contains 402 source-image records: 370 downloaded and 32 failed. The 32 failures consist of:
 - 30 obsolete Akai Professional 2020 MPC-101 images under the old /wp-content/uploads/sites/2/2020/05/ path;
 - one old Akai 2020 banner (Screen-Shot-03-05-20-at-04.11-PM.png), which is not a missing UI screen;
-- one generic Freshdesk image retrieval failure, which is not a useful MPC screen reference.
+- one expired signed Akai support article-logo URL from the Tuning Basics article. A retry using a refreshed signed URL recovered the 5,974-byte red AKAI Professional wordmark (SHA-256: `74cf29e68930a11ba25b2f7faf67f9ea066f056aa2f5f93df6b0c7ae4b7cc3d2`); it is a brand logo, not a UI screenshot, so it was excluded from the visual gallery. The original stale signed URL remains recorded as failed in the source manifest.
 
 The 30 obsolete MPC-101 image URLs return HTTP 404. Retrying the originals did not recover them. Wayback CDX and the Availability API did not return usable archived copies for those old URLs. The 9 MPC-Tutor source-page scans remain HTTP 403, and archive lookup did not return retrievable page captures. One older v2.11.7 manual PDF source also remains unavailable (403).
 
-The MPC-Tutor page failures remain in manifest.json with their source URLs and errors. Do not count page text, unrelated thumbnails, or replacement images as recovered page screenshots.
+The MPC-Tutor page failures remain in manifest.json with their source URLs and errors. Do not count page text, unrelated thumbnails, or replacement images as recovered page screenshots. Exact-name web searches for representative MPC-101 filenames also found no indexed external mirrors.
 
 ## New supplemental official Akai screenshots
 

@@ -276,3 +276,57 @@ The shell preflight now checks the actual dynamic description expressions, captu
 3. Commit an up-to-date session-state/PR description handoff and let the final PR-head Android Build run on the newer exact SHA `584319747ad57268b66ff9731d5a8318b0dce1df` plus that handoff commit. The #3605 code run predates the two supplemental docs images and is not proof for the final PR head.
 4. Keep PR #133 Draft; do not merge or retarget automatically. Keep the physical hardware gate NOT RUN and do not modify `main`.
 
+
+
+---
+
+## Superseding exact-head acceptance update — 2026-10-31
+
+This section supersedes the older pending/unverified Solo wording earlier in this file.
+
+### Confirmed Track Solo OFF/ON evidence
+
+**Android Build #3605** — run `41218623141`, exact SHA `44bbe2d4591dd550b6065c32e3f688dc6c79f88a`: **SUCCESS**. Native/JUnit, APK, smoke preflight, emulator smoke and visual-evidence upload all passed.
+
+**Android Build #3606** — run `41218984748`, exact SHA `584319747ad57268b66ff9731d5a8318b0dce1df`: **SUCCESS**. This exact head includes both supplemental Akai Program reference screenshots. Full Android Build and emulator UI smoke passed; artifact upload completed.
+
+Downloaded and inspected exact-run evidence from #3606, archive ID `13050917539`:
+
+| File | Bytes | SHA-256 | Verified UI state |
+|---|---:|---|---|
+| `mpc-groovebox-track-solo-off.png` | 230150 | `f46a1b4f93967ee47506eb7416fcbf32e6f537e6c6986a5bf3f1a30157a6d69d` | OFF visually dark |
+| `mpc-groovebox-track-solo-off-uiautomator.xml` | 56487 | `5bf1cf4631a03efe0948be14d8d37364ddd7c193658690cb71fc2fa324bdeeed` | exactly one Solo node; `selected=false`, clickable/enabled; bounds `[1570,975][1794,1080]` |
+| `mpc-groovebox-track-solo-on.png` | 230361 | `ecc8d511198b8aadf96705002ad54c975dee72803b1edc815d8832b352ed39a8` | ON visually green |
+| `mpc-groovebox-track-solo-on-uiautomator.xml` | 56493 | `fa7c9c0afc5f40c9c438f481f64391ecb2f970eb09ae0e7dd6f10ec197cc634b` | exactly one Solo node; `selected=true`, clickable/enabled; same bounds |
+
+Both XML hierarchies contain exactly one `MPC One Main Toolbar` node. The screenshots were opened and visually checked; the ON/OFF pair is not inferred from native tests alone. Build #3606's log independently reports:
+- `Track Solo OFF verified: clickable selected=false bounds=(1570, 975, 1794, 1080)`
+- `Track Solo ON verified: clickable selected=true bounds=(1570, 975, 1794, 1080)`
+
+This closes the dedicated Track Solo visual-evidence gap for the successful #3606 code+reference checkpoint.
+
+### Subsequent flaky Track Edit UI smoke and correction
+
+**Android Build #3607** — run `41219642887`, exact SHA `ae7f52a954eac1dc37d46b41385a5ec273ecec82`: FAILURE in emulator smoke, after Solo OFF/ON had passed and earlier Track Edit GAIN/PAN, region and velocity field-isolation tests had passed.
+
+The failing assertion was the final re-entry into upper Track Edit parameters after velocity MIN/MAX acceptance. The last UiAutomator XML showed TUNE/PAN rows in the current ScrollView while the GAIN row remained just above the viewport. The old helper switched back toward the lower controls as soon as the velocity row ceased to be visible, causing alternating forward/reverse gestures. This was a smoke-helper scroll-state defect; it did not indicate a failed native GAIN edit or failed Solo behavior.
+
+Fix commit: `dea4297a54caf60daae874adcab9b5c09480f1bc`, `tests/android_ui_smoke.sh`. The helper now locks the first evidence-derived direction (reverse when returning from velocity; forward when approaching from waveform/region) until the complete GAIN/TUNE/PAN visibility contract succeeds. It does not weaken the target visibility or field-isolation assertions.
+
+### Current verification after the scroll-helper fix
+
+**Android Build #3608** — run `41226252891`, exact SHA `dea4297a54caf60daae874adcab9b5c09480f1bc`:
+- setup, all native/JUnit checks and APK assembly: SUCCESS;
+- APK artifact ID `13051293765`, 10,433,069 bytes;
+- smoke syntax/evidence preflight: SUCCESS;
+- emulator smoke: in_progress;
+- evidence upload: pending.
+
+Live step summary at the time of this document update: 49 Assemble debug APK: success; 50 Upload debug APK: success; 51 Validate Android UI smoke syntax and evidence contract: success; 52 Run Android emulator smoke test: in_progress; 53 Upload MPC UI visual evidence: pending. Do not call #3608 green until its emulator stage and exact-run evidence upload complete.
+
+### Latest repository / PR / external gates
+
+- PR #133 remains OPEN / DRAFT, base `feature/mpc-one-ui-fidelity`, current branch `checkpoint/mpc-ui-reference-and-product-20261030`, current code SHA `dea4297a54caf60daae874adcab9b5c09480f1bc` at the start of this state update.
+- Main remains unchanged. No merge, rebase, force-push or branch retarget was performed.
+- Reference archive remains at 82 named VIS contexts / 1,296 local image embeds; original manifest accounting is 402 source-image records, 370 downloaded / 32 original URL records marked failed, plus two separate downloaded official Akai Program supplements.
+- Physical MPC Studio MkII acceptance remains **NOT RUN**; no emulator build or native test is a substitute for the physical USB-MIDI / LED / LCD checks in `MPC-STUDIO-MKII-CURRENT-HEAD-ACCEPTANCE.md`.
