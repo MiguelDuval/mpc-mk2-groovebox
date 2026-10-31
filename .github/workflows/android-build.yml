@@ -457,6 +457,19 @@ jobs:
             -o build/native-tests/mpc_sequence_recorder_tests
           build/native-tests/mpc_sequence_recorder_tests
 
+      - name: Test sequencer playback session lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc \
+            tests/MpcSequencePlaybackSessionTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            src/MPC/Sequencer/MpcSequencerCursor.cpp \
+            src/MPC/Sequencer/MpcPatternScheduler.cpp \
+            -o build/native-tests/mpc_sequence_playback_session_tests
+          build/native-tests/mpc_sequence_playback_session_tests
+
       - name: Test semantic drum-pad MIDI lookup
         shell: bash
         run: |

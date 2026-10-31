@@ -172,6 +172,9 @@ int main() {
     assert(!state.selectSequence(99));
 
 
+    // Whole-Project replacement gets a new in-memory generation even when
+    // the serialized Project/Sequence IDs are reused by the next opened file.
+    const auto generationBeforeReplacement = state.projectGeneration();
     // Project replacement must reset active indices and resolve the Track-owned Program.
     mpc::domain::Project opened;
     opened.id = "opened-project";
@@ -212,11 +215,16 @@ int main() {
     opened.sequences.push_back(openedSequence);
     assert(mpc::MpcProjectState::canReplaceProject(opened));
     assert(state.replaceProject(opened));
+    assert(state.projectGeneration() != generationBeforeReplacement);
     assert(state.project().id == "opened-project");
     assert(state.activeSequenceIndex() == 0);
     assert(state.activeTrackIndex() == 0);
     assert(state.activeDrumProgram().id == "opened-program");
     assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
+    const auto generationBeforeSameIdReplacement = state.projectGeneration();
+    auto sameIdProject = state.project();
+    assert(state.replaceProject(std::move(sameIdProject)));
+    assert(state.projectGeneration() != generationBeforeSameIdReplacement);
     const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
     assert(newSampleId.value == 42);
 

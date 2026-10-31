@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <utility>
 
 namespace mpc::sequencer {
@@ -34,6 +35,10 @@ public:
         startVelocities_.fill({});
         startNotes_.fill({});
         replaceCleared_.fill(false);
+        recordingProjectId_ = state.project().id;
+        recordingProjectGeneration_ = state.projectGeneration();
+        recordingSequenceId_ = state.activeSequence().id;
+        recordingSequenceIndex_ = state.activeSequenceIndex();
         active_ = true;
 
         for (std::size_t index = 0;
@@ -62,6 +67,22 @@ public:
             MpcProjectState& state,
             SequenceRecordQueue& queue) {
         if (!active_) {
+            return 0;
+        }
+
+        if (!recordingContextMatches(state)) {
+            held_.fill({});
+            startTicks_.fill({});
+            startVelocities_.fill({});
+            startNotes_.fill({});
+            replaceCleared_.fill(false);
+            SequenceRecordEvent discarded{};
+            for (std::size_t count = 0;
+                    count < kSequenceRecordQueueCapacity
+                    && queue.tryDequeue(discarded);
+                    ++count) {
+            }
+            active_ = false;
             return 0;
         }
 
@@ -190,6 +211,9 @@ public:
         }
 
         std::size_t recorded = drain(state, queue);
+        if (!active_) {
+            return recorded;
+        }
         std::array<bool, domain::kMaxSequenceTracks> touchedTracks{};
 
         for (std::size_t trackIndex = 0;
@@ -280,6 +304,13 @@ public:
     }
 
 private:
+    bool recordingContextMatches(const MpcProjectState& state) const noexcept {
+        return state.project().id == recordingProjectId_
+                && state.projectGeneration() == recordingProjectGeneration_
+                && state.activeSequenceIndex() == recordingSequenceIndex_
+                && state.activeSequence().id == recordingSequenceId_;
+    }
+
     static void quantizeAndSwing(
             domain::MidiNoteEvent& note,
             std::int32_t patternLength,
@@ -336,6 +367,10 @@ private:
         }
     }
 
+    std::string recordingProjectId_;
+    std::uint64_t recordingProjectGeneration_ = 0;
+    std::string recordingSequenceId_;
+    std::size_t recordingSequenceIndex_ = 0;
     std::array<std::array<bool, domain::kMaxProgramPads>,
                domain::kMaxSequenceTracks> held_{};
     std::array<std::array<std::int64_t, domain::kMaxProgramPads>,

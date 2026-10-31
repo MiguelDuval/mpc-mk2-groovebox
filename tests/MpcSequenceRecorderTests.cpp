@@ -311,6 +311,71 @@ void testMalformedEventFieldsCannotCreateInvalidNotes() {
     assert(note.velocity == 100);
 }
 
+
+void testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Replace);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    assert(state.addSequence("Sequence 02"));
+    auto& secondSequence = state.activeSequence();
+    secondSequence.tracks[0].recordArmed = true;
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(queue.tryEnqueue({240, 0, 0, 110, 1}));
+
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(secondSequence.tracks[0].patterns.front().notes.empty());
+}
+
+void testProjectReplacementAbortsEvenWhenPersistentIdsMatch() {
+    mpc::MpcProjectState state;
+    state.activeSequence().tracks[0].recordArmed = true;
+
+    const auto projectId = state.project().id;
+    const auto sequenceId = state.activeSequence().id;
+    const auto generation = state.projectGeneration();
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({100, 0, 0, 100, 1}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(recorder.active());
+
+    auto sameIdProject = state.project();
+    assert(state.replaceProject(std::move(sameIdProject)));
+    assert(state.project().id == projectId);
+    assert(state.activeSequence().id == sequenceId);
+    assert(state.projectGeneration() != generation);
+    assert(state.activeSequence().tracks[0].recordArmed);
+
+    assert(queue.tryEnqueue({220, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(!recorder.active());
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+
+    mpc::sequencer::SequenceRecordEvent stale{};
+    assert(!queue.tryDequeue(stale));
+    assert(recorder.finish(state, queue, 480) == 0);
+    assert(state.activeSequence().tracks[0].patterns.front().notes.empty());
+}
+
 } // namespace
 
 int main() {
@@ -324,5 +389,7 @@ int main() {
     testDrainSortsOnlyThePatternThatReceivedRecordedNotes();
     testArmedTrackUsesItsOwnDrumProgramMapping();
     testMalformedEventFieldsCannotCreateInvalidNotes();
+    testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
+    testProjectReplacementAbortsEvenWhenPersistentIdsMatch();
     return 0;
 }

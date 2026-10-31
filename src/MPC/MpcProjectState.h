@@ -29,6 +29,11 @@ public:
         return project_;
     }
 
+    // Distinguishes a newly opened Project even when serialized IDs are reused.
+    std::uint64_t projectGeneration() const noexcept {
+        return projectGeneration_;
+    }
+
     domain::DrumProgram& activeDrumProgram() noexcept {
         return project_.drumPrograms[activeDrumProgramIndex_];
     }
@@ -105,6 +110,7 @@ public:
 
 private:
     domain::Project project_{};
+    std::uint64_t projectGeneration_ = 1;
     std::size_t activeDrumProgramIndex_ = 0;
     std::size_t activeSequenceIndex_ = 0;
     std::size_t activeTrackIndex_ = 0;
