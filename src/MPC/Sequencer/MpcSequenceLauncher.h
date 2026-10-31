@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 
 namespace mpc::sequencer {
 
@@ -22,6 +23,12 @@ inline SequenceLaunchAction handleSequencePadPress(
         std::size_t padIndex,
         std::int64_t timestampNanos) noexcept {
     if (padIndex >= 16) {
+        return SequenceLaunchAction::Unavailable;
+    }
+
+    // Do not let malformed extreme bank indices wrap back to an in-range
+    // sequence slot before the normal bounds check.
+    if (bank > (std::numeric_limits<std::size_t>::max() - padIndex) / 16u) {
         return SequenceLaunchAction::Unavailable;
     }
 
