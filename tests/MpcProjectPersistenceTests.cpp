@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -147,6 +148,37 @@ int main() {
     assert(serialized.find("MPCMK2_PROJECT 2") == 0);
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
+
+    // Every persisted MIDI field must satisfy the decoder's own constraints.
+    // Reject the in-memory Project before producing bytes that cannot be loaded.
+    const auto assertInvalidNoteRejected = [](auto mutateNote) {
+        auto invalid = makeProject();
+        auto& note = invalid.sequences[0].tracks[0].patterns[0].notes.front();
+        mutateNote(note);
+        std::string validationError;
+        const auto bytes = persistence::serializeProject(invalid, &validationError);
+        assert(bytes.empty());
+        assert(validationError == "MIDI note field is out of range");
+    };
+    assertInvalidNoteRejected([](auto& note) { note.note = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.velocity = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.probability = 128; });
+    assertInvalidNoteRejected([](auto& note) { note.ratchet = 0; });
+    assertInvalidNoteRejected([](auto& note) { note.ratchet = 9; });
+
+    // Velocity zero remains representable for compatibility with existing
+    // silent note data because readPattern() accepts zero as an in-range value.
+    auto silentNoteProject = makeProject();
+    silentNoteProject.sequences[0].tracks[0].patterns[0].notes[0].velocity = 0;
+    std::string silentNoteError;
+    const auto silentNoteBytes =
+            persistence::serializeProject(silentNoteProject, &silentNoteError);
+    assert(!silentNoteBytes.empty());
+    assert(silentNoteError.empty());
+    domain::Project silentNoteRoundTrip;
+    assert(persistence::deserializeProject(
+            silentNoteBytes, silentNoteRoundTrip, &silentNoteError));
+    assert(silentNoteRoundTrip.sequences[0].tracks[0].patterns[0].notes[0].velocity == 0);
 
     const auto filePath = (std::filesystem::temp_directory_path()
             / "mpc-project-persistence-test.mpcproj").string();
