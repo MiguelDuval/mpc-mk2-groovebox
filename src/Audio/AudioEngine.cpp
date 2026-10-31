@@ -1192,11 +1192,19 @@ std::string AudioEngine::chopPadSampleToPads(
     // grid and project-domain references must not change under the callback.
     const bool wasRunning = stream_ != nullptr;
     if (wasRunning) {
-        const auto stopResult = stopOutputStream();
-        if (stream_ != nullptr
-                || stopResult.rfind("Audio stop failed:", 0) == 0
+        const std::string stopResult = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "Chop failed: audio output did not stop | " + stopResult;
+        }
+        if (stopResult.rfind("Audio stop failed:", 0) == 0
                 || stopResult.rfind("Audio close failed:", 0) == 0) {
-            return "Chop failed: " + stopResult;
+            const std::string restartResult = start();
+            if (stream_ == nullptr) {
+                return "Chop failed: " + stopResult
+                        + " | restart failed | " + restartResult;
+            }
+            return "Chop failed: " + stopResult
+                    + " | audio restarted; no sample assignments changed";
         }
     }
 
