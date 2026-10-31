@@ -9854,5 +9854,39 @@
       "error": "failed after retries: 404 Client Error: Not Found for url: https://www.akaipro.com/wp/wp-content/uploads/sites/2/2020/05/MPC-101_0107-1024x796.jpg",
       "parent_url": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-%E3%82%B7%E3%83%AA%E3%83%BC%E3%82%BA%EF%BD%9C%E3%83%97%E3%83%AD%E3%82%B0%E3%83%A9%E3%83%A0%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6"
     }
+  ],
+  "supplemental_images": [
+    {
+      "kind": "official-support-supplemental",
+      "status": "downloaded",
+      "alt": "MIDI Program track and MIDI port/bank fields — Akai support reference",
+      "description": "Supplemental Akai support screenshot of MIDI Program track assignment/port/bank controls. Reference crop only; not a complete MPC OS 3.9 manual page.",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881931/original/bqZGmdu8u4pgkbgocrWUvj5ORztigcvR3Q.png?1732017125",
+      "source_page": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs",
+      "source_page_mirror": "https://inmusicsupport.freshdesk.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/akai-support-midi-program-track.png",
+      "bytes": 36212,
+      "sha256": "a4fb47c0670e527ca8dd601ca3602ea7d5eb76aca41cc851d42c0bdf20d6d08e",
+      "width": 762,
+      "height": 286,
+      "format": "PNG",
+      "reference_scope": "supplemental Akai support article; not an MPC OS 3.9 manual page capture"
+    },
+    {
+      "kind": "official-support-supplemental",
+      "status": "downloaded",
+      "alt": "CV Program track and CV/Gate port fields — Akai support reference",
+      "description": "Supplemental Akai support screenshot of CV Program track and CV/Gate port assignments. Reference crop only; not a complete MPC OS 3.9 manual page.",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135882043/original/8CqFcu1LB9zW826nl4wgBnCXtXM1kFHc3Q.png?1732017213",
+      "source_page": "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs",
+      "source_page_mirror": "https://inmusicsupport.freshdesk.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs",
+      "local_path": "docs/MPC3-UI-REFERENCE-ASSETS/images/akai-support-cv-program-track.png",
+      "bytes": 32208,
+      "sha256": "da62f86d249d4380a50cf330371c07eff431e98d3d52fc7e2b5e432a1239bb03",
+      "width": 764,
+      "height": 289,
+      "format": "PNG",
+      "reference_scope": "supplemental Akai support article; not an MPC OS 3.9 manual page capture"
+    }
   ]
 }

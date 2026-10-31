@@ -11,6 +11,8 @@ Repository-local visual reference gallery. Every VIS entry is mapped to current 
 
 Materialized inventory: 402 source-image records; 370 downloaded; 32 failed; 248 PDF page captures; 281 embedded-figure crops.
 
+Supplemental inventory: 2 additional official Akai support screenshots (MIDI Program and CV Program, both under VIS-081). These do not replace any of the 32 failed original source-image records.
+
 ## Screen and sub-screen gallery
 
 <a id="vis-001"></a>
@@ -3067,6 +3069,13 @@ Catalog evidence label: Official v3.9 guide and support links
 ### VIS-081 — Track Type selector / Program-specific Main sections
 
 Catalog evidence label: Inline Main and Program references
+
+**Supplementary official Akai support article screenshots (reference crops; not MPC OS 3.9 manual page captures):**
+
+![MIDI Program track and MIDI port/bank fields — Akai support reference](images/akai-support-midi-program-track.png)
+
+![CV Program track and CV/Gate port fields — Akai support reference](images/akai-support-cv-program-track.png)
+
 
 **Current MPC Standalone OS 3.9 manual page capture:** page 117. The image below is a full manual-page capture; it may contain a UI figure, a control-detail crop or text-only reference material.
 
