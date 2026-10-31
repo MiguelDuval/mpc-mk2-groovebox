@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path.cwd()
 STAGE = Path("/tmp/mpc-reference-supplement")
 ASSET_STAGE = STAGE / "images"
+DOC_STAGE = STAGE / "docs" / "MPC3-UI-REFERENCE-ASSETS"
 SUPPORT_PAGE = "https://support.akaipro.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs"
 MIRROR_PAGE = "https://inmusicsupport.freshdesk.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs"
 RECORDS = [
