@@ -1,5 +1,8 @@
 # Implementation Roadmap
 
+> **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.
+
+
 ## CONSOLIDATED CHECKPOINT — 2026-10-30
 
 **Working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  

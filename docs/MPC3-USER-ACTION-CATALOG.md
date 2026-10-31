@@ -216,7 +216,7 @@ Manual anchor: S-01 Tracks p.45 and Track View descriptions; S-02. Current seman
 | TRK-002 | Create a Track | Add a real Track in current Sequence with correct identity/type/state. | Implemented for current model. | Verify count, selection, and valid defaults. |
 | TRK-003 | Toggle REC ARM | Update track-arm state. | Implemented in supported subset. | Re-entry check plus hardware feedback test if claimed. |
 | TRK-004 | Toggle Mute | Update Track mute state. | Implemented in Main/Track View. | Shared-state assertion; real audio mute test if the claim includes audible behavior. |
-| TRK-005 | Toggle Solo | Solo a Track independently of Mute. | RESERVED; no real semantic backend established. | Do not alias to mute. |
+| TRK-005 | Toggle Solo | Solo a Track independently of Mute. | **IMPLEMENTED / VERIFIED**: native sequencer playback policy routes only Soloed playable Drum Tracks in the active Sequence; Mute takes precedence; the Function Bar exposes truthful ON/OFF state and unsupported Track Types remain unavailable. | PR #125 source SHA 06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd, Build #3468 / run 40663060996; combined checkpoint Builds #3608/#3609 verify ON/OFF screenshots and fresh UiAutomator XML. Physical controller validation remains NOT RUN. |
 | TRK-006 | Move Track selection with Track +/- or Data Dial | Select a valid adjacent Track and update shared context. | Implemented for selection subset. | Check first/last Track bounds and active focus. |
 | TRK-007 | Duplicate/Delete Track | Mutate Sequence Track list and reconcile dependent Program/sample state. | Not established by current action evidence; treat as GAP until source and test confirm. | Require native operation, index normalization, Undo/Redo as designed and no stale references. |
 | TRK-008 | Open Track Settings / I/O / routing | Expose only actual Track settings and supported routing values. | PARTIAL / RESERVED for unsupported I/O and broader routing. | Validate every displayed editable field against a real setter/provider. |
@@ -428,3 +428,6 @@ A meaningful action is ready to be called complete only when its applicable part
 - Never claim complete feature parity merely because every reference action has a row. A catalog row can explicitly remain GAP/RESERVED.
 - Do not repeat full firmware extraction. Inspect one specific resource or binary path only when a specific unresolved action needs clarification.
 - Keep product exclusions marked as such without rewriting Akai's documented reference behavior.
+
+
+> **2026-10-31 status correction:** the former TRK-005 RESERVED wording is superseded by the implemented native Solo policy and the exact-head UI ON/OFF evidence recorded in MPC-GROOVEBOX-CONFIGURATION-CATALOG.md and the latest section of SESSION-STATE.md.

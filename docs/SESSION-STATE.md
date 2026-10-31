@@ -330,3 +330,58 @@ Live step summary at the time of this document update: 49 Assemble debug APK: su
 - Main remains unchanged. No merge, rebase, force-push or branch retarget was performed.
 - Reference archive remains at 82 named VIS contexts / 1,296 local image embeds; original manifest accounting is 402 source-image records, 370 downloaded / 32 original URL records marked failed, plus two separate downloaded official Akai Program supplements.
 - Physical MPC Studio MkII acceptance remains **NOT RUN**; no emulator build or native test is a substitute for the physical USB-MIDI / LED / LCD checks in `MPC-STUDIO-MKII-CURRENT-HEAD-ACCEPTANCE.md`.
+
+
+---
+
+## Superseding consolidated configuration handoff — 2026-10-31
+
+This section supersedes the earlier pending/in-progress wording for Android Builds #3608 and #3609 above. For the cross-branch feature matrix, source PRs, acceptance references and explicit exclusions, see [MPC-GROOVEBOX-CONFIGURATION-CATALOG.md](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md).
+
+**Canonical integration branch:** checkpoint/mpc-ui-reference-and-product-20261030  
+**PR:** [#133 — checkpoint: consolidate accepted MPC groovebox work](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/133), OPEN / DRAFT, target feature/mpc-one-ui-fidelity.  
+**Verified candidate immediately before this documentation handoff:** 727f8c3cd931171161e3fb5bc6a99c711cce9949.  
+**Product baseline:** ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d.  
+**Main:** unchanged. No merge, rebase, force-push or retarget was performed.
+
+### Exact combined Android acceptance — both final gates successful
+
+| Build | Exact SHA | Run | Result | Scope |
+|---|---|---:|---|---|
+| #3608 | dea4297a54caf60daae874adcab9b5c09480f1bc | 41226252891 | **SUCCESS** | Includes the Track Edit scroll-helper correction; all 53 substantive Android workflow steps passed, including native/JUnit, APK, smoke preflight, emulator smoke and evidence upload. |
+| #3609 | 727f8c3cd931171161e3fb5bc6a99c711cce9949 | 41226976655 | **SUCCESS** | Exact checkpoint HEAD; all 53 substantive Android workflow steps passed, including native/JUnit, APK assembly/upload, emulator smoke and evidence upload. |
+
+### Exact-run artifact records
+
+| Build | Artifact | ID | Size | GitHub artifact SHA-256 |
+|---|---|---:|---:|---|
+| #3608 | app-debug.apk | 13051293765 | 10,433,069 B | 5e67867de8a00523a1610de99abff32a406f2e497d39752c81174e2a5ab831a5 |
+| #3608 | mpc-ui-visual-evidence | 13053086005 | 18,234,393 B | 078113a3706aab9243e1b93fea5704051e84a274491c4365aecf18dd29b80137 |
+| #3609 | app-debug.apk | 13054637251 | 10,433,069 B | 10e8d34f73a2232b2360587d959927d304b12514a4be741b158abce47d019544 |
+| #3609 | mpc-ui-visual-evidence | 13055390134 | 18,169,816 B | 0a071ecf77e98e1364294cc2d214dd2987e0d7db8ef2f1292ae6007fb68287c1 |
+
+The GitHub artifact digests were checked against the downloaded artifact ZIPs. Each visual-evidence archive contains 227 entries, including 106 PNGs and 116 XML hierarchies. Every PNG decoded successfully and every XML parsed successfully in both archives. Required image/hierarchy sets are present for Mute, Solo ON/OFF, Grid H/V zoom, Arrangement pan/zoom, Browser local result and picker assignment, Sample Chop CH4/CH8/CH16, and Track Edit gain/pan/tuning/velocity checks.
+
+### Inspected exact-run behavior
+
+- **Mute:** separate Pad Mute and Track Mute workspaces. The Pad view shows a 4×4 grid with Pad 01 MUTE ON and the remaining Pads OFF. The Track view exposes actual Track slots and disables empty slots rather than fabricating Tracks. Native values are toggled and restored by the smoke.
+- **Solo:** OFF and ON each have a dedicated PNG and fresh XML. OFF is selected=false; ON is selected=true; both are enabled/clickable and use identical bounds [1570,975][1794,1080]. The ON screenshot visibly highlights Solo. Native playback policy tests cover Solo routing, Mute precedence, multiple Solo Tracks and active-Sequence scope.
+- **Grid / Step:** real H/V viewport changes are evidenced while the selected Pad/Step and native note state remain coherent. Existing exact-source tests cover Draw/Erase and Step parameter edit/remove.
+- **Arrangement:** ruler pan and zoom-in/zoom-out/reset evidence is present. Acceptance checks compare native event data before/after viewport-only changes. Existing source acceptance covers loop-brace restoration, MOVE ± GRID, DUP/COPY/CUT/PASTE, Undo/Redo, empty-timeline paste cursor and Pattern placements.
+- **Browser:** local WAV result and picker assignment captures identify the selected file and target PAD 01 / LAYER 01; cancellation evidence is separate. File-size and modified-date options, local Content categories and picker state-preservation remain part of the integrated source set.
+- **Track Edit / Sample:** the corrected helper reaches GAIN/TUNE/PAN after velocity-range testing without reversing scroll direction. Exact archives contain independent Gain, Pan, Tune, Velocity MIN/MAX and sample-region evidence. Sample Chop CH4/CH8/CH16 has dedicated PNG/XML snapshots.
+- **Project / engine:** the workflow's native and Android checks for project state/versioned save-load, Pattern operations, sequencer runtime, audio trigger queue, recording, MIDI decoder and MPC Studio MkII policy suites all passed.
+
+### Physical hardware boundary
+
+Physical Akai MPC Studio MkII acceptance remains **NOT RUN**. These successful Android/emulator and native test runs do not certify physical USB-MIDI, pad velocity/aftertouch, LEDs/RGB SysEx, LCD transport, Jog Wheel or Touch Strip behavior. The physical protocol remains in MPC-STUDIO-MKII-CURRENT-HEAD-ACCEPTANCE.md.
+
+### Still excluded / not accepted
+
+- PR #126 WAV export: not integrated; its source acceptance failed and its expected export API does not match the current checkpoint API.
+- PR #127 Browser XML assertion repair: held after failed exact-head run.
+- PR #122 Browser empty-search retry: held after failed exact-head run.
+- PR #116 duplicate picker-cancel path: held after failed exact-head run; PR #119 is the accepted cancel-state source.
+- Reserved/unsupported areas remain unavailable unless their real domain/backend is implemented. This catalog does not claim completion of every MPC 3.x feature.
+
+PR #133 remains Draft for product review. Do not merge automatically or change main.
