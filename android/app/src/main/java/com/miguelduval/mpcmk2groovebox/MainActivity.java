@@ -14434,8 +14434,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final View beforeButton = findViewWithContentDescription(
                 getWindow().getDecorView(), beforeDescription);
         if (beforeButton == null || !beforeButton.isShown()
-                || !beforeButton.isEnabled() || beforeButton.isSelected() != soloBefore
-                || !beforeButton.performClick()) {
+                || !beforeButton.isEnabled() || beforeButton.isSelected() != soloBefore) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar Track Solo is not actionable"
                     + " | expected=" + beforeDescription
                     + " | button=" + describeAuditView(beforeButton));
