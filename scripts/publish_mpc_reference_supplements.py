@@ -17,7 +17,7 @@ RECORDS = [
         "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881931/original/bqZGmdu8u4pgkbgocrWUvj5ORztigcvR3Q.png?1732017125",
         "bytes": 36212,
         "sha256": "a4fb47c0670e527ca8dd601ca3602ea7d5eb76aca41cc851d42c0bdf20d6d08e",
-        "width": 764, "height": 289,
+        "width": 762, "height": 286,
     },
     {
         "filename": "akai-support-cv-program-track.png",
@@ -119,7 +119,7 @@ The current Akai support article “Understanding and Loading Programs” yielde
    - Mirror: https://inmusicsupport.freshdesk.com/en/support/solutions/articles/69000804211-akai-pro-mpc-series-understanding-and-loading-programs
    - Original image: https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881931/original/bqZGmdu8u4pgkbgocrWUvj5ORztigcvR3Q.png?1732017125
    - Local file: images/akai-support-midi-program-track.png
-   - Dimensions / bytes: 764 x 289 / 36,212
+   - Dimensions / bytes: 762 x 286 / 36,212
    - SHA-256: a4fb47c0670e527ca8dd601ca3602ea7d5eb76aca41cc851d42c0bdf20d6d08e
 
 2. CV Program track
