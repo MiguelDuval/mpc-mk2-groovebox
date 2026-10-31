@@ -728,6 +728,18 @@ jobs:
             /tmp/mpc-groovebox-track-edit-envelope-attack-changed.png
             /tmp/mpc-groovebox-track-edit-envelope-attack-changed-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-decay-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-decay-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-decay-restored.png
+            /tmp/mpc-groovebox-track-edit-envelope-decay-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-sustain-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-sustain-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-sustain-restored.png
+            /tmp/mpc-groovebox-track-edit-envelope-sustain-restored-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-release-changed.png
+            /tmp/mpc-groovebox-track-edit-envelope-release-changed-uiautomator.xml
+            /tmp/mpc-groovebox-track-edit-envelope-release-restored.png
+            /tmp/mpc-groovebox-track-edit-envelope-release-restored-uiautomator.xml
             /tmp/mpc-groovebox-track-edit-filter-cutoff-changed-uiautomator.xml
             /tmp/mpc-groovebox-sample-browser-return.png
             /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
