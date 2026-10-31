@@ -2800,7 +2800,7 @@ if node.attrib.get("selected") != expected_solo:
     raise SystemExit(
         f"Solo accessibility selection disagrees with native state: "
         f"expected={expected_solo} node={node.attrib!r}")
-bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+bounds = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                       node.attrib.get("bounds", ""))
 if not bounds:
     raise SystemExit(f"invalid Solo control bounds: {node.attrib.get('bounds')!r}")
