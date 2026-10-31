@@ -10691,32 +10691,30 @@ if ! tap_visible_description_early \
     "/tmp/mpc-groovebox-main-ready-uiautomator.xml" "MPC Toolbar Menu"; then
   echo "ERROR: could not activate the real MPC Toolbar Menu from captured Main evidence"; exit 1
 fi
-project_menu_rendered=0
-for ((attempt=1; attempt<=60; attempt++)); do
-  project_logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  if grep -Fq -- "MPC_MENU_RENDER_COMPLETE" <<<"$project_logs" \
-      && grep -Fq -- "MPC_MENU_CLICK_END currentPage=MENU" <<<"$project_logs"; then
-    project_menu_rendered=1
-    break
-  fi
-  sleep 1
-done
-if [ "$project_menu_rendered" -ne 1 ]; then
-  echo "ERROR: real Toolbar Menu tap did not complete its Activity render"
-  adb_bounded 10 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
-    | grep -E 'MPC_MENU_|MPC_SHELL_STATE_|STARTUP_COMPLETE|AUDIO_START_RESULT=' \
-    | tail -n 100 || true
-  exit 1
-fi
-sleep 1
 PROJECT_MENU_XML="/tmp/mpc-groovebox-project-menu-view-hierarchy.xml"
 PROJECT_MENU_PNG="/tmp/mpc-groovebox-project-menu.png"
-project_menu_hierarchy_marker_before="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+
+# Capture all baselines before the real touch. The earlier UI audit may already
+# have emitted Menu markers; only new markers can prove this Project workflow's
+# Toolbar action reached and rendered the MENU route.
+project_menu_render_before="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
+project_menu_click_before="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
+project_menu_hierarchy_before="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+if ! tap_visible_description_early \
+    "/tmp/mpc-groovebox-main-ready-uiautomator.xml" "MPC Toolbar Menu"; then
+  echo "ERROR: could not activate the real MPC Toolbar Menu from captured Main evidence"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_MENU_RENDER_COMPLETE" "$project_menu_render_before" 45; then
+  echo "ERROR: real Toolbar Menu tap did not complete a fresh Activity render"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_MENU_CLICK_END currentPage=MENU" "$project_menu_click_before" 45; then
+  echo "ERROR: real Toolbar Menu click did not complete on the MENU route"; exit 1
+fi
+if ! wait_for_new_project_marker "MPC_MENU_VIEW_HIERARCHY_READY" "$project_menu_hierarchy_before" 45; then
+  echo "ERROR: rendered MPC Menu did not publish its fresh in-app View hierarchy"; exit 1
+fi
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
-fi
-if ! wait_for_new_project_marker "MPC_MENU_VIEW_HIERARCHY_READY" "$project_menu_hierarchy_marker_before" 10; then
-  echo "ERROR: rendered MPC Menu did not publish its fresh in-app View hierarchy"; exit 1
 fi
 # UiAutomator's accessibility service timed out repeatedly at this exact
 # checkpoint (steps 52 on Builds #3048–#3051), even though Menu had rendered.
