@@ -721,8 +721,12 @@ for required in \
   'UI_TRACK_SOLO_CAPTURE_READY:' \
   'final String releaseName = "mpc-track-solo-" + phase + "-capture-release";' \
   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:' \
-  'MPC Function Bar Track Solo ON' \
-  'MPC Function Bar Track Solo OFF'; do
+  'final String beforeDescription = "MPC Function Bar Track Solo "' \
+  'final String toggledDescription = "MPC Function Bar Track Solo "' \
+  'final String stateDescription = "MPC Function Bar Track Solo "' \
+  '(soloBefore ? "ON" : "OFF")' \
+  '(soloAfterToggle ? "ON" : "OFF")' \
+  '(expectedSolo ? "ON" : "OFF")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Track Solo state/evidence contract missing: $required"; exit 1
   fi
