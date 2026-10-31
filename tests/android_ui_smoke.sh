@@ -8430,6 +8430,7 @@ PY
 scroll_track_edit_to_layer_gain() {
   local hierarchy_path="$1" remote_path="$2" max_swipes="${3:-8}" target="${4:-gain}"
   local coordinates swipe_x swipe_from swipe_to gesture_direction
+  local scroll_direction="auto" next_scroll_direction
   if [[ "$target" != "gain" && "$target" != "region" ]]; then
     echo "ERROR: unsupported Track Edit scroll target: $target"
     return 2
@@ -8497,12 +8498,12 @@ PY_TRACK_EDIT_TARGET
       return 0
     fi
 
-    if ! coordinates="$(python3 - "$hierarchy_path" "$target" <<'PY_TRACK_EDIT_SCROLL'
+    if ! coordinates="$(python3 - "$hierarchy_path" "$target" "$scroll_direction" <<'PY_TRACK_EDIT_SCROLL'
 import re
 import sys
 import xml.etree.ElementTree as ET
 
-path, target = sys.argv[1], sys.argv[2]
+path, target, previous_direction = sys.argv[1], sys.argv[2], sys.argv[3]
 nodes = list(ET.parse(path).getroot().iter("node"))
 
 def rect(node):
@@ -8551,12 +8552,26 @@ region = visible(lambda value: value == "Track Edit region", 28)
 if target == "region":
     scroll_forward = waveform or (not region and not (gain or tuning or pan))
 else:
-    if velocity and not (gain and tuning and pan):
+    # Lock the first evidence-derived direction for this recovery pass. When
+    # returning from the velocity row, the first reverse swipe can expose TUNE
+    # and PAN while GAIN remains just above the viewport. Reversing direction
+    # merely because velocity is no longer visible oscillates forever between
+    # those two states. Keep reversing until the full GAIN/TUNE/PAN contract is
+    # satisfied; when approaching from waveform/region, keep moving forward.
+    if previous_direction == "forward":
+        scroll_forward = True
+    elif previous_direction == "reverse":
         scroll_forward = False
-    elif waveform or region or not (gain and tuning and pan):
+    elif velocity:
+        scroll_forward = False
+    elif gain:
+        scroll_forward = True
+    elif tuning or pan:
+        scroll_forward = False
+    elif waveform or region:
         scroll_forward = True
     else:
-        raise SystemExit("Track Edit parameter controls are visible but failed the shared target contract")
+        scroll_forward = True
 
 height = bottom - top
 margin = max(45, min(90, height // 5))
@@ -8583,14 +8598,18 @@ else:
         direction = "toward earlier layer controls"
 if abs(start_y - end_y) < 85:
     raise SystemExit("Track Edit scroll gesture is too short")
-print((left + right) // 2, start_y, end_y, direction)
+print((left + right) // 2, start_y, end_y,
+      "forward" if scroll_forward else "reverse", direction)
 PY_TRACK_EDIT_SCROLL
 )"; then
       echo "ERROR: could not derive a bounded Track Edit scroll toward $target"
       cat "$hierarchy_path" || true
       return 1
     fi
-    read -r swipe_x swipe_from swipe_to gesture_direction <<< "$coordinates"
+    read -r swipe_x swipe_from swipe_to next_scroll_direction gesture_direction <<< "$coordinates"
+    if [[ "$target" == "gain" ]]; then
+      scroll_direction="$next_scroll_direction"
+    fi
     echo "Scrolling Track Edit $gesture_direction for $target: x=$swipe_x y=$swipe_from->$swipe_to"
     if ! adb_bounded 10 shell input swipe "$swipe_x" "$swipe_from" "$swipe_x" "$swipe_to" 350; then
       echo "ERROR: Track Edit $target viewport scroll gesture failed"
