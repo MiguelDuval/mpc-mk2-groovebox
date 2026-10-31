@@ -6634,9 +6634,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     final String restarted = nativeAudioStart();
                     setAudioStateFromResult(restarted);
                     if (loadSucceeded) {
+                        // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
                         final String assignmentStatus = String.format(Locale.ROOT,
-                                "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                                file.displayName(), targetPad + 1, targetLayer + 1, restarted);
+                                "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                                file.displayName(), targetPad + 1, targetLayer + 1);
                         setBottomStatus(assignmentStatus);
                         if (browserView != null) {
                             browserView.setProviderStatus(assignmentStatus);
@@ -6645,7 +6646,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             }
                         }
                     } else {
-                        final String failure = "Local WAV load failed • " + loaded + " | " + restarted;
+                        final String failure = "Local WAV load failed • " + loaded;
                         setBottomStatus(failure);
                         if (browserView != null) browserView.setProviderStatus(failure);
                     }
@@ -13433,10 +13434,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (loaded != null
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
+                // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
                 final String assignmentStatus = String.format(
                         Locale.ROOT,
-                        "ASSIGNED • %s → PAD %02d / LAYER %02d | %s",
-                        sampleName, targetPad + 1, targetLayer + 1, restarted);
+                        "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                        sampleName, targetPad + 1, targetLayer + 1);
                 setBottomStatus(assignmentStatus);
                 // Keep the Browser's own result/status surface in sync with
                 // the state change made through Android Document Provider.
@@ -13444,7 +13446,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     browserView.setProviderStatus(assignmentStatus);
                 }
             } else {
-                final String loadFailure = loaded + " | " + restarted;
+                final String loadFailure = "Local WAV load failed • " + loaded;
                 setBottomStatus(loadFailure);
                 if (browserView != null) {
                     browserView.setProviderStatus(loadFailure);
@@ -13456,8 +13458,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String restarted = nativeAudioStart();
             setAudioStateFromResult(restarted);
             final String pickerFailure = "Sample load failed: "
-                    + e.getClass().getSimpleName() + ": " + e.getMessage()
-                    + " | " + restarted;
+                    + e.getClass().getSimpleName() + ": " + e.getMessage();
             setBottomStatus(pickerFailure);
             if (browserView != null) {
                 browserView.setProviderStatus(pickerFailure);

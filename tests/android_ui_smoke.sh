@@ -11380,6 +11380,29 @@ print(f"Browser selection preserved current Pad/Layer sample: {actual}")
 PY
 }
 
+assert_browser_assignment_status_is_concise() {
+  python3 - "$1" "$2" "$3" "$4" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+
+path, sample_name, pad, layer = sys.argv[1:]
+root = ET.parse(path).getroot()
+nodes = [node for node in root.iter("node")
+         if node.attrib.get("content-desc") == "MPC Browser provider status"]
+if len(nodes) != 1:
+    raise SystemExit(
+        f"expected one Browser provider-status node, found {len(nodes)}")
+expected = (
+    f"ASSIGNED • {sample_name} → PAD {int(pad):02d} / LAYER {int(layer):02d}")
+actual = nodes[0].attrib.get("text", "")
+if actual != expected:
+    raise SystemExit(
+        f"Browser assignment status must be concise and exact: "
+        f"expected={expected!r}, actual={actual!r}")
+print(f"Browser assignment status is concise: {actual}")
+PY
+}
+
 browser_sample_before_selection="$(read_browser_current_sample "$BROWSER_LOCAL_XML")" || {
   echo "ERROR: could not read Pad/Layer sample before Browser selection"; exit 1;
 }
@@ -11414,6 +11437,10 @@ fi
 if ! wait_for_ui_text_pair "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
     "ASSIGNED" "PAD 01 / LAYER 01" 20; then
   echo "ERROR: native sampler assignment did not report the correct target"
+  exit 1
+fi
+if ! assert_browser_assignment_status_is_concise "$BROWSER_LOCAL_XML" "$LOCAL_SAMPLE_NAME" 1 1; then
+  echo "ERROR: Browser assignment exposed low-level audio diagnostics instead of a concise result status"
   exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-local-results.png 10; then
@@ -11709,6 +11736,10 @@ fi
 if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
     "ASSIGNED • $PICKER_SAMPLE_NAME" "PAD 01 / LAYER 01" 30; then
   echo "ERROR: picker-return assignment status did not identify the selected WAV and preserved Pad 01 / Layer 01 target"
+  exit 1
+fi
+if ! assert_browser_assignment_status_is_concise "$PICKER_RETURN_XML" "$PICKER_SAMPLE_NAME" 1 1; then
+  echo "ERROR: picker-return Browser status exposed low-level audio diagnostics"
   exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-picker-assignment.png 10; then
