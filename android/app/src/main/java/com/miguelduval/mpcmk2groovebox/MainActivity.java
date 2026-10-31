@@ -14434,74 +14434,191 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final View beforeButton = findViewWithContentDescription(
                 getWindow().getDecorView(), beforeDescription);
         if (beforeButton == null || !beforeButton.isShown()
-                || !beforeButton.isEnabled() || !beforeButton.performClick()) {
+                || !beforeButton.isEnabled() || !beforeButton.isSelected() == soloBefore
+                || !beforeButton.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar Track Solo is not actionable"
                     + " | expected=" + beforeDescription
                     + " | button=" + describeAuditView(beforeButton));
             return;
         }
 
-        final boolean soloAfterToggle = nativeSequenceIsTrackSoloed(trackBefore);
-        final String toggledDescription = "MPC Function Bar Track Solo "
-                + (soloAfterToggle ? "ON" : "OFF");
-        final View toggledButton = findViewWithContentDescription(
-                getWindow().getDecorView(), toggledDescription);
-        final boolean notesUnchangedAfterToggle = noteSnapshotBefore.equals(
-                captureTrackViewGridNoteSnapshotForAudit(
-                        Math.max(1, nativeSequenceGetQuantizeGrid())));
-        if (soloAfterToggle == soloBefore
-                || toggledButton == null || !toggledButton.isShown()
-                || toggledButton.isSelected() != soloAfterToggle
-                || nativeSequenceGetIndex() != sequenceBefore
-                || nativeSequenceGetSelectedTrack() != trackBefore
-                || selectedPadIndexForUi() != padBefore
-                || !notesUnchangedAfterToggle) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo did not change real state or preserve context"
-                    + " | before=" + soloBefore
-                    + " | after=" + soloAfterToggle
-                    + " | button=" + describeAuditView(toggledButton)
-                    + " | sequence=" + nativeSequenceGetIndex()
-                    + " | track=" + nativeSequenceGetSelectedTrack()
-                    + " | pad=" + selectedPadIndexForUi()
-                    + " | notesUnchanged=" + notesUnchangedAfterToggle);
-            return;
-        }
+        captureTrackSoloStateForAudit(
+                trackBefore, sequenceBefore, padBefore, gridTicks, soloBefore,
+                noteSnapshotBefore, "before", () -> {
+                    final View currentBeforeButton = findViewWithContentDescription(
+                            getWindow().getDecorView(), beforeDescription);
+                    if (nativeSequenceIsTrackSoloed(trackBefore) != soloBefore
+                            || currentBeforeButton == null || !currentBeforeButton.isEnabled()
+                            || !currentBeforeButton.isSelected() == soloBefore
+                            || !currentBeforeButton.performClick()) {
+                        Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo could not toggle from its captured baseline"
+                                + " | before=" + soloBefore
+                                + " | button=" + describeAuditView(currentBeforeButton));
+                        return;
+                    }
 
-        if (!toggledButton.isEnabled() || !toggledButton.performClick()) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state could not be restored"
-                    + " | button=" + describeAuditView(toggledButton));
-            return;
-        }
+                    final boolean soloAfterToggle = nativeSequenceIsTrackSoloed(trackBefore);
+                    final String toggledDescription = "MPC Function Bar Track Solo "
+                            + (soloAfterToggle ? "ON" : "OFF");
+                    final View toggledButton = findViewWithContentDescription(
+                            getWindow().getDecorView(), toggledDescription);
+                    final boolean notesUnchangedAfterToggle = noteSnapshotBefore.equals(
+                            captureTrackViewGridNoteSnapshotForAudit(
+                                    Math.max(1, nativeSequenceGetQuantizeGrid())));
+                    if (soloAfterToggle == soloBefore
+                            || toggledButton == null || !toggledButton.isShown()
+                            || !toggledButton.isEnabled()
+                            || toggledButton.isSelected() != soloAfterToggle
+                            || nativeSequenceGetIndex() != sequenceBefore
+                            || nativeSequenceGetSelectedTrack() != trackBefore
+                            || selectedPadIndexForUi() != padBefore
+                            || !notesUnchangedAfterToggle) {
+                        Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo did not change real state or preserve context"
+                                + " | before=" + soloBefore
+                                + " | after=" + soloAfterToggle
+                                + " | button=" + describeAuditView(toggledButton)
+                                + " | sequence=" + nativeSequenceGetIndex()
+                                + " | track=" + nativeSequenceGetSelectedTrack()
+                                + " | pad=" + selectedPadIndexForUi()
+                                + " | notesUnchanged=" + notesUnchangedAfterToggle);
+                        return;
+                    }
 
-        final boolean soloRestored = nativeSequenceIsTrackSoloed(trackBefore);
-        final View restoredButton = findViewWithContentDescription(
-                getWindow().getDecorView(), beforeDescription);
-        final boolean notesUnchangedAfterRestore = noteSnapshotBefore.equals(
-                captureTrackViewGridNoteSnapshotForAudit(
-                        Math.max(1, nativeSequenceGetQuantizeGrid())));
-        if (soloRestored != soloBefore
-                || restoredButton == null || !restoredButton.isShown()
-                || restoredButton.isSelected() != soloBefore
-                || nativeSequenceGetIndex() != sequenceBefore
-                || nativeSequenceGetSelectedTrack() != trackBefore
-                || selectedPadIndexForUi() != padBefore
-                || !notesUnchangedAfterRestore
+                    captureTrackSoloStateForAudit(
+                            trackBefore, sequenceBefore, padBefore, gridTicks, soloAfterToggle,
+                            noteSnapshotBefore, "toggled", () -> {
+                                final View capturedToggleButton = findViewWithContentDescription(
+                                        getWindow().getDecorView(), toggledDescription);
+                                if (nativeSequenceIsTrackSoloed(trackBefore) != soloAfterToggle
+                                        || capturedToggleButton == null
+                                        || !capturedToggleButton.isEnabled()
+                                        || !capturedToggleButton.performClick()) {
+                                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state could not be restored"
+                                            + " | button=" + describeAuditView(capturedToggleButton));
+                                    return;
+                                }
+
+                                final boolean soloRestored = nativeSequenceIsTrackSoloed(trackBefore);
+                                final View restoredButton = findViewWithContentDescription(
+                                        getWindow().getDecorView(), beforeDescription);
+                                final boolean notesUnchangedAfterRestore = noteSnapshotBefore.equals(
+                                        captureTrackViewGridNoteSnapshotForAudit(
+                                                Math.max(1, nativeSequenceGetQuantizeGrid())));
+                                if (soloRestored != soloBefore
+                                        || restoredButton == null || !restoredButton.isShown()
+                                        || restoredButton.isSelected() != soloBefore
+                                        || nativeSequenceGetIndex() != sequenceBefore
+                                        || nativeSequenceGetSelectedTrack() != trackBefore
+                                        || selectedPadIndexForUi() != padBefore
+                                        || !notesUnchangedAfterRestore
+                                        || !"MAIN".equals(currentPage)
+                                        || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+                                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo restore changed native state or musical context"
+                                            + " | before=" + soloBefore
+                                            + " | restored=" + soloRestored
+                                            + " | button=" + describeAuditView(restoredButton)
+                                            + " | sequence=" + nativeSequenceGetIndex()
+                                            + " | track=" + nativeSequenceGetSelectedTrack()
+                                            + " | pad=" + selectedPadIndexForUi()
+                                            + " | notesUnchanged=" + notesUnchangedAfterRestore);
+                                    return;
+                                }
+
+                                Log.i(TAG, "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE: toggled=true restored=true "
+                                        + "nativeState=true selectionPreserved=true notesUnchanged=true "
+                                        + "offOnEvidencePairs=true");
+                                continuation.run();
+                            });
+                });
+    }
+
+    private void captureTrackSoloStateForAudit(
+            int trackIndex,
+            int sequenceIndex,
+            int padIndex,
+            int gridTicks,
+            boolean expectedSolo,
+            String noteSnapshotBefore,
+            String phase,
+            Runnable continuation) {
+        final String stateDescription = "MPC Function Bar Track Solo "
+                + (expectedSolo ? "ON" : "OFF");
+        final View stateButton = findViewWithContentDescription(
+                getWindow().getDecorView(), stateDescription);
+        if (stateButton == null || !stateButton.isShown()
+                || !stateButton.isEnabled()
+                || stateButton.isSelected() != expectedSolo
+                || nativeSequenceIsTrackSoloed(trackIndex) != expectedSolo
+                || nativeSequenceGetIndex() != sequenceIndex
+                || nativeSequenceGetSelectedTrack() != trackIndex
+                || selectedPadIndexForUi() != padIndex
+                || !noteSnapshotBefore.equals(captureTrackViewGridNoteSnapshotForAudit(gridTicks))
                 || !"MAIN".equals(currentPage)
+                || navigationController == null
                 || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo restore changed native state or musical context"
-                    + " | before=" + soloBefore
-                    + " | restored=" + soloRestored
-                    + " | button=" + describeAuditView(restoredButton)
-                    + " | sequence=" + nativeSequenceGetIndex()
-                    + " | track=" + nativeSequenceGetSelectedTrack()
-                    + " | pad=" + selectedPadIndexForUi()
-                    + " | notesUnchanged=" + notesUnchangedAfterRestore);
+            Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state is not stable for evidence capture"
+                    + " | phase=" + phase
+                    + " | expectedSolo=" + expectedSolo
+                    + " | button=" + describeAuditView(stateButton));
             return;
         }
 
-        Log.i(TAG, "UI_TRACK_SOLO_ROUNDTRIP_COMPLETE: toggled=true restored=true "
-                + "nativeState=true selectionPreserved=true notesUnchanged=true");
-        continuation.run();
+        if (!uiAuditSmokeMode) {
+            continuation.run();
+            return;
+        }
+
+        final String releaseName = "mpc-track-solo-" + phase + "-capture-release";
+        final java.io.File releaseSignal = new java.io.File(getCacheDir(), releaseName);
+        if (releaseSignal.exists() && !releaseSignal.delete()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: could not clear stale Track Solo evidence release signal"
+                    + " | phase=" + phase);
+            return;
+        }
+        Log.i(TAG, "UI_TRACK_SOLO_CAPTURE_READY: phase=" + phase
+                + " solo=" + expectedSolo + " trackIndex=" + (trackIndex + 1));
+        final long deadline = System.currentTimeMillis() + 60_000L;
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> {
+            if (destroyed) return;
+            if (releaseSignal.isFile()) {
+                if (!releaseSignal.delete()) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: could not remove Track Solo evidence release signal"
+                            + " | phase=" + phase);
+                    return;
+                }
+                final View capturedButton = findViewWithContentDescription(
+                        getWindow().getDecorView(), stateDescription);
+                if (nativeSequenceIsTrackSoloed(trackIndex) != expectedSolo
+                        || capturedButton == null || !capturedButton.isShown()
+                        || !capturedButton.isEnabled()
+                        || capturedButton.isSelected() != expectedSolo
+                        || nativeSequenceGetIndex() != sequenceIndex
+                        || nativeSequenceGetSelectedTrack() != trackIndex
+                        || selectedPadIndexForUi() != padIndex
+                        || !noteSnapshotBefore.equals(
+                                captureTrackViewGridNoteSnapshotForAudit(gridTicks))
+                        || !"MAIN".equals(currentPage)
+                        || navigationController == null
+                        || navigationController.state().mode() != MpcUiState.Mode.MAIN) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo state changed during evidence capture"
+                            + " | phase=" + phase
+                            + " | expectedSolo=" + expectedSolo
+                            + " | actualSolo=" + nativeSequenceIsTrackSoloed(trackIndex)
+                            + " | button=" + describeAuditView(capturedButton));
+                    return;
+                }
+                continuation.run();
+                return;
+            }
+            if (System.currentTimeMillis() >= deadline) {
+                Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo screenshot/accessibility capture timed out"
+                        + " | phase=" + phase);
+                return;
+            }
+            waveformUiHandler.postDelayed(poll[0], 100L);
+        };
+        waveformUiHandler.postDelayed(poll[0], 100L);
     }
 
     private void continueUiAuditAfterMainMuteRoute() {
