@@ -14434,7 +14434,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final View beforeButton = findViewWithContentDescription(
                 getWindow().getDecorView(), beforeDescription);
         if (beforeButton == null || !beforeButton.isShown()
-                || !beforeButton.isEnabled() || !beforeButton.isSelected() == soloBefore
+                || !beforeButton.isEnabled() || beforeButton.isSelected() != soloBefore
                 || !beforeButton.performClick()) {
             Log.e(TAG, "UI_INTERACTION_FAILED: Main Function Bar Track Solo is not actionable"
                     + " | expected=" + beforeDescription
@@ -14449,7 +14449,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             getWindow().getDecorView(), beforeDescription);
                     if (nativeSequenceIsTrackSoloed(trackBefore) != soloBefore
                             || currentBeforeButton == null || !currentBeforeButton.isEnabled()
-                            || !currentBeforeButton.isSelected() == soloBefore
+                            || currentBeforeButton.isSelected() != soloBefore
                             || !currentBeforeButton.performClick()) {
                         Log.e(TAG, "UI_INTERACTION_FAILED: Track Solo could not toggle from its captured baseline"
                                 + " | before=" + soloBefore
