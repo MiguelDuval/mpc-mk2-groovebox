@@ -1,0 +1,39 @@
+name: MPC Reference Asset Recovery Probe
+
+on:
+  push:
+    branches:
+      - "research/mpc-reference-asset-recovery-20261031"
+
+permissions:
+  contents: read
+
+jobs:
+  recover-reference-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout isolated research branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install retrieval dependencies
+        run: python -m pip install --disable-pip-version-check requests beautifulsoup4
+
+      - name: Retry exact original URLs and archive mirrors
+        run: python scripts/recover_mpc_reference_assets.py
+
+      - name: Upload recovery report and candidate images
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mpc-reference-asset-recovery-probe
+          path: /tmp/mpc-reference-recovery.zip
+          if-no-files-found: warn
+          archive: true
