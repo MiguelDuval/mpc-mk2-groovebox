@@ -717,10 +717,15 @@ for required in \
 done
 for required in \
   'verifyTrackSoloToggleAndRestoreForAudit(' \
+  'captureTrackSoloStateForAudit(' \
+  'UI_TRACK_SOLO_CAPTURE_READY:' \
+  'mpc-track-solo-before-capture-release' \
+  'mpc-track-solo-toggled-capture-release' \
   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:' \
-  'MPC Function Bar Track Solo '; do
+  'MPC Function Bar Track Solo ON' \
+  'MPC Function Bar Track Solo OFF'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: Track Solo UI round-trip acceptance contract missing: $required"; exit 1
+    echo "ERROR: Track Solo state/evidence contract missing: $required"; exit 1
   fi
 done
 if ! grep -Fq -- 'tests/MpcSequencerPlaybackTests.cpp' ".github/workflows/android-build.yml"; then
@@ -2177,7 +2182,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
     exit 1
   fi
 done
-for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
+for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
     'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
@@ -2234,6 +2239,8 @@ capture_ui_screenshot() {
     mpc-groovebox-step-touch-page2.png|\
     mpc-groovebox-step-touch-pad2.png|\
     mpc-groovebox-track-view-muted.png|\
+    mpc-groovebox-track-solo-on.png|\
+    mpc-groovebox-track-solo-off.png|\
     mpc-groovebox-mute-pad.png|\
     mpc-groovebox-mute-track.png|\
     mpc-groovebox-arrange-grid-focus.png|\
@@ -2729,6 +2736,11 @@ arrangement_grid_focus_capture_done=0
 arrangement_back_capture_done=0
 arrangement_grid_reentry_capture_done=0
 track_view_mute_capture_done=0
+track_solo_before_capture_done=0
+track_solo_toggled_capture_done=0
+track_solo_on_capture_done=0
+track_solo_off_capture_done=0
+track_solo_before_state=""
 mute_pad_capture_done=0
 mute_track_capture_done=0
 step_touch_capture_done=0
@@ -2737,6 +2749,99 @@ arrangement_zoom_touch_capture_done=0
 arrangement_zoom_touch_acceptance_complete=0
 arrangement_loop_touch_capture_done=0
 arrangement_loop_touch_acceptance_complete=0
+capture_track_solo_evidence() {
+  local phase="$1" marker_line="$2"
+  local expected_solo solo_state description file_base png host_xml remote_xml
+  case "$marker_line" in
+    *"solo=true"*) expected_solo=true; solo_state=on ;;
+    *"solo=false"*) expected_solo=false; solo_state=off ;;
+    *) echo "ERROR: Track Solo evidence marker omitted its native state: $marker_line"; return 1 ;;
+  esac
+
+  description="MPC Function Bar Track Solo $([[ "$expected_solo" == "true" ]] && echo ON || echo OFF)"
+  file_base="mpc-groovebox-track-solo-$solo_state"
+  png="/tmp/$file_base.png"
+  host_xml="/tmp/$file_base-uiautomator.xml"
+  remote_xml="/sdcard/$file_base-uiautomator.xml"
+
+  echo "Capturing Track Solo $solo_state state and fresh accessibility hierarchy ($phase)..."
+  if ! capture_ui_screenshot "$png" 10; then
+    echo "ERROR: Track Solo $solo_state screenshot capture failed"; return 1
+  fi
+  if ! dump_device_ui_retry "$remote_xml" "$host_xml" 8 3; then
+    echo "ERROR: Track Solo $solo_state fresh accessibility capture failed"; return 1
+  fi
+  if ! python3 - "$host_xml" "$expected_solo" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+path, expected_solo = sys.argv[1], sys.argv[2]
+if expected_solo not in ("true", "false"):
+    raise SystemExit(f"invalid native Track Solo state marker: {expected_solo!r}")
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+expected_state = "ON" if expected_solo == "true" else "OFF"
+opposite_state = "OFF" if expected_solo == "true" else "ON"
+expected_description = f"MPC Function Bar Track Solo {expected_state}"
+opposite_description = f"MPC Function Bar Track Solo {opposite_state}"
+matches = [n for n in nodes if n.attrib.get("content-desc") == expected_description]
+opposites = [n for n in nodes if n.attrib.get("content-desc") == opposite_description]
+if len(matches) != 1 or opposites:
+    raise SystemExit(
+        f"expected one {expected_description!r} and no opposite state; "
+        f"matches={len(matches)} opposites={len(opposites)}")
+node = matches[0]
+if node.attrib.get("text", "") != "SOLO":
+    raise SystemExit(f"Solo control label mismatch: {node.attrib!r}")
+if node.attrib.get("enabled") != "true" or node.attrib.get("clickable") != "true":
+    raise SystemExit(f"Solo control is visible but not actionable: {node.attrib!r}")
+if node.attrib.get("selected") != expected_solo:
+    raise SystemExit(
+        f"Solo accessibility selection disagrees with native state: "
+        f"expected={expected_solo} node={node.attrib!r}")
+bounds = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                      node.attrib.get("bounds", ""))
+if not bounds:
+    raise SystemExit(f"invalid Solo control bounds: {node.attrib.get('bounds')!r}")
+x1, y1, x2, y2 = map(int, bounds.groups())
+if x2 <= x1 or y2 <= y1:
+    raise SystemExit(f"empty Solo control bounds: {node.attrib.get('bounds')!r}")
+if sum(1 for n in nodes if n.attrib.get("content-desc") == "MPC One Main Toolbar") != 1:
+    raise SystemExit("Track Solo state was not captured on the real Main workspace")
+print(f"Track Solo {expected_state} verified: clickable selected={expected_solo} bounds={(x1,y1,x2,y2)}")
+PY
+  then
+    echo "ERROR: Track Solo accessibility state disagrees with native state ($expected_solo)"
+    cat "$host_xml"
+    return 1
+  fi
+  if ! test -s "$png"; then
+    echo "ERROR: Track Solo $solo_state screenshot is empty"; return 1
+  fi
+  if ! adb_bounded 10 shell run-as "$PACKAGE" touch "cache/mpc-track-solo-$phase-capture-release"; then
+    echo "ERROR: could not release Track Solo $phase capture checkpoint"; return 1
+  fi
+
+  if [[ "$phase" == "before" ]]; then
+    track_solo_before_state="$expected_solo"
+    track_solo_before_capture_done=1
+  elif [[ "$phase" == "toggled" ]]; then
+    if [[ -z "$track_solo_before_state" || "$track_solo_before_state" == "$expected_solo" ]]; then
+      echo "ERROR: Track Solo ON/OFF pair did not capture opposite states"; return 1
+    fi
+    track_solo_toggled_capture_done=1
+  else
+    echo "ERROR: unknown Track Solo evidence phase: $phase"; return 1
+  fi
+  if [[ "$solo_state" == "on" ]]; then
+    track_solo_on_capture_done=1
+  else
+    track_solo_off_capture_done=1
+  fi
+  echo "Track Solo $solo_state screenshot/XML pair captured and app audit released."
+}
+
 audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))
 audit_poll=0
 while (( SECONDS < audit_deadline )); do
@@ -6105,6 +6210,22 @@ PY
     browser_runtime_capture_done=1
   fi
 
+  if [ "$track_solo_before_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_TRACK_SOLO_CAPTURE_READY: phase=before " <<<"$log_snapshot"; then
+    solo_before_line=$(grep -F -- "UI_TRACK_SOLO_CAPTURE_READY: phase=before " <<<"$log_snapshot" | tail -n 1)
+    if ! capture_track_solo_evidence "before" "$solo_before_line"; then
+      echo "ERROR: initial Track Solo state lacks screenshot/XML acceptance evidence"; exit 1
+    fi
+  fi
+
+  if [ "$track_solo_toggled_capture_done" -eq 0 ] \
+      && grep -Fq -- "UI_TRACK_SOLO_CAPTURE_READY: phase=toggled " <<<"$log_snapshot"; then
+    solo_toggled_line=$(grep -F -- "UI_TRACK_SOLO_CAPTURE_READY: phase=toggled " <<<"$log_snapshot" | tail -n 1)
+    if ! capture_track_solo_evidence "toggled" "$solo_toggled_line"; then
+      echo "ERROR: toggled Track Solo state lacks screenshot/XML acceptance evidence"; exit 1
+    fi
+  fi
+
   if [ "$track_view_mute_capture_done" -eq 0 ] \
       && grep -Fq -- "UI_TRACK_VIEW_MUTED_CAPTURE_READY:" <<<"$log_snapshot"; then
     echo "Capturing Track View mute state and Android accessibility hierarchy..."
@@ -7286,6 +7407,10 @@ PY
     if [ "$arrangement_back_capture_done" -ne 1 ] \
         || [ "$arrangement_grid_reentry_capture_done" -ne 1 ] \
         || [ "$track_view_mute_capture_done" -ne 1 ] \
+        || [ "$track_solo_before_capture_done" -ne 1 ] \
+        || [ "$track_solo_toggled_capture_done" -ne 1 ] \
+        || [ "$track_solo_on_capture_done" -ne 1 ] \
+        || [ "$track_solo_off_capture_done" -ne 1 ] \
         || [ "$mute_pad_capture_done" -ne 1 ] \
         || [ "$mute_track_capture_done" -ne 1 ] \
         || ! grep -Fq -- "UI_MUTE_GRID_ROUNDTRIP_COMPLETE:" <<<"$log_snapshot" \
@@ -7332,6 +7457,17 @@ if [ "$track_view_mute_capture_done" -ne 1 ] \
     || ! test -s /tmp/mpc-groovebox-track-view-muted.png \
     || ! test -s /tmp/mpc-groovebox-track-view-muted-uiautomator.xml; then
   echo "ERROR: Track View mute acceptance lacks screenshot/hierarchy evidence"; exit 1
+fi
+
+if [ "$track_solo_before_capture_done" -ne 1 ] \
+    || [ "$track_solo_toggled_capture_done" -ne 1 ] \
+    || [ "$track_solo_on_capture_done" -ne 1 ] \
+    || [ "$track_solo_off_capture_done" -ne 1 ] \
+    || ! test -s /tmp/mpc-groovebox-track-solo-on.png \
+    || ! test -s /tmp/mpc-groovebox-track-solo-on-uiautomator.xml \
+    || ! test -s /tmp/mpc-groovebox-track-solo-off.png \
+    || ! test -s /tmp/mpc-groovebox-track-solo-off-uiautomator.xml; then
+  echo "ERROR: Track Solo acceptance lacks exact ON/OFF screenshot + hierarchy pairs"; exit 1
 fi
 
 if [ "$mute_pad_capture_done" -ne 1 ] \
