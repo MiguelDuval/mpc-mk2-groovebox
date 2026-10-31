@@ -3,8 +3,34 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 
 namespace mpc::audio {
+
+/*
+ * Audio callback -> UI telemetry encoding. Zero means idle; positive values
+ * store frame + 1 so sample frame zero remains observable. Oversized indices
+ * are rejected rather than wrapping into a misleading cursor position.
+ */
+inline std::uint32_t encodeSamplePlaybackCursorFrame(
+        std::size_t frame) noexcept {
+    constexpr auto maximum =
+            static_cast<std::size_t>(
+                    std::numeric_limits<std::uint32_t>::max());
+    if (frame >= maximum) {
+        return 0u;
+    }
+    return static_cast<std::uint32_t>(frame + 1u);
+}
+
+inline std::int64_t decodeSamplePlaybackCursorFrame(
+        std::uint32_t encoded) noexcept {
+    return encoded == 0u
+            ? -1
+            : static_cast<std::int64_t>(encoded - 1u);
+}
+
 
 inline bool advanceSamplePlaybackCursor(
         double& position,

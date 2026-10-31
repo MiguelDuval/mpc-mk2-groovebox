@@ -733,6 +733,8 @@ jobs:
             /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml
             /tmp/mpc-groovebox-sample-zoom-*.png
             /tmp/mpc-groovebox-sample-zoom-*-uiautomator.xml
+            /tmp/mpc-groovebox-sample-playback-cursor-*.png
+            /tmp/mpc-groovebox-sample-playback-cursor-*.xml
             /tmp/mpc-groovebox-sample-crop-*.png
             /tmp/mpc-groovebox-sample-crop*-uiautomator.xml
             /tmp/mpc-groovebox-sample-chop-*.png

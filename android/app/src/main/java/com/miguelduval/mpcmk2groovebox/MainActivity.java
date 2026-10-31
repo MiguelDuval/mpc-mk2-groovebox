@@ -264,6 +264,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private final Button[] modeButtons = new Button[7];
     private final Handler waveformUiHandler = new Handler(Looper.getMainLooper());
     private Runnable recordingWaveformUpdater;
+    private Runnable samplePlaybackCursorUpdater;
+    private int samplePlaybackCursorAccessibilityBucket = -1;
     private WaveformView sampleWaveform;
     private TextView sampleWaveformViewportInfo;
     private WaveformView mainTrackWaveform;
@@ -483,6 +485,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeAudioGetPadSampleRegionStart(int pad, int layer);
     private static native long nativeAudioGetPadSampleRegionEnd(int pad, int layer);
     private static native long nativeAudioGetPadSampleFrameCount(int pad, int layer);
+    private static native long nativeAudioGetPadSamplePlaybackCursorFrame(int pad, int layer);
     private static native String nativeAudioGetPadSampleName(int pad, int layer);
     private static native int nativeAudioGetPadSampleRate(int pad, int layer);
     private static native float[] nativeAudioGetPadWaveformPeaks(
@@ -5368,6 +5371,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshSampleInfo();
         refreshRegionInfo();
         refreshSampleWaveform();
+        startSamplePlaybackCursorUpdates();
     }
 
     private void showSampleEditPanel(LinearLayout page) {
@@ -12347,6 +12351,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             sampleWaveform.setPeaks(null);
             sampleWaveform.setSelection(0f, 1f);
             sampleWaveform.setDurationMs(0f);
+            sampleWaveform.setPlayhead(-1f);
+            samplePlaybackCursorAccessibilityBucket = -1;
             return;
         }
 
@@ -12363,6 +12369,71 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ? frames * 1000.0f / sampleRate
                         : 0.0f);
         sampleWaveform.setRecording(false);
+        sampleWaveform.setPlayhead(-1f);
+        samplePlaybackCursorAccessibilityBucket = -1;
+    }
+
+    private void startSamplePlaybackCursorUpdates() {
+        if (samplePlaybackCursorUpdater == null) {
+            samplePlaybackCursorUpdater = new Runnable() {
+                @Override
+                public void run() {
+                    if (destroyed
+                            || !"SAMPLE".equals(currentPage)
+                            || sampleWaveform == null) {
+                        if (sampleWaveform != null) {
+                            sampleWaveform.setPlayhead(-1f);
+                        }
+                        waveformUiHandler.removeCallbacks(this);
+                        samplePlaybackCursorAccessibilityBucket = -1;
+                        return;
+                    }
+
+                    final long totalFrames = nativeAudioGetPadSampleFrameCount(
+                            selectedPad, selectedLayer);
+                    final long cursorFrame =
+                            nativeAudioGetPadSamplePlaybackCursorFrame(
+                                    selectedPad, selectedLayer);
+                    if (totalFrames > 0
+                            && cursorFrame >= 0
+                            && cursorFrame < totalFrames) {
+                        sampleWaveform.setPlayhead(
+                                cursorFrame / (float) totalFrames);
+                        final int bucket = (int) Math.min(
+                                31L, (cursorFrame * 32L) / totalFrames);
+                        final CharSequence displayed =
+                                regionInfo == null ? null : regionInfo.getText();
+                        final boolean playheadTextMissing =
+                                displayed == null
+                                        || !displayed.toString().contains("PLAYHEAD");
+                        if (bucket != samplePlaybackCursorAccessibilityBucket
+                                || playheadTextMissing) {
+                            samplePlaybackCursorAccessibilityBucket = bucket;
+                            if (regionInfo != null) {
+                                final long start = nativeAudioGetPadSampleRegionStart(
+                                        selectedPad, selectedLayer);
+                                final long end = nativeAudioGetPadSampleRegionEnd(
+                                        selectedPad, selectedLayer);
+                                regionInfo.setText(String.format(
+                                        Locale.ROOT,
+                                        "Region %d → %d  /  %d frames • PLAYHEAD %d",
+                                        start, end, totalFrames, cursorFrame));
+                            }
+                        }
+                    } else {
+                        sampleWaveform.setPlayhead(-1f);
+                        if (samplePlaybackCursorAccessibilityBucket != -1) {
+                            samplePlaybackCursorAccessibilityBucket = -1;
+                            refreshRegionInfo();
+                        }
+                    }
+                    waveformUiHandler.postDelayed(this, 33L);
+                }
+            };
+        }
+        waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        samplePlaybackCursorAccessibilityBucket = -1;
+        waveformUiHandler.post(samplePlaybackCursorUpdater);
     }
 
     private void startRecordingWaveformUpdates() {
@@ -18982,6 +19053,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {
             waveformUiHandler.removeCallbacks(recordingWaveformUpdater);
+        }
+        if (samplePlaybackCursorUpdater != null) {
+            waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
         }
         startupExecutor.shutdownNow();
         projectIoExecutor.shutdownNow();

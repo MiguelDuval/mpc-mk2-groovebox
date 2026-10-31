@@ -241,6 +241,7 @@ public:
             std::atomic<bool>& monitorEnabled,
             std::atomic<std::uint64_t>& outputCallbackCount,
             std::atomic<std::uint64_t>& outputCallbackFrames,
+            AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames,
             std::atomic<std::uint32_t>& outputPeakMilli,
             std::atomic<std::uint32_t>& testToneRequestFrames)
             : samples_(std::move(samples)),
@@ -266,6 +267,7 @@ public:
               monitorEnabled_(monitorEnabled),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
+              samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
               outputPeakMilli_(outputPeakMilli),
               testToneRequestFrames_(testToneRequestFrames) {
     }
@@ -558,6 +560,52 @@ public:
             pendingTriggerEvents_[index].offsetFrames -= numFrames;
         }
 
+        /*
+         * Publish the youngest active voice for every Pad/Layer at the block
+         * boundary. This is read-only telemetry: fixed-size scans, no locks,
+         * allocations, JNI, or project-state access on the realtime thread.
+         */
+        for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+            for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+                bool foundCursor = false;
+                std::uint64_t youngestAgeFrames = 0u;
+                std::uint32_t encodedCursor = 0u;
+                const auto& sample = samples_[pad][layer];
+                const auto& region = regions_[pad][layer];
+
+                if (sample != nullptr && sample->frameCount() > 0u) {
+                    for (const auto& voice : voices_[pad]) {
+                        if (!voice.active) {
+                            continue;
+                        }
+                        const auto& layerVoice = voice.layers[layer];
+                        if (!layerVoice.active
+                                || (foundCursor
+                                    && layerVoice.ageFrames >= youngestAgeFrames)) {
+                            continue;
+                        }
+
+                        const double position = layerVoice.position;
+                        if (!std::isfinite(position)
+                                || position < static_cast<double>(region.startFrame)
+                                || position >= static_cast<double>(region.endFrame)
+                                || position >= static_cast<double>(sample->frameCount())) {
+                            continue;
+                        }
+
+                        foundCursor = true;
+                        youngestAgeFrames = layerVoice.ageFrames;
+                        encodedCursor = encodeSamplePlaybackCursorFrame(
+                                static_cast<std::size_t>(position));
+                    }
+                }
+
+                samplePlaybackCursorFrames_[pad][layer].store(
+                        encodedCursor,
+                        std::memory_order_relaxed);
+            }
+        }
+
         outputPeakMilli_.store(
                 renderedPeakMilli,
                 std::memory_order_relaxed);
@@ -747,6 +795,7 @@ private:
     std::atomic<bool>& monitorEnabled_;
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
+    AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames_;
     std::atomic<std::uint32_t>& outputPeakMilli_;
     std::atomic<std::uint32_t>& testToneRequestFrames_;
     std::uint32_t monitorReadSequence_ = 0;
@@ -769,6 +818,10 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
     recordingArmed_.store(false, std::memory_order_relaxed);
 
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            samplePlaybackCursorFrames_[pad][layer].store(
+                    0u, std::memory_order_relaxed);
+        }
         padAftertouch_[pad].store(0, std::memory_order_relaxed);
         padAftertouchFilterMicro_[pad].store(1000000u, std::memory_order_relaxed);
         padTuningMilliSemitones_[pad].store(
@@ -1716,6 +1769,18 @@ SampleRegion AudioEngine::padSampleRegion(
     return projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex).region;
 }
 
+std::int64_t AudioEngine::padSamplePlaybackCursorFrame(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex) const noexcept {
+    if (padIndex >= kPadCount || layerIndex >= kSampleLayerCount) {
+        return -1;
+    }
+    return decodeSamplePlaybackCursorFrame(
+            samplePlaybackCursorFrames_[padIndex][layerIndex].load(
+                    std::memory_order_relaxed));
+}
+
+
 std::size_t AudioEngine::padSampleFrameCount(
         std::uint8_t padIndex,
         std::uint8_t layerIndex) const {
@@ -2037,6 +2102,11 @@ std::string AudioEngine::stopOutputStream() {
     stream_.reset();
     callback_.reset();
     outputErrorCallback_.reset();
+    for (auto& pad : samplePlaybackCursorFrames_) {
+        for (auto& layer : pad) {
+            layer.store(0u, std::memory_order_relaxed);
+        }
+    }
 
     if (stopResult != oboe::Result::OK) {
         return std::string("Audio stop failed: ") + resultText(stopResult);
@@ -2363,6 +2433,11 @@ std::string AudioEngine::start() {
     outputCallbackCount_.store(0, std::memory_order_relaxed);
     outputCallbackFrames_.store(0, std::memory_order_relaxed);
     outputPeakMilli_.store(0, std::memory_order_relaxed);
+    for (auto& pad : samplePlaybackCursorFrames_) {
+        for (auto& layer : pad) {
+            layer.store(0u, std::memory_order_relaxed);
+        }
+    }
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
@@ -2428,6 +2503,7 @@ std::string AudioEngine::start() {
             monitorEnabled_,
             outputCallbackCount_,
             outputCallbackFrames_,
+            samplePlaybackCursorFrames_,
             outputPeakMilli_,
             testToneRequestFrames_);
 

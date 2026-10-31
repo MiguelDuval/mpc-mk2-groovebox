@@ -2,9 +2,26 @@
 
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 
 int main() {
+    assert(mpc::audio::encodeSamplePlaybackCursorFrame(0u) == 1u);
+    assert(mpc::audio::decodeSamplePlaybackCursorFrame(0u) == -1);
+    assert(mpc::audio::decodeSamplePlaybackCursorFrame(1u) == 0);
+    assert(mpc::audio::decodeSamplePlaybackCursorFrame(129u) == 128);
+    const auto largestFrame = static_cast<std::size_t>(
+            std::numeric_limits<std::uint32_t>::max() - 1u);
+    assert(mpc::audio::encodeSamplePlaybackCursorFrame(largestFrame)
+            == std::numeric_limits<std::uint32_t>::max());
+    assert(mpc::audio::encodeSamplePlaybackCursorFrame(
+            static_cast<std::size_t>(
+                    std::numeric_limits<std::uint32_t>::max())) == 0u);
+    assert(mpc::audio::decodeSamplePlaybackCursorFrame(
+            std::numeric_limits<std::uint32_t>::max())
+            == static_cast<std::int64_t>(
+                    std::numeric_limits<std::uint32_t>::max() - 1u));
+
     double position = 0.0;
 
     assert(mpc::audio::advanceSamplePlaybackCursor(
