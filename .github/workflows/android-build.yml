@@ -624,6 +624,10 @@ jobs:
             /tmp/mpc-groovebox-step-touch-pad2-uiautomator.xml
             /tmp/mpc-groovebox-track-view-muted.png
             /tmp/mpc-groovebox-track-view-muted-uiautomator.xml
+            /tmp/mpc-groovebox-track-solo-on.png
+            /tmp/mpc-groovebox-track-solo-on-uiautomator.xml
+            /tmp/mpc-groovebox-track-solo-off.png
+            /tmp/mpc-groovebox-track-solo-off-uiautomator.xml
             /tmp/mpc-groovebox-mute-pad.png
             /tmp/mpc-groovebox-mute-pad-uiautomator.xml
             /tmp/mpc-groovebox-mute-track.png
