@@ -477,6 +477,23 @@ int main() {
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, -120));
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 1920));
 
+    // The API identifies a note only by (tick, pitch); duplicated matches are
+    // ambiguous and must not move just the first event or alter Pattern state.
+    mpc::domain::Pattern ambiguousMovePattern;
+    ambiguousMovePattern.lengthTicks = 960;
+    ambiguousMovePattern.notes = {
+            {120, 120, 36, 100, 127, 1},
+            {120, 60, 36, 80, 100, 2}};
+    assert(!mpc::sequencer::movePatternNoteTick(
+            ambiguousMovePattern, 120, 36, 240));
+    assert(ambiguousMovePattern.notes.size() == 2);
+    assert(ambiguousMovePattern.notes[0].tick == 120);
+    assert(ambiguousMovePattern.notes[0].durationTicks == 120);
+    assert(ambiguousMovePattern.notes[0].velocity == 100);
+    assert(ambiguousMovePattern.notes[1].tick == 120);
+    assert(ambiguousMovePattern.notes[1].durationTicks == 60);
+    assert(ambiguousMovePattern.notes[1].velocity == 80);
+
     // Arrangement duplicate is non-destructive, preserves every musical field,
     // rejects same-pitch collisions/boundaries, and can be undone/redone exactly.
     mpc::domain::Pattern duplicatePattern;
@@ -652,6 +669,19 @@ int main() {
 
     assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
     assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
+
+    // A one-tick grid has a zero-frame swing delay at every percentage.
+    // It is a no-op and must not report that notes were edited.
+    mpc::domain::Pattern zeroDelaySwingPattern;
+    zeroDelaySwingPattern.lengthTicks = 16;
+    zeroDelaySwingPattern.notes = {
+            {0, 1, 36, 100, 127, 1},
+            {1, 1, 38, 100, 127, 1},
+            {3, 1, 42, 100, 127, 1}};
+    assert(mpc::sequencer::applySwing(zeroDelaySwingPattern, 1, 100) == 0);
+    assert(zeroDelaySwingPattern.notes[0].tick == 0);
+    assert(zeroDelaySwingPattern.notes[1].tick == 1);
+    assert(zeroDelaySwingPattern.notes[2].tick == 3);
     assert(swingPattern.notes[0].tick == 0);
     assert(swingPattern.notes[1].tick == 600);
     assert(swingPattern.notes[2].tick == 720);

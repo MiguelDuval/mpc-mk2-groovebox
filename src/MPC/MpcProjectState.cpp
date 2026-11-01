@@ -193,10 +193,30 @@ bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept
     if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
         return false;
     }
+
+    // Drum Program IDs are the routing key used by Tracks. Reject ambiguous
+    // definitions and dangling references before the Project becomes live state.
+    for (std::size_t i = 0; i < project.drumPrograms.size(); ++i) {
+        const auto& program = project.drumPrograms[i];
+        if (program.id.empty()) return false;
+        for (std::size_t j = 0; j < i; ++j) {
+            if (project.drumPrograms[j].id == program.id) return false;
+        }
+    }
+
     for (const auto& sequence : project.sequences) {
         if (sequence.id.empty() || sequence.tracks.empty()) return false;
         for (const auto& track : sequence.tracks) {
             if (track.id.empty() || track.patterns.empty()) return false;
+            // Empty remains a supported explicitly-unassigned routing state.
+            if (!track.programId.empty()) {
+                const auto matchCount = static_cast<std::size_t>(std::count_if(
+                        project.drumPrograms.begin(), project.drumPrograms.end(),
+                        [&track](const domain::DrumProgram& program) {
+                            return program.id == track.programId;
+                        }));
+                if (matchCount != 1) return false;
+            }
         }
     }
     return true;
@@ -356,8 +376,24 @@ bool MpcProjectState::addSequence(std::string name) {
         return false;
     }
 
-    const auto number = project_.sequences.size() + 1;
+    auto number = project_.sequences.size() + 1;
+    const auto sequenceIdUsed = [this](std::size_t candidate) {
+        const auto candidateId = "sequence-" + std::to_string(candidate);
+        return std::any_of(
+                project_.sequences.begin(), project_.sequences.end(),
+                [&candidateId](const domain::Sequence& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (sequenceIdUsed(number)) {
+        ++number;
+    }
     auto sequence = makeDefaultSequence(number);
+    if (!sequence.tracks.empty() && !project_.drumPrograms.empty()) {
+        const auto programIndex = std::min(
+                activeDrumProgramIndex_, project_.drumPrograms.size() - 1);
+        sequence.tracks.front().programId = project_.drumPrograms[programIndex].id;
+    }
     if (!name.empty()) {
         sequence.name = std::move(name);
     }
@@ -552,7 +588,18 @@ bool MpcProjectState::addTrack(
         return false;
     }
     domain::Track track;
-    const auto number = sequence.tracks.size() + 1;
+    auto number = sequence.tracks.size() + 1;
+    const auto trackIdUsed = [&sequence](std::size_t candidate) {
+        const auto candidateId = "track-" + std::to_string(candidate);
+        return std::any_of(
+                sequence.tracks.begin(), sequence.tracks.end(),
+                [&candidateId](const domain::Track& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (trackIdUsed(number)) {
+        ++number;
+    }
     track.id = "track-" + std::to_string(number);
     track.name = name.empty()
             ? ("TRACK " + std::to_string(number))

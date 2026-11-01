@@ -70,6 +70,9 @@ inline std::size_t applySwing(
     const auto maxDelay = grid / 2;
     const auto delay =
             (maxDelay * static_cast<std::int64_t>(clampedSwing)) / 100;
+    if (delay == 0) {
+        return 0;
+    }
 
     std::size_t changed = 0;
     for (auto& note : pattern.notes) {
@@ -84,6 +87,9 @@ inline std::size_t applySwing(
 
         const auto shifted =
                 (static_cast<std::int64_t>(note.tick) + delay) % length;
+        if (shifted == note.tick) {
+            continue;
+        }
         note.tick = static_cast<std::int32_t>(shifted);
         ++changed;
     }
@@ -137,12 +143,15 @@ inline bool movePatternNoteTick(
     if (pattern.lengthTicks <= 0 || sourceTick < 0 || targetTick < 0
             || sourceTick >= pattern.lengthTicks
             || targetTick >= pattern.lengthTicks || sourceTick == targetTick) return false;
+    const auto matchesSource = [sourceTick, noteNumber](
+            const domain::MidiNoteEvent& note) {
+        return note.tick == sourceTick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matchesSource) != 1) {
+        return false;
+    }
     auto source = std::find_if(
-            pattern.notes.begin(), pattern.notes.end(),
-            [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
-                return note.tick == sourceTick && note.note == noteNumber;
-            });
-    if (source == pattern.notes.end()) return false;
+            pattern.notes.begin(), pattern.notes.end(), matchesSource);
     const auto collision = std::find_if(
             pattern.notes.begin(), pattern.notes.end(),
             [targetTick, noteNumber](const domain::MidiNoteEvent& note) {

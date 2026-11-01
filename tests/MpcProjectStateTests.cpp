@@ -171,6 +171,52 @@ int main() {
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
 
+    // Generated IDs use the next unused suffix, not collection size alone.
+    mpc::MpcProjectState sparseTrackState;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    auto& sparseSecondTrack = sparseTrackState.activeSequence().tracks[1];
+    sparseSecondTrack.id = "track-3";
+    sparseSecondTrack.patterns[0].id = "track-3-pattern-1";
+    sparseSecondTrack.placements[0].id = "track-3-placement-1";
+    sparseSecondTrack.placements[0].patternId = sparseSecondTrack.patterns[0].id;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    const auto& generatedTrackSequence = sparseTrackState.activeSequence();
+    assert(generatedTrackSequence.tracks.size() == 3);
+    assert(generatedTrackSequence.tracks[2].id == "track-4");
+    assert(generatedTrackSequence.tracks[2].patterns[0].id == "track-4-pattern-1");
+    assert(generatedTrackSequence.tracks[2].placements[0].id == "track-4-placement-1");
+
+    mpc::MpcProjectState sparseSequenceState;
+    assert(sparseSequenceState.addSequence());
+    auto& renamedSequence = sparseSequenceState.project().sequences[1];
+    renamedSequence.id = "sequence-3";
+    renamedSequence.tracks[0].id = "sequence-3-track-1";
+    renamedSequence.tracks[0].patterns[0].id = "sequence-3-track-1-pattern-1";
+    renamedSequence.tracks[0].placements[0].id = "sequence-3-track-1-placement-1";
+    renamedSequence.tracks[0].placements[0].patternId =
+            renamedSequence.tracks[0].patterns[0].id;
+    assert(sparseSequenceState.addSequence());
+    const auto& generatedSequences = sparseSequenceState.project().sequences;
+    assert(generatedSequences.size() == 3);
+    assert(generatedSequences[0].id == "sequence-1");
+    assert(generatedSequences[1].id == "sequence-3");
+    assert(generatedSequences[2].id == "sequence-4");
+    assert(generatedSequences[2].name == "Sequence 04");
+    assert(generatedSequences[2].tracks[0].id == "sequence-4-track-1");
+
+    // A new Sequence inherits the currently active Drum Program, not a
+    // hard-coded factory Program ID.
+    mpc::MpcProjectState activeProgramSequenceState;
+    auto secondProgram = activeProgramSequenceState.project().drumPrograms.front();
+    secondProgram.id = "drum-program-2";
+    secondProgram.name = "Drum Program 2";
+    activeProgramSequenceState.project().drumPrograms.push_back(secondProgram);
+    assert(activeProgramSequenceState.setTrackProgram(0, "drum-program-2"));
+    assert(activeProgramSequenceState.activeDrumProgram().id == "drum-program-2");
+    assert(activeProgramSequenceState.addSequence());
+    assert(activeProgramSequenceState.activeSequence().tracks[0].programId
+            == "drum-program-2");
+    assert(activeProgramSequenceState.activeProgramIndexForTrack(0) == 1);
 
     // Whole-Project replacement gets a new in-memory generation even when
     // the serialized Project/Sequence IDs are reused by the next opened file.
@@ -213,6 +259,24 @@ int main() {
     openedTrack.patterns.push_back(openedPattern);
     openedSequence.tracks.push_back(openedTrack);
     opened.sequences.push_back(openedSequence);
+
+    // Whole-Project replacement must reject dangling and ambiguous Drum Program
+    // routing without disturbing the currently active Project.
+    const auto projectBeforeRejectedRouting = state.project().id;
+    auto missingProgramProject = opened;
+    missingProgramProject.sequences[0].tracks[0].programId = "missing-program";
+    assert(!mpc::MpcProjectState::canReplaceProject(missingProgramProject));
+    assert(!state.replaceProject(missingProgramProject));
+    assert(state.project().id == projectBeforeRejectedRouting);
+
+    auto duplicateProgramProject = opened;
+    auto duplicateProgram = openedProgram;
+    duplicateProgram.name = "Duplicate Opened Drums";
+    duplicateProgramProject.drumPrograms.push_back(duplicateProgram);
+    assert(!mpc::MpcProjectState::canReplaceProject(duplicateProgramProject));
+    assert(!state.replaceProject(duplicateProgramProject));
+    assert(state.project().id == projectBeforeRejectedRouting);
+
     assert(mpc::MpcProjectState::canReplaceProject(opened));
     assert(state.replaceProject(opened));
     assert(state.projectGeneration() != generationBeforeReplacement);
