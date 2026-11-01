@@ -699,6 +699,103 @@ int main() {
     assert(persistence::serializeProject(largeArrangement, &error).empty());
     assert(!error.empty());
 
+    // File APIs must have the same all-or-nothing guarantees as the
+    // in-memory decoder: a bad save keeps the previous file, and every
+    // failed read keeps every field in the active destination Project.
+    domain::Project atomicOpenProject = source;
+    const std::string atomicOpenBaseline =
+            persistence::serializeProject(atomicOpenProject, &error);
+    assert(!atomicOpenBaseline.empty());
+    assert(error.empty());
+
+    domain::Project invalidForSave = source;
+    bool invalidatedPlacement = false;
+    for (auto& placement : invalidForSave.sequences[0].tracks[0].placements) {
+        if (placement.id == "clip-b") {
+            placement.patternId = "pattern-missing-01";
+            invalidatedPlacement = true;
+            break;
+        }
+    }
+    assert(invalidatedPlacement);
+    error.clear();
+    assert(!persistence::saveProjectFile(invalidForSave, filePath, &error));
+    assert(!error.empty());
+    {
+        std::ifstream savedFile(filePath, std::ios::binary);
+        assert(savedFile.good());
+        savedFile.seekg(0, std::ios::end);
+        const auto fileSize = savedFile.tellg();
+        assert(fileSize >= 0);
+        savedFile.seekg(0, std::ios::beg);
+        std::string preservedBytes(
+                static_cast<std::size_t>(fileSize), '\0');
+        if (!preservedBytes.empty()) {
+            savedFile.read(
+                    preservedBytes.data(),
+                    static_cast<std::streamsize>(preservedBytes.size()));
+            assert(savedFile.good());
+        }
+        assert(preservedBytes == serialized);
+    }
+
+    const std::string truncatedV2 =
+            "MPCMK2_PROJECT 2\n"
+            "PROJECT \"partial-project\" \"Partial Project\"\n"
+            "SAMPLES 1\n";
+    const std::string malformedFilePath = filePath + ".malformed";
+    {
+        std::ofstream malformedFile(
+                malformedFilePath, std::ios::binary | std::ios::trunc);
+        assert(malformedFile.good());
+        malformedFile << truncatedV2;
+        assert(malformedFile.good());
+    }
+    error.clear();
+    assert(!persistence::loadProjectFile(
+            malformedFilePath, atomicOpenProject, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(atomicOpenProject)
+            == atomicOpenBaseline);
+
+    std::string invalidPlacementBytes = serialized;
+    const std::string validPlacement =
+            "PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120";
+    const auto placementPosition = invalidPlacementBytes.find(validPlacement);
+    assert(placementPosition != std::string::npos);
+    invalidPlacementBytes.replace(
+            placementPosition, validPlacement.size(),
+            "PLACEMENT \"clip-b\" \"pattern-missing-01\" 1200 720 120");
+    const std::string invalidPlacementFilePath =
+            filePath + ".invalid-placement";
+    {
+        std::ofstream invalidFile(
+                invalidPlacementFilePath, std::ios::binary | std::ios::trunc);
+        assert(invalidFile.good());
+        invalidFile << invalidPlacementBytes;
+        assert(invalidFile.good());
+    }
+    error.clear();
+    assert(!persistence::loadProjectFile(
+            invalidPlacementFilePath, atomicOpenProject, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(atomicOpenProject)
+            == atomicOpenBaseline);
+
+    const std::string missingFilePath = filePath + ".does-not-exist";
+    std::remove(missingFilePath.c_str());
+    error.clear();
+    assert(!persistence::loadProjectFile(
+            missingFilePath, atomicOpenProject, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(atomicOpenProject)
+            == atomicOpenBaseline);
+
+    std::remove(malformedFilePath.c_str());
+    std::remove((malformedFilePath + ".tmp").c_str());
+    std::remove(invalidPlacementFilePath.c_str());
+    std::remove((invalidPlacementFilePath + ".tmp").c_str());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
