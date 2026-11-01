@@ -224,5 +224,28 @@ int main() {
     assert(overflowingExpansion.written == 0);
     assert(overflowingExpansion.invalid);
 
+    mpc::domain::Pattern tinyPattern;
+    tinyPattern.lengthTicks = 3;
+    tinyPattern.notes = {{0, 1, 36, 100, 127, 1}};
+    const auto maximumCycles = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max()) / 3u;
+    std::array<mpc::sequencer::ScheduledMidiEvent, 1> tailOutput{};
+    const auto ordinaryTail = mpc::sequencer::schedulePatternWindow(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0u,
+            tailOutput);
+    assert(ordinaryTail.written == 0);
+    assert(ordinaryTail.truncated);
+    const auto rangedTail = mpc::sequencer::schedulePatternWindowInRange(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0,
+            3,
+            0u,
+            tailOutput);
+    assert(rangedTail.written == 0);
+    assert(rangedTail.truncated);
+
     return 0;
 }

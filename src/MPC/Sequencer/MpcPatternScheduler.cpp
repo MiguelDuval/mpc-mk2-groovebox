@@ -48,6 +48,21 @@ std::uint32_t mixCycleSeed(
     return state;
 }
 
+bool windowOffsetFitsInt64(
+        std::int64_t loopLength,
+        std::int64_t begin,
+        std::int64_t end,
+        std::uint64_t completedCycles) noexcept {
+    if (completedCycles == 0 || loopLength <= 0) return true;
+    const auto maximum = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max());
+    const auto length = static_cast<std::uint64_t>(loopLength);
+    if (completedCycles > maximum / length) return false;
+    const auto cycleTicks = completedCycles * length;
+    if (end <= begin) return true;
+    return static_cast<std::uint64_t>(end - begin) <= maximum - cycleTicks;
+}
+
 } // namespace
 
 ScheduleResult schedulePatternWindow(
@@ -71,9 +86,8 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
-    if (window.completedCycles >
-        static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) /
-                static_cast<std::uint64_t>(length)) {
+    if (!windowOffsetFitsInt64(
+                length, window.begin, window.end, window.completedCycles)) {
         result.truncated = true;
         return result;
     }
@@ -124,7 +138,7 @@ ScheduleResult schedulePatternWindow(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
@@ -181,6 +195,11 @@ ScheduleResult schedulePatternWindowInRange(
     }
 
     const auto loopLength = loopEndTicks - loopStartTicks;
+    if (!windowOffsetFitsInt64(
+                loopLength, window.begin, window.end, window.completedCycles)) {
+        result.truncated = true;
+        return result;
+    }
 
     const std::size_t workBudget = pattern.notes.size() > kMaxSchedulerNoteEvaluations
             ? pattern.notes.size()
@@ -232,7 +251,7 @@ ScheduleResult schedulePatternWindowInRange(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
