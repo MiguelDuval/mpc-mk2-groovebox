@@ -14417,12 +14417,15 @@ if ! grep -Fq -- "$SAMP_CURSOR_NAME" "$SAMP_CURSOR_QUERY"; then
 fi
 echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTAL frames)."
 
-# UIAutomator may stall transiently after long Project/sample runs. Retry only fresh, validated dumps; never reuse stale XML.
-# The Project workflow leaves a valid drum project open. Return to Main using
-# the existing measured Menu helper instead of relying on a stale workspace route.
-# Project persistence checks leave a large accessibility tree; allow a bounded 20s fresh dump per attempt.
-if ! dump_device_ui_retry "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML" 20 3; then
-  echo "ERROR: could not capture the shared MPC shell before leaving Project"; exit 1
+# The immediately preceding Project v1-load acceptance captured a fresh,
+# provenance-checked Android View tree for the live Main page in PROJECT_EXT_V1_XML.
+# Creating/indexing the disposable WAV fixture does not navigate the Activity.
+# Avoid UiAutomator's global waitForIdle on this unchanged Main shell: exact-head
+# Builds #3631/#3632 both stalled there despite the valid 231-node app-side tree.
+# The measured app-side touch helper preserves a real touch and captures a fresh
+# Menu tree before the next navigation action.
+if [[ "$PROJECT_CURRENT_APP_XML" != "$PROJECT_EXT_V1_XML" || ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
+  echo "ERROR: SAMP-007 requires the fresh v1-loaded Main Android View tree"; exit 1
 fi
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu before the cursor workflow"; exit 1
@@ -14430,11 +14433,10 @@ fi
 if ! tap_mpc_menu_tile 0 0; then
   echo "ERROR: could not return to Main before the cursor workflow"; exit 1
 fi
-if ! dump_device_ui_retry "$DEVICE_DUMP" "$DUMP" 8 3; then
-  echo "ERROR: could not capture Main before opening Browser for SAMP-007"; exit 1
-fi
-if ! tap_ui_description "$DUMP" "MPC Project Browser"; then
-  echo "ERROR: could not open Browser for the cursor WAV"; exit 1
+# tap_mpc_menu_tile waits for the new MAIN shell marker and captures a fresh
+# app-side View tree, so use its measured Browser toolbar target directly.
+if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Project Browser"; then
+  echo "ERROR: could not open Browser from the fresh Main View tree for the cursor WAV"; exit 1
 fi
 if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser scan local audio files" 20; then
   echo "ERROR: Browser scan control is unavailable for SAMP-007"; exit 1
