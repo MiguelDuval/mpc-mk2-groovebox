@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 namespace mpc::audio {
@@ -13,6 +14,23 @@ struct AudioTriggerEvent final {
     std::uint8_t velocity = 0;
     std::int32_t offsetFrames = 0;
 };
+
+// This queue carries note-on events; velocity-zero note-off messages are not
+// valid here. Keep the public input boundary inside MIDI's 7-bit range.
+[[nodiscard]] inline constexpr bool isValidAudioTriggerVelocity(
+        std::uint8_t velocity) noexcept {
+    return velocity > 0 && velocity <= 127;
+}
+
+[[nodiscard]] inline constexpr bool isValidAudioTriggerEvent(
+        const AudioTriggerEvent& event,
+        std::size_t padCount,
+        std::int32_t maxOffsetFrames = std::numeric_limits<std::int32_t>::max()) noexcept {
+    return event.padIndex < padCount
+            && isValidAudioTriggerVelocity(event.velocity)
+            && event.offsetFrames >= 0
+            && event.offsetFrames <= maxOffsetFrames;
+}
 
 template <typename T, std::size_t Capacity>
 class BoundedMpmcQueue final {

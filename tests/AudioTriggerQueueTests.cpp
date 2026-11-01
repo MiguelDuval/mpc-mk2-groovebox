@@ -7,6 +7,21 @@
 #include <vector>
 
 int main() {
+    assert(!mpc::audio::isValidAudioTriggerVelocity(0));
+    assert(mpc::audio::isValidAudioTriggerVelocity(1));
+    assert(mpc::audio::isValidAudioTriggerVelocity(64));
+    assert(mpc::audio::isValidAudioTriggerVelocity(127));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(128));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(255));
+    constexpr std::size_t pads = 16;
+    assert(mpc::audio::isValidAudioTriggerEvent({15, 127, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({16, 127, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 0, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 128, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 255, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, -1}, pads));
+    assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 48000}, pads, 48000));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 48001}, pads, 48000));
     mpc::audio::AudioTriggerQueue queue;
 
     mpc::audio::AudioTriggerEvent initiallyEmpty;
