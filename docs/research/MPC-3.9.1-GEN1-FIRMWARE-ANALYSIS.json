@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "analysisDate": "2026-10-11",
+  "scope": "offline static firmware-image analysis; not a complete native-code decompilation",
+  "input": {
+    "fileName": "MPC-3.9.1-Gen1-update.img",
+    "sizeBytes": 162220784,
+    "sha256": "4c0f7797a006313fad206f9513eca8b3823e834c9e0941a6b5f088386cb835d6",
+    "magic": "AZ01",
+    "snapshot": "SNAPSHOT-20260709104848",
+    "hardwareCompatibleStrings": [
+      "inmusic,acv5",
+      "inmusic,acv8",
+      "inmusic,acva",
+      "inmusic,acva2",
+      "inmusic,acvb",
+      "inmusic,acvm",
+      "inmusic,acvr",
+      "inmusic,acv5s"
+    ],
+    "hardwareTargetIdsHex": [
+      "0x09e8403a",
+      "0x09e8403b",
+      "0x09e84046",
+      "0x09e84047",
+      "0x09e8404b",
+      "0x09e84052",
+      "0x09e84056",
+      "0x09e84057"
+    ],
+    "payload": {
+      "marker": "PARTL",
+      "name": "rootfs",
+      "compression": "xz",
+      "declaredDigestAlgorithm": "sha1",
+      "offsetBytes": 340,
+      "lengthBytes": 162220428,
+      "embeddedSha1": "835e1bc192961bf4906c998e1bcf269d2055f6c7",
+      "recomputedSha1Matches": true,
+      "xzTest": "passed"
+    }
+  },
+  "rootFilesystem": {
+    "format": "ext4-format",
+    "sizeBytes": 441279488,
+    "sha256": "6aafd4384469a76df4c4270aa4f07b3f7e411828a691c75d5471c5fdfe2d69f3",
+    "sha1": "93c353b051ab9bf789c9cb2f5d7a7798e0c7470f",
+    "uuid": "b869c04d-3d59-485d-8bf1-b844c378176e",
+    "blockSizeBytes": 1024,
+    "blocks": 430936,
+    "inodes": 107696,
+    "inodeSizeBytes": 256,
+    "groups": 53,
+    "parsedEntries": 11529,
+    "directoryParseErrors": 0,
+    "regularFilePayloadBytesExtracted": 384690598,
+    "consistencyCheck": "not run; custom read-only walker used"
+  },
+  "application": {
+    "versionFromVersionFile": "3.9.1.2",
+    "versionNote": "3.9.1.2 (f3af35cdc95)",
+    "releaseMarker": "AZ01_VERSION=9ad1b9c0",
+    "buildTag": "jenkins-ACVS-MPC3-SME0-MPC3-Yocto-563",
+    "elf": "32-bit little-endian ARM EABI5 PIE, dynamically linked, stripped",
+    "interpreter": "/usr/lib/ld-linux-armhf.so.3",
+    "buildId": "8371199f945ecc40f79cb19c17ff5de72810a91c"
+  },
+  "findings": {
+    "acvsEntries": 772,
+    "acvsPngFiles": 759,
+    "acvsJsonLayoutFiles": 13,
+    "acvsRegularPayloadBytes": 2846324,
+    "sme0Entries": 1884,
+    "sme0RegularFilePayloadBytes": 31450023,
+    "akaiContentEntries": 3674,
+    "akaiContentRegularFilePayloadBytes": 89490644,
+    "nestedSquashfs": {
+      "path": "/opt/ramfs-update.squashfs",
+      "sizeBytes": 3710976,
+      "version": "4.0",
+      "compression": "zlib",
+      "blockSizeBytes": 131072,
+      "inodes": 273,
+      "extracted": false
+    },
+    "observedTypeInfoOrStringAnchors": [
+      "SerialisableTUIMainModeLayoutData",
+      "SerialisableTUIMainModeMixerLayoutData",
+      "QLinkMainMode",
+      "ACVFMediaBrowserParameter",
+      "MpcInterfaceBehaviour",
+      "ModeShortcutPanel.Enabled",
+      "SoundSelect.DefaultView",
+      "SoundSelect.OpenProgramEdit",
+      "stepSequencerButtonModes.DefaultStepSequencerMode",
+      "TUIMainModeLaunchSelectedClipDuringPlayback",
+      "AutomationLaneFollowsQLinks"
+    ],
+    "layoutCaveat": "ACVS panel geometry descriptors are observations, not confirmed pixel-accurate MPC One Main-screen specs."
+  },
+  "limitations": [
+    "No Ghidra function-level decompilation performed",
+    "Target ARM application not executed",
+    "Nested SquashFS not extracted",
+    "No filesystem consistency check",
+    "No physical MPC One interaction or screenshot was available",
+    "No proprietary firmware or extracted UI assets included in repository"
+  ],
+  "projectPriorityUnchanged": "Real Android Document Picker select-return-target-preservation test remains the next implementation task.",
+  "uiSchemaFollowUp": {
+    "checkedDate": "2026-10-11",
+    "method": [
+      "Parsed extracted Program Edit TUI.json schemas",
+      "Counted serialized component/action metadata",
+      "Inventoried graphics category filenames and PNG dimensions",
+      "Parsed ACVS/layout/Help.json",
+      "Inspected MPC ELF sections, DT_NEEDED dependencies and UI-related strings/type-information"
+    ],
+    "serializedPages": {
+      "tuiJsonFiles": 10,
+      "completeDescriptions": 4,
+      "partialDescriptions": 6,
+      "totalTabs": 66,
+      "totalComponentEntries": 652,
+      "localComponentDefinitionsAcrossPagesJson": 199,
+      "serializedActions": 136,
+      "actionTriggers": {
+        "Mouse Down": 59,
+        "Enter Pressed": 50,
+        "Double Click": 27
+      },
+      "actionHandlers": {
+        "Show Overlay": 62,
+        "Q-Link": 48,
+        "Toggle Switch": 26
+      },
+      "caveat": "Metadata counts only; not runtime instrumentation."
+    },
+    "mainTouchTypeInfoAnchors": [
+      "TouchMainPage",
+      "TouchMainPageNavigationPanel",
+      "TouchMainPageContentPanel",
+      "TouchMainPageTrackSidePanel",
+      "TouchMainPageTrackClipPanel",
+      "TouchMainPageClipSidePanel",
+      "TouchMainPageAudioTrackPanel",
+      "TouchMainPageBusTrackPanel",
+      "TouchMainPageCVTrackPanel",
+      "TouchMainPageDrumTrackPanel",
+      "TouchMainPageKeygroupTrackPanel",
+      "TouchMainPageMidiTrackPanel",
+      "TouchMainPagePluginTrackPanel",
+      "TouchMainModeMixerProperties",
+      "TouchMixerChannelStripMPC",
+      "TouchMultiMixerStrip",
+      "TouchDoubleChannelStripContainer",
+      "TouchModeShortcutPanel",
+      "QLinkMainMode",
+      "TransportBarCentreControls",
+      "MpcInterfaceBehaviour"
+    ],
+    "serializedPropertyNameAnchors": [
+      "tuiMainModeLayout",
+      "tuiMainModeMixerLayout",
+      "ProjectDefaults.tuiMainModeLaunchSelectedClipDuringPlayback"
+    ],
+    "help": {
+      "entries": 51,
+      "hostOrSharedUiVocabularyObserved": [
+        "mouse",
+        "hover",
+        "click",
+        "window",
+        "status bar"
+      ],
+      "interpretation": "Shows shared/host-like abstractions are present; not proof that every ACVS layout applies only to desktop."
+    },
+    "trackTypeAssetAudit": {
+      "selectorGroup": "ACVS/graphics/track type selection",
+      "selectorAssets125x125": [
+        "track-audio.png",
+        "track-cv.png",
+        "track-drum.png",
+        "track-keygroup.png",
+        "track-midi.png",
+        "track-plugin.png"
+      ],
+      "selectorGroupCount": 6,
+      "selectorAssetForClipFound": false,
+      "separateStripTypeIcons": [
+        "strip-audio.png",
+        "strip-clip.png",
+        "strip-cv.png",
+        "strip-keygroup.png",
+        "strip-master.png",
+        "strip-midi.png",
+        "strip-multi.png",
+        "strip-pad.png",
+        "strip-plugin.png",
+        "strip-program.png",
+        "strip-return.png",
+        "strip-submix.png",
+        "strip-unavailable.png"
+      ],
+      "observedDiscrepancy": "Official MPC Standalone OS v3.9 guide lists Track Types Audio, Drum, Keygroup, Plugin, MIDI, CV; project's recent migration vocabulary uses CLIP where AUDIO should be audited.",
+      "codeChanged": false
+    },
+    "mainExecutable": {
+      "textSectionBytes": 73228776,
+      "rodataSectionBytes": 28611512,
+      "dynamicStringTableBytes": 503748,
+      "declaredDependencies": [
+        "libasound.so.2",
+        "libdrm.so.2",
+        "libinput.so.10",
+        "libxkbcommon.so.0",
+        "libudev.so.1",
+        "libusbgx.so.3",
+        "libfreetype.so.6",
+        "libcurl.so.4",
+        "libdbus-1.so.3",
+        "libaz01-prog.so.0",
+        "libaz0x-info.so.0"
+      ],
+      "caveat": "DT_NEEDED names show link-time dependencies, not confirmed runtime call paths."
+    },
+    "newFollowUp": [
+      "Audit the app Track Type chooser and tests for AUDIO vs CLIP; verify before source change.",
+      "Use TouchMainPage and TouchMainModeMixerProperties anchors for later Ghidra cross-reference analysis.",
+      "Keep real Android Document Picker selection/return/Pad-Layer target preservation as the next functional implementation task."
+    ]
+  }
+}
