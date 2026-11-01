@@ -483,6 +483,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioChopPadSampleToPads(
             int pad, int layer, int chopCount);
     private static native String nativeAudioCropPadSampleRegion(int pad, int layer);
+    private static native byte[] nativeAudioExportPadSampleToWav(int pad, int layer);
+    private static native byte[] nativeAudioExportRecordingToWav();
     private static native String nativeAudioSetPadEnvelope(
             int pad, float attackMs, float decayMs, float sustain, float releaseMs);
     private static native float nativeAudioGetPadEnvelopeAttack(int pad);

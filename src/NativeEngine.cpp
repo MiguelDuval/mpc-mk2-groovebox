@@ -627,6 +627,51 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioCropPadSampleRegion
                     static_cast<std::uint8_t>(layer)));
 }
 
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioExportPadSampleToWav(
+        JNIEnv* env, jobject /* thiz */, jint pad, jint layer)
+{
+    if (env == nullptr) return nullptr;
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) return nullptr;
+    std::vector<std::uint8_t> bytes;
+    const auto error = mpc::audio::AudioEngine::instance().exportPadSampleToWav(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(layer),
+            bytes);
+    if (!error.empty() || bytes.empty()) return nullptr;
+    const auto length = static_cast<jsize>(bytes.size());
+    jbyteArray result = env->NewByteArray(length);
+    if (result == nullptr) return nullptr;
+    env->SetByteArrayRegion(result, 0, length,
+            reinterpret_cast<const jbyte*>(bytes.data()));
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioExportRecordingToWav(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    std::vector<std::uint8_t> bytes;
+    const auto error =
+            mpc::audio::AudioEngine::instance().exportRecordingToWav(bytes);
+    if (!error.empty() || bytes.empty()) return nullptr;
+    const auto length = static_cast<jsize>(bytes.size());
+    jbyteArray result = env->NewByteArray(length);
+    if (result == nullptr) return nullptr;
+    env->SetByteArrayRegion(result, 0, length,
+            reinterpret_cast<const jbyte*>(bytes.data()));
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLayerGain(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jfloat gain)
