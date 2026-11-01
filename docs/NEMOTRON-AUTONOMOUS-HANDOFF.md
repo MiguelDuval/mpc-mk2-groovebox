@@ -48,9 +48,9 @@
 
 ## Mission Status
 - Mission A: Complete (state documented, APK candidate preserved, SAMP-007 diagnosis documented)
-- Mission B: In progress — Track Solo vertical slice complete (native gating + JNI + UI Function Bar + compact context status)
-  - Commit: dabe2076 on fix/p0-mute-grid-ui-recovery-20261027 (pushed to origin)
-  - Files: MainActivity.java, MpcSequencePlaybackSession.h, MpcSequencerPlayback.h, NativeEngine.cpp, NEMOTRON-AUTONOMOUS-HANDOFF.md
+- Mission B: In progress — Track Solo vertical slice complete (native gating + JNI + UI Function Bar + compact context status + unit tests)
+  - Commits: dabe2076 (impl), f768c3cf (tests) on fix/p0-mute-grid-ui-recovery-20261027 (pushed to origin)
+  - Files: MainActivity.java, MpcSequencePlaybackSession.h, MpcSequencerPlayback.h, NativeEngine.cpp, tests/MpcSequencerPlaybackSoloTests.cpp, NEMOTRON-AUTONOMOUS-HANDOFF.md
 
 ## Next Concrete Action
 - Read remaining knowledge base (MPC3-REFERENCE-INDEX.md, MPC-STYLE-UI-ROADMAP.md, MPC-UX-REFERENCE.md)
