@@ -14361,11 +14361,13 @@ with wave.open(source_path, "rb") as source:
     frames = source.readframes(params.nframes)
 if not frames or params.nframes <= 0:
     raise SystemExit("source WAV has no decoded PCM frames")
-target_frames = params.framerate * 7
-if target_frames < 200000:
+if params.framerate <= 0 or params.nchannels <= 0 or params.sampwidth <= 0:
     raise SystemExit(
-        f"sample rate is too low for a bounded cursor fixture: {params.framerate} Hz"
+        f"source WAV has invalid PCM parameters: {params.getparams()}"
     )
+target_frames = params.framerate * 7
+if target_frames <= 0:
+    raise SystemExit("seven-second cursor fixture must contain PCM frames")
 frame_bytes = params.nchannels * params.sampwidth
 if target_frames * frame_bytes + 44 > 32 * 1024 * 1024:
     raise SystemExit("seven-second cursor WAV would exceed the app's 32 MiB import limit")
