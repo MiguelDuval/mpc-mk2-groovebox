@@ -26,4 +26,9 @@ struct SampleBuffer final {
 
 std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes);
 
+// Encode a SampleBuffer to PCM 16-bit WAV bytes.
+// Returns empty vector if the buffer has no frames or invalid channel count.
+// Supports mono (1 channel) and stereo (2 channels).
+std::vector<std::uint8_t> encodeWav(const SampleBuffer& buffer);
+
 } // namespace mpc::audio

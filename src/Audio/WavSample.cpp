@@ -230,4 +230,74 @@ std::optional<SampleBuffer> decodeWav(std::span<const std::uint8_t> bytes) {
     return result;
 }
 
+namespace {
+
+void appendU16(std::vector<std::uint8_t>& bytes, std::uint16_t value) {
+    bytes.push_back(static_cast<std::uint8_t>(value & 0xFF));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFF));
+}
+
+void appendU32(std::vector<std::uint8_t>& bytes, std::uint32_t value) {
+    bytes.push_back(static_cast<std::uint8_t>(value & 0xFF));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 8) & 0xFF));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 16) & 0xFF));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 24) & 0xFF));
+}
+
+void appendTag(std::vector<std::uint8_t>& bytes, const char* tag) {
+    bytes.insert(bytes.end(), tag, tag + 4);
+}
+
+std::int16_t floatToPcm16(float value) {
+    const auto clamped = std::clamp(value, -1.0f, 1.0f);
+    return static_cast<std::int16_t>(std::lround(clamped * 32767.0f));
+}
+
+} // namespace
+
+std::vector<std::uint8_t> encodeWav(const SampleBuffer& buffer) {
+    if (buffer.frameCount() == 0 || buffer.channelCount == 0
+            || (buffer.channelCount != 1u && buffer.channelCount != 2u)) {
+        return {};
+    }
+
+    const std::uint16_t format = 1; // PCM
+    const std::uint16_t channels = static_cast<std::uint16_t>(buffer.channelCount);
+    const std::uint32_t sampleRate = buffer.sampleRate;
+    const std::uint16_t bitsPerSample = 16;
+    const std::uint16_t blockAlign = channels * (bitsPerSample / 8);
+    const std::uint32_t byteRate = sampleRate * blockAlign;
+    const std::uint32_t dataSize =
+            static_cast<std::uint32_t>(buffer.frameCount() * blockAlign);
+    const std::uint32_t riffSize = 36u + dataSize;
+
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(riffSize);
+
+    appendTag(bytes, "RIFF");
+    appendU32(bytes, riffSize);
+    appendTag(bytes, "WAVE");
+
+    appendTag(bytes, "fmt ");
+    appendU32(bytes, 16); // fmt chunk size
+    appendU16(bytes, format);
+    appendU16(bytes, channels);
+    appendU32(bytes, sampleRate);
+    appendU32(bytes, byteRate);
+    appendU16(bytes, blockAlign);
+    appendU16(bytes, bitsPerSample);
+
+    appendTag(bytes, "data");
+    appendU32(bytes, dataSize);
+
+    for (std::size_t frame = 0; frame < buffer.frameCount(); ++frame) {
+        for (std::uint16_t channel = 0; channel < channels; ++channel) {
+            const auto sample = buffer.sampleAt(frame, channel);
+            appendU16(bytes, static_cast<std::uint16_t>(floatToPcm16(sample)));
+        }
+    }
+
+    return bytes;
+}
+
 } // namespace mpc::audio

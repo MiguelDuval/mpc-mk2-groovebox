@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -1080,6 +1081,36 @@ std::string AudioEngine::copyPadToPads(
             + (copied == 1 ? " destination" : " destinations")
             + " from PAD "
             + std::to_string(static_cast<unsigned>(sourcePadIndex + 1));
+}
+
+std::string AudioEngine::exportPadSampleToWav(
+        std::uint8_t padIndex,
+        std::uint8_t layerIndex,
+        std::vector<std::uint8_t>& outBytes) {
+    if (padIndex >= kPadCount) {
+        return "Export WAV failed: invalid pad index";
+    }
+    if (layerIndex >= kSampleLayerCount) {
+        return "Export WAV failed: invalid layer index";
+    }
+    if (stream_ != nullptr) {
+        return "Export WAV requires stopped playback";
+    }
+
+    const auto& sample = padSamples_[padIndex][layerIndex];
+    if (sample == nullptr) {
+        return "Export WAV failed: no sample assigned to pad/layer";
+    }
+
+    outBytes = encodeWav(*sample);
+    if (outBytes.empty()) {
+        return "Export WAV failed: sample has no valid PCM data";
+    }
+
+    return "EXPORT WAV • PAD "
+           + std::to_string(static_cast<unsigned>(padIndex + 1))
+           + " LAYER " + std::to_string(static_cast<unsigned>(layerIndex + 1))
+           + " • " + std::to_string(outBytes.size()) + " bytes";
 }
 
 std::string AudioEngine::deletePadAssignments(

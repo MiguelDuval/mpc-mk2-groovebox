@@ -153,6 +153,13 @@ public:
     std::string copyPadToPads(
             std::uint8_t sourcePadIndex,
             std::uint16_t destinationMask);
+    // Exports a pad/layer sample to PCM 16-bit WAV bytes.
+    // Returns empty string on success with outBytes populated, or an error
+    // message string on failure (invalid pad/layer, no sample assigned).
+    std::string exportPadSampleToWav(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex,
+            std::vector<std::uint8_t>& outBytes);
     std::string deletePadAssignments(
             std::uint16_t padMask);
 
