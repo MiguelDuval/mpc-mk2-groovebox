@@ -114,20 +114,41 @@ Changes:
 - **MainActivity.java**: color/geometry constant declarations now alias `MpcStyle.*`; BG and SURFACE re-based to MpcStyle values (aligns MainActivity with MpcShell shell chrome). All existing code using `BG`, `SURFACE`, etc. continues to work unchanged.
 - **MpcShortcutRailItemView.java**: color references now use `MpcStyle.*`.
 
-## 9. Environment progress (bounded attempt, in progress)
+## 9. Main Mode blueprint compliance (source-verified, 2026-11-01)
+
+Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLUEPRINT.md` §2:
+
+**Verified MATCH (source-level):**
+- Shell: Toolbar → 3dp position strip → ShortcutRail(48dp) / XL Channel Strip context(210dp) → Workspace → Function Bar(40dp)
+- Toolbar: project identity, transport position (BAR/BEAT/TICK), Timing Correct, metronome (reserved/disabled), automation (reserved/disabled), MIDI IN/OUT status
+- Five shortcuts: BROWSER, CHANNEL_MIXER, PAD_MIXER, SOUNDS, XYFX (exactly 5; unavailable ones truthfully marked)
+- Function Bar (MAIN): NEW TRACK / SEQ+Rec Arm group / −Track+ group / MUTE / SOLO (5 slots)
+- MPC-red divider between Sequence and Track zones (2dp, MPC_SELECTION_RED)
+- Flat rectangular surfaces (MPC_FLAT_RADIUS_DP = 0, no rounded cards)
+- No 4×4 pad matrix in Main (controller-first, pads on physical hardware)
+- Track-state row: MONITOR (unavailable "—"), LENGTH ("SEQ"), VELOCITY (unavailable "—"), LAYER (real selected layer, clickable)
+- Empty pad: large BROWSE/RECORD actions; loaded pad: audition PLAY button
+- Layer selection: real selected layer state, DATA_DIAL focus integration
+- Arrangement preview section present
+
+**NOT verified (requires runtime screenshot + build):**
+- Exact visual parity: colors, typography, iconography, density, spacing vs VIS-001 reference images.
+- Runtime screenshot capture and before/after comparison.
+
+## 10. Environment progress (bounded attempt, in progress)
 
 - **Android SDK** at `C:\Android\SDK`: platform 36, build-tools 36.0.0, platform-tools 37.0.1, cmdline-tools — present.
 - **CMake 3.22.1**: INSTALLED via sdkmanager.
 - **NDK 28.2.13676358**: INSTALLED via sdkmanager.
-- **Gradle 9.6**: NOT yet downloaded (download interrupted by tool timeout on large file).
-- **Submodules** (JUCE, tracktion_engine, oboe, ableton_link): NOT checked out.
+- **Gradle 9.6.0**: download repeatedly interrupted at ~7 MB / ~100 MB by tool timeout on long operations. NOT yet obtained.
+- **Submodules** (JUCE, tracktion_engine, oboe, ableton_link): checkout interrupted. oboe CMakeLists.txt not yet materialized.
 - **Emulator system image / AVD**: NOT present.
 - **Java**: 21 (CI wants 17).
 - Local build NOT yet possible. Source-level changes committed; CI verification pending environment completion.
 
-## 10. Next concrete task
+## 11. Next concrete task
 
-Option A (preferred): download Gradle 9.6, check out submodules (at minimum oboe which is required by CMakeLists.txt), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1.
+Option A (preferred): obtain Gradle 9.6.0 and check out submodules (at minimum oboe), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1 and correct any measurable visual gaps.
 Option B: continue source-level P0 visual-fidelity edits per the reference catalog, commit, push, await CI verification. Do NOT claim visual parity without a runtime screenshot comparison.
 
 Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`.
