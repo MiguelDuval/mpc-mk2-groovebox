@@ -4,7 +4,7 @@
 - Repository: MiguelDuval/mpc-mk2-groovebox
 - Remote: https://github.com/MiguelDuval/mpc-mk2-groovebox.git
 - Local working copy: C:\Users\migue\Documents\GitHub\mpc-mk2-groovebox
-- Local branch: fix/p0-mute-grid-ui-recovery-20261027 (HEAD e7de5881c936a8b1167ce6835ee7424944407749)
+- Local branch: fix/p0-mute-grid-ui-recovery-20261027 (HEAD dabe2076, pushed to origin)
 - Target branch (checkpoint): checkpoint/mpc-ui-reference-and-product-20261030 at 9f2868cbe2257884ea0de776db728631c0cd0c89
 - NOTE: checkpoint branch could not be checked out locally (git fetch does not materialize remote-tracking ref for this branch; git clone interrupted). Working from nearest available local clone.
 
@@ -48,10 +48,13 @@
 
 ## Mission Status
 - Mission A: Complete (state documented, APK candidate preserved, SAMP-007 diagnosis documented)
-- Mission B: Starting (MPC 3.9 UI implementation)
+- Mission B: In progress — Track Solo vertical slice complete (native gating + JNI + UI Function Bar + compact context status)
+  - Commit: dabe2076 on fix/p0-mute-grid-ui-recovery-20261027 (pushed to origin)
+  - Files: MainActivity.java, MpcSequencePlaybackSession.h, MpcSequencerPlayback.h, NativeEngine.cpp, NEMOTRON-AUTONOMOUS-HANDOFF.md
 
 ## Next Concrete Action
-- Read knowledge base (MPC3-UI-MIGRATION-MASTER-SPEC.md, MPC3-UI-VISUAL-REFERENCE-CATALOG.md, MPC3-USER-ACTION-CATALOG.md, MPC3-UI-REFERENCE-ASSETS/INDEX.md) from checkpoint branch
-- Build UI completeness matrix
-- Implement highest-priority P0 UI slice (shell/Main Mode consistency)
+- Read remaining knowledge base (MPC3-REFERENCE-INDEX.md, MPC-STYLE-UI-ROADMAP.md, MPC-UX-REFERENCE.md)
+- Build UI completeness matrix (VIS ID × action ID × status × gap)
+- Implement next P0 UI slice (Grid / Step Sequencer / Main Mode completeness)
+- Add C++ unit test for Track Solo gating
 - Commit, push, update handoff
