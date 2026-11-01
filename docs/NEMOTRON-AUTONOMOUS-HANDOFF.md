@@ -12,10 +12,28 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `0d53d709edaaaff67de2ac49526c76487e56e0ac` |
+| Exact HEAD | `bde4e3399768344d7212e6fce5f2f5cfdfbac99b` |
+| Remote HEAD (origin) | `bde4e3399768344d7212e6fce5f2f5cfdfbac99b` — matches local, pushed via fast-forward |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
-| Local clone | blobless partial clone at `.../chat/mpc-pr133`; files materialized on demand via single-blob `git fetch origin <sha>` + `git checkout HEAD -- <path>` |
+| Local clone | `.../chat/mpc-pr133`; full tracked tree materialized after recovery (1148 files). Promisor re-enabled during restore; `remote.origin.partialclonefilter=blob:none` remains. |
+
+## 0.x Repository recovery (completed this session)
+
+Commit `04b1626` ("docs: record autonomous handoff...") accidentally recorded a partially-materialized sparse-checkout tree as a full snapshot, deleting 1142 tracked paths (~95,933 lines) including all Android source, docs, CI workflows, .gitmodules, CMake, and the visual-reference archive.
+
+Recovery performed on branch `feature/mpc-one-ui-fidelity-continue`, ON TOP of `04b1626` (no reset, no amend, no force-push, no history rewrite, `04b1626` preserved):
+
+1. `git diff-tree --no-commit-id --name-only --diff-filter=D -r HEAD` → 1142 deleted paths saved locally.
+2. Re-enabled `remote.origin.promisor=true` so the partial clone could lazy-fetch missing blobs.
+3. `git checkout HEAD^ -- .` restored all 1142 deleted tracked paths from parent `0d53d709` into index + worktree.
+4. Commit `ab83a43` "fix(repo): restore project tree after partial checkout commit" — 1145 files, 95,933 insertions.
+5. Accidentally-staged temp files removed via fix-up commit `bde4e33` "fix(repo): remove temporary files accidentally staged in restoration".
+6. Pushed normally (fast-forward `04b1626..bde4e33`) to origin; remote HEAD verified equal to local.
+7. Verified `git diff --name-status 0d53d709..HEAD` = ONLY `A docs/NEMOTRON-AUTONOMOUS-HANDOFF.md` (the intended new file). No mass deletions, no missing project files.
+
+All acceptance criteria met: Android source, Gradle config, .gitmodules, CMakeLists.txt, CI workflows, docs knowledge base, `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`, visual assets, and submodule definitions all present.
 
 ## 2. Open PRs (reconciled)
 
@@ -55,7 +73,12 @@ Conclusion: Solo is dynamic during playback, no stale cache, Mute takes preceden
 
 ## 6. Changes made in this session
 
-None yet (this handoff is the first committed slice on the new branch).
+- Repository recovery: restored all 1142 deleted tracked files from parent `0d53d709` onto branch `feature/mpc-one-ui-fidelity-continue`, on top of (not replacing) bad commit `04b1626`.
+- Commits: `ab83a43` (restoration, +95,933 lines / 1145 files) and `bde4e33` (fix-up, removed accidentally-staged temp files).
+- Pushed to origin via normal fast-forward; remote HEAD `bde4e33` matches local.
+- Verified cumulative diff vs parent = only `docs/NEMOTRON-AUTONOMOUS-HANDOFF.md` added; no mass deletions.
+- This handoff document corrected (HEAD, parent chain, recovery record).
+
 
 ## 7. Known defects / gaps
 
