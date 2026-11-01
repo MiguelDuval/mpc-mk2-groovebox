@@ -4079,6 +4079,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMovePlayheadTick
                     + " ticks");
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsPadMuted(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return JNI_FALSE;
+    }
+
+    const auto& pad = mpc::MpcCore::instance()
+            .projectState()
+            .activeDrumProgram()
+            .pad(static_cast<std::size_t>(padIndex));
+    return pad.muted ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTogglePadMute(
         JNIEnv* env, jobject /* thiz */, jint padIndex)
@@ -4119,6 +4135,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMute(
             env,
             "TRACK " + std::to_string(trackIndex + 1)
                     + " MUTE " + (track.muted ? "ON" : "OFF"));
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackSoloed(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || trackIndex >= static_cast<jint>(
+                    state.activeSequence().tracks.size())) {
+        return JNI_FALSE;
+    }
+    const auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    return track.soloed ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (trackIndex < 0
+            || trackIndex >= static_cast<jint>(
+                    state.activeSequence().tracks.size())) {
+        return toJString(env, "Track solo failed: invalid track");
+    }
+
+    auto& track =
+            state.activeSequence().tracks[static_cast<std::size_t>(trackIndex)];
+    track.soloed = !track.soloed;
+
+    return toJString(
+            env,
+            "TRACK " + std::to_string(trackIndex + 1)
+                    + " SOLO " + (track.soloed ? "ON" : "OFF"));
 }
 
 extern "C" JNIEXPORT jlong JNICALL

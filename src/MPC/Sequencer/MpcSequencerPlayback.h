@@ -31,12 +31,16 @@ public:
             const domain::Pattern& pattern,
             const domain::DrumProgram& program,
             audio::AudioTriggerQueue& audioQueue,
-            const bool* trackMuted = nullptr) noexcept
+            const bool* trackMuted = nullptr,
+            const bool* trackSoloed = nullptr,
+            bool anyTrackSoloed = false) noexcept
             : sequence_(sequence),
               program_(program),
               runtime_(sequence, pattern),
               audioQueue_(audioQueue),
-              trackMuted_(trackMuted) {
+              trackMuted_(trackMuted),
+              trackSoloed_(trackSoloed),
+              anyTrackSoloed_(anyTrackSoloed) {
     }
 
     MpcSequencerPlayback(const MpcSequencerPlayback&) = delete;
@@ -136,6 +140,13 @@ public:
             return result;
         }
 
+        // Solo semantics: when any track in the sequence is soloed, only
+        // soloed tracks are audible. A soloed track is still subject to its
+        // own mute. A non-soloed track is silent while any track is soloed.
+        if (anyTrackSoloed_ && trackSoloed_ != nullptr && !*trackSoloed_) {
+            return result;
+        }
+
         const auto route = routeScheduledEventsToPads(
                 program_,
                 std::span<const ScheduledMidiEvent>(
@@ -168,6 +179,8 @@ private:
     MpcSequencerRuntime runtime_;
     audio::AudioTriggerQueue& audioQueue_;
     const bool* trackMuted_ = nullptr;
+    const bool* trackSoloed_ = nullptr;
+    bool anyTrackSoloed_ = false;
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> scheduledEvents_{};
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> expandedScheduledEvents_{};
     std::array<ScheduledPadEvent, kMaxPlaybackEvents> routedEvents_{};

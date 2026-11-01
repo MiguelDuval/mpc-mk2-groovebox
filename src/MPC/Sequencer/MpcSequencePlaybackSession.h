@@ -40,6 +40,15 @@ public:
         stop();
 
         const auto& sequence = projectState_.activeSequence();
+        // Solo is cross-track: if any track is soloed, only soloed tracks
+        // are audible. Compute once before creating playback sessions.
+        anyTrackSoloed_ = false;
+        for (const auto& track : sequence.tracks) {
+            if (track.soloed) {
+                anyTrackSoloed_ = true;
+                break;
+            }
+        }
         // Reserve before creating playback sessions: each session references
         // one stable sequence-length Pattern assembled from the track's clips.
         arrangementPatterns_.reserve(sequence.tracks.size());
@@ -69,7 +78,9 @@ public:
                     arrangementPatterns_.back(),
                     *program,
                     audio_.triggerQueue(),
-                    &track.muted));
+                    &track.muted,
+                    &track.soloed,
+                    anyTrackSoloed_));
         }
 
         if (playbacks_.empty()) {
@@ -144,6 +155,7 @@ private:
     audio::AudioEngine& audio_;
     std::vector<domain::Pattern> arrangementPatterns_;
     std::vector<std::unique_ptr<MpcSequencerPlayback>> playbacks_;
+    bool anyTrackSoloed_ = false;
 };
 
 } // namespace mpc::sequencer
