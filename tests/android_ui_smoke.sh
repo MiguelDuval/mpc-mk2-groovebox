@@ -11748,15 +11748,10 @@ if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
   echo "ERROR: could not open Downloads in Android Document Picker"
   exit 1
 fi
-if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
-  echo "ERROR: picker did not show the prepared WAV in Downloads"
-  exit 1
-fi
-
-# Android 16 DocumentsUI grid cards expose a separate Preview control while
-# the file tile itself is not accessibility-clickable. Switch to the real
-# list row before selecting, and verify the mode transition rather than
-# repeatedly tapping the decorative thumbnail/card whitespace.
+# Android 16 DocumentsUI grid cards may expose the filename only as
+# "Preview the file …" on a thumbnail control, not as node text. Switch to
+# the genuine selectable list-row mode first, then require the actual filename
+# text in a fresh hierarchy before selecting anything.
 if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
   if ! tap_ui_description "$PICKER_UI_XML" "List view"; then
     echo "ERROR: could not switch DocumentsUI to its selectable list-row mode"
@@ -11777,6 +11772,12 @@ if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
   fi
 elif ! grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
   echo "ERROR: DocumentsUI exposes neither List view nor Grid view; cannot prove row selection"
+  exit 1
+fi
+# The list view must expose a selectable row with the real filename as text;
+# a thumbnail's Preview content-description is deliberately insufficient.
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
+  echo "ERROR: picker did not expose the prepared WAV as a selectable Downloads list row"
   exit 1
 fi
 if ! grep -Fq -- "$PICKER_SAMPLE_NAME" "$PICKER_UI_XML"; then
