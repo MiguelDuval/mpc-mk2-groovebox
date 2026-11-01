@@ -87,9 +87,36 @@ Conclusion: Solo is dynamic during playback, no stale cache, Mute takes preceden
 - Physical MkII hardware acceptance NOT RUN.
 - Local build/test unavailable (see section 5).
 
-## 8. Next concrete task
+## 7. Phase 1 baseline assessment (source inspection, 2026-11-01)
 
-Inspect the current shell implementation (`MainActivity`, `MpcShell`, Toolbar, ShortcutRail, XL Channel Strip, Workspace, Function Bar) against `docs/MPC3-UI-SCREEN-BLUEPRINT.md` and the relevant VIS contexts; implement the highest-impact P0 visual-fidelity slice (canonical shell geometry / Main Mode / Function Bar contextual behavior), record VIS IDs + before/after evidence, then commit and continue.
+Compared the current shell implementation against `docs/MPC3-UI-SCREEN-BLUEPRINT.md` and `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` §1.1 (Main, Evidence A: `mpc-3-main-sequence-track-arrangement-preview-and-function-b-f147ffbaae13.png`) and §1.3 (XL Channel Strip, Evidence A).
+
+**Verified MATCH (source-level, not runtime-screenshot-verified):**
+- Shell composition: Toolbar → 3dp position strip → ShortcutRail(48dp) / XL Channel Strip context(210dp) → Workspace → Function Bar(40dp). Matches blueprint exactly (`MpcShell.java`).
+- Toolbar fields: project identity, transport position (BAR/BEAT/TICK), Timing Correct, metronome (reserved/disabled), automation (reserved/disabled), MIDI IN/OUT status. Matches Section 1.1.
+- Five shortcuts: built from `navigationController.shortcuts()` (`buildShortcutRail`), selectable states.
+- XL Channel Strip: `contextArea` 210dp, compact mixer toggle, persistent SEQUENCE/track/program context panel.
+- Function Bar: contextual per mode (MAIN: NEW TRACK/Rec Arm/Stepper/MUTE/SOLO; MUTE: BACK/PAD MUTE/TRACK MUTE; reserved modes: only BACK/MENU; MENU/PROJECT: real project actions). Truthful unavailable states (disabled when trackCount==0).
+- Main Mode: Sequence section (SEQUENCE name, BPM, SEQ, TIME SIG, reserved Edit), loop fields (BARS/START/END/TRANSPOSE/LOOP toggle), Track Program section (track type icon strip, TRACK field, Track Edit, TRACK/ARRANGEMENT segmented toggle, Program field). No permanent 4×4 pad matrix in Main (matches Section 1.1 guidance).
+- Track Solo: already integrated on PR #133 (dynamic per-tick, Mute precedence, multiple Solo). No integration work needed.
+
+**NOT verified (requires runtime screenshot + build):**
+- Exact visual parity: colors, typography, iconography, density, spacing vs reference images.
+- Runtime screenshot capture and before/after comparison (no local build environment).
+
+## 8. Environment limitation (honest, blocks CI verification)
+
+- Local Android build NOT possible: no `gradlew` in repo, four submodules (JUCE, tracktion_engine, oboe, ableton_link) not checked out, `ANDROID_HOME` unset, NDK unconfirmed, no Gradle in PATH.
+- GitHub Composio toolkit blocked; plain git/fetch_web_content work. Cannot create a Draft PR via authenticated GitHub CLI, so GitHub Actions CI (which triggers on PRs) cannot be invoked from here.
+- Physical MPC Studio MkII validation: NOT RUN.
+- All source changes below require CI/exact-SHA build verification before acceptance claims.
+
+## 9. Next concrete task
+
+Option A (preferred): provision a build environment (Android SDK 36, NDK 28.2, CMake 3.22, Gradle, check out the 4 submodules, `gradlew`), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1 and correct any measurable visual gaps.
+Option B: continue source-level P0 visual-fidelity edits (colors/tokens/typography per the reference catalog), commit, push, and await CI verification when a build environment / authenticated PR is available. Do NOT claim visual parity without a runtime screenshot comparison.
+
+Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`.
 
 ---
 
