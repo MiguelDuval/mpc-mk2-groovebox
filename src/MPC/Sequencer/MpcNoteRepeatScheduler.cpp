@@ -1,5 +1,6 @@
 #include "MpcNoteRepeatScheduler.h"
 #include "MpcNoteRepeatTiming.h"
+#include "MpcNoteRepeatWakePolicy.h"
 
 #include "MPC/Domain/MpcDomain.h"
 
@@ -159,12 +160,14 @@ void MpcNoteRepeatScheduler::run() noexcept {
         if (!enabled_.load(std::memory_order_acquire)
                 || !padHeld_.load(std::memory_order_acquire)) {
             std::unique_lock lock(wakeMutex_);
-            wakeCv_.wait(lock, [this, seenGeneration] {
-                return stopping_.load(std::memory_order_acquire)
-                        || (enabled_.load(std::memory_order_acquire)
-                            && padHeld_.load(std::memory_order_acquire))
-                        || generation_.load(std::memory_order_acquire)
-                                != seenGeneration;
+            wakeCv_.wait(lock, [this] {
+                // A changed repeat grid does not require worker activity until
+                // a Pad is held. Including generation_ here makes the predicate
+                // remain true after every idle grid change, spinning this thread.
+                return note_repeat_wake_policy::shouldWakeIdleWorker(
+                        stopping_.load(std::memory_order_acquire),
+                        enabled_.load(std::memory_order_acquire),
+                        padHeld_.load(std::memory_order_acquire));
             });
             nextDue = Clock::now();
             continue;
