@@ -14386,8 +14386,11 @@ if total != expected:
 print(total)
 PY
 )" || { echo "ERROR: could not create the long cursor WAV fixture"; exit 1; }
-if [[ ! "$SAMP_CURSOR_EXPECTED_TOTAL" =~ ^[0-9]+$ ]] || (( SAMP_CURSOR_EXPECTED_TOTAL < 200000 )); then
-  echo "ERROR: cursor WAV fixture is too short to validate progression: $SAMP_CURSOR_EXPECTED_TOTAL"; exit 1
+# The Python fixture generator above already verifies an exact seven-second
+# PCM WAV (frame count == sample rate * 7). Avoid an absolute frame threshold:
+# valid lower-rate fixtures can contain fewer than 200,000 frames.
+if [[ ! "$SAMP_CURSOR_EXPECTED_TOTAL" =~ ^[0-9]+$ ]] || (( SAMP_CURSOR_EXPECTED_TOTAL <= 0 )); then
+  echo "ERROR: cursor WAV fixture has an invalid frame count: $SAMP_CURSOR_EXPECTED_TOTAL"; exit 1
 fi
 SAMP_CURSOR_EXPECTED_START=1000
 SAMP_CURSOR_EXPECTED_END=$((SAMP_CURSOR_EXPECTED_TOTAL - 1000))
