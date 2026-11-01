@@ -1139,6 +1139,20 @@ std::string AudioEngine::exportRecordingToWav(
            + std::to_string(outBytes.size()) + " bytes";
 }
 
+std::string AudioEngine::clearRecording() {
+    if (recordedFrameCount_.load(std::memory_order_relaxed) == 0
+            && recordedSamples_.empty()) {
+        return "Clear recording: nothing to clear";
+    }
+
+    recordedSamples_.clear();
+    recordedFrameCount_.store(0, std::memory_order_release);
+    recordingPeak_.store(0, std::memory_order_release);
+    recordingOverflowed_.store(false, std::memory_order_release);
+
+    return "CLEAR RECORDING • recording buffer cleared";
+}
+
 std::string AudioEngine::deletePadAssignments(
         std::uint16_t padMask) {
     if (stream_ != nullptr) {

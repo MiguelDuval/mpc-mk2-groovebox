@@ -673,6 +673,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioExportRecordingToWa
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioClearRecording(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().clearRecording());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLayerGain(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jfloat gain)
 {

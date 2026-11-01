@@ -505,6 +505,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetRecordingThreshold();
     private static native String nativeAudioStartRecording();
     private static native String nativeAudioStopRecording();
+    private static native String nativeAudioClearRecording();
     private static native String nativeAudioStartMonitor();
     private static native String nativeAudioStopMonitor();
     private static native String nativeAudioAssignRecordingToPadLayer(int pad, int layer);

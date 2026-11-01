@@ -199,6 +199,9 @@ public:
     float recordingPeak() const;
     std::vector<WaveformPeak> recordingWaveformPeaks(
             std::size_t pointCount) const;
+    // Clears any recorded audio data from the last recording session.
+    // Safe to call from the control thread at any time.
+    std::string clearRecording();
 
     // Queues a single-shot musical trigger for one physical MPC pad.
     // offsetFrames is relative to the next output callback.
