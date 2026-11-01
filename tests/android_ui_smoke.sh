@@ -14420,7 +14420,8 @@ echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTA
 # UIAutomator may stall transiently after long Project/sample runs. Retry only fresh, validated dumps; never reuse stale XML.
 # The Project workflow leaves a valid drum project open. Return to Main using
 # the existing measured Menu helper instead of relying on a stale workspace route.
-if ! dump_device_ui_retry "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML" 8 3; then
+# Project persistence checks leave a large accessibility tree; allow a bounded 20s fresh dump per attempt.
+if ! dump_device_ui_retry "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML" 20 3; then
   echo "ERROR: could not capture the shared MPC shell before leaving Project"; exit 1
 fi
 if ! tap_project_toolbar_menu; then
