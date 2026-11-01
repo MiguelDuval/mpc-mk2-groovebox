@@ -429,6 +429,36 @@ int main() {
     assert(stepPattern.notes.size() == 1);
     assert(!mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
 
+    mpc::domain::Pattern ambiguousStepPattern;
+    ambiguousStepPattern.lengthTicks = 960;
+    ambiguousStepPattern.notes = {
+            {120, 120, 36, 100, 127, 1, -12},
+            {120, 60, 36, 80, 100, 2, 24}};
+    assert(!mpc::sequencer::eraseStepNote(ambiguousStepPattern, 1, 120, 36));
+    assert(ambiguousStepPattern.notes.size() == 2);
+    assert(ambiguousStepPattern.notes[0].durationTicks == 120);
+    assert(ambiguousStepPattern.notes[1].durationTicks == 60);
+    assert(mpc::sequencer::findStepNote(ambiguousStepPattern, 1, 120, 36) == nullptr);
+    assert(!mpc::sequencer::setStepNote(
+            ambiguousStepPattern, 1, 120, 36, 90, 90, 90, 2));
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteProbability(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteNudge(
+            ambiguousStepPattern, 1, 120, 36, 12));
+    assert(!mpc::sequencer::setStepNoteRatchet(
+            ambiguousStepPattern, 1, 120, 36, 3));
+    assert(!mpc::sequencer::setStepNoteDuration(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(ambiguousStepPattern.notes.size() == 2);
+    assert(ambiguousStepPattern.notes[0].durationTicks == 120);
+    assert(ambiguousStepPattern.notes[0].velocity == 100);
+    assert(ambiguousStepPattern.notes[0].nudgeTicks == -12);
+    assert(ambiguousStepPattern.notes[1].durationTicks == 60);
+    assert(ambiguousStepPattern.notes[1].velocity == 80);
+    assert(ambiguousStepPattern.notes[1].nudgeTicks == 24);
+
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 16, 120, 40, 100));
     assert(!mpc::sequencer::setStepNote(
