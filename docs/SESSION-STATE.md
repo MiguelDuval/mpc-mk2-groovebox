@@ -40,6 +40,24 @@ Every agent must open the relevant `VIS-001`–`VIS-082` entry in `docs/MPC3-UI-
 3. Fix only concrete failures on this checkpoint branch, rerun exact-head CI, then update this file with the resulting SHA/run/artifact identities.
 4. After green consolidated CI, decide whether to merge checkpoint PR into the product feature branch. Never change `main` as part of this consolidation.
 
+## Current session (2026-11-01)
+
+**Working branch:** `feature/mpc-one-ui-fidelity-continue`
+**HEAD:** `9ee4355f5dbc9393a989fb65eadc66ddcea763c4`
+**Remote HEAD:** `9ee4355f5dbc9393a989fb65eadc66ddcea763c4` (pushed to origin)
+**Working tree:** clean
+
+### Commit: 9ee4355f — feat(audio): add WAV export for pad/layer samples
+
+**Files changed (5):**
+- `src/Audio/WavSample.h` — Added `encodeWav(const SampleBuffer& buffer)` declaration for PCM 16-bit WAV encoding
+- `src/Audio/WavSample.cpp` — Added `encodeWav` implementation with float-to-PCM16 conversion, RIFF/WAV header generation
+- `src/Audio/AudioEngine.h` — Added `exportPadSampleToWav(padIndex, layerIndex, outBytes)` declaration
+- `src/Audio/AudioEngine.cpp` — Added `exportPadSampleToWav` implementation (control-thread, requires stopped playback, validates pad/layer indices and sample presence)
+- `tests/WavSampleExportTests.cpp` — New test file with mono/stereo round-trip tests, empty buffer edge case, invalid channel count edge case
+
+**CI status:** Android Build #3642 on commit `9ee4355f` — FAILED (pre-existing issue; runs #3640 and #3641 on previous commits `ef910bb` and `1540b475` also failed at same stage). `git diff --check 1540b475 9ee4355f` passes locally. Changes don't touch any preflight-compiled files.
+
 ---
 
 ## Consolidated engineering checkpoint — 2026-10-30 (current handoff)

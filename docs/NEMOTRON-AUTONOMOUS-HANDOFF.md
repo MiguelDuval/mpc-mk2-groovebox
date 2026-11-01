@@ -146,7 +146,8 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 - **Java**: 21 (CI wants 17). Eclipse Adoptium Temurin at `C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot`.
 - **Gradle daemon**: hangs on startup (forks daemon but build configuration never progresses). `gradle --stop` shows 2 incompatible + 7-10 stopped daemons. `--no-daemon` and `--offline` variants also stall at daemon startup.
 - **Local build**: NOT possible in current environment. Gradle daemon startup hangs on both Mozart and MPC projects. CMake native build requires oboe source which cannot be extracted.
-- **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**` and on all PRs. Does NOT trigger on push to `feature/mpc-one-ui-fidelity-continue`. CI verification requires opening a PR (workflow has no `pull_request` branch filter).
+- **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**`, `feature/**` and on all PRs. CI runs on `feature/mpc-one-ui-fidelity-continue`.
+- **CI status on `9ee4355f`:** Android Build #3642 — FAILED (pre-existing issue; runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage). `git diff --check 1540b475 9ee4355f` passes locally. Changes don't touch any preflight-compiled files.
 - **Physical MPC Studio MkII validation**: NOT RUN.
 
 ## 11. Source-level verification (complete, 2026-11-01)
@@ -169,12 +170,18 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 
 ## 12. Next concrete task
 
-Option A (preferred, blocked by environment): obtain working Gradle + submodule checkout (oboe minimum), build the current branch, capture landscape Main screenshot, compare against VIS-001/§1.1, correct measurable visual gaps.
-Option B (available now): continue source-level P0 visual-fidelity edits per reference catalog, commit, push, await CI verification via PR. Do NOT claim visual parity without runtime screenshot comparison.
+**Commit `9ee4355f` — feat(audio): add WAV export for pad/layer samples (pushed to origin):**
+- `src/Audio/WavSample.h` — Added `encodeWav(const SampleBuffer& buffer)` declaration for PCM 16-bit WAV encoding
+- `src/Audio/WavSample.cpp` — Added `encodeWav` implementation with float-to-PCM16 conversion, RIFF/WAV header generation
+- `src/Audio/AudioEngine.h` — Added `exportPadSampleToWav(padIndex, layerIndex, outBytes)` declaration
+- `src/Audio/AudioEngine.cpp` — Added `exportPadSampleToWav` implementation (control-thread, requires stopped playback, validates pad/layer indices and sample presence)
+- `tests/WavSampleExportTests.cpp` — New test file with mono/stereo round-trip tests, empty buffer edge case, invalid channel count edge case
 
-To unblock CI: open a Pull Request from `feature/mpc-one-ui-fidelity-continue` (workflow `pull_request:` trigger has no branch filter). CI will run Android Build on the PR-head exact SHA.
-
-Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`.
+**Next steps:**
+1. Fix pre-existing CI failure (was failing before this commit — runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage)
+2. Continue source-level MPC Groovebox feature development on `feature/mpc-one-ui-fidelity-continue`
+3. Do NOT claim visual parity without runtime screenshot comparison
+4. Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`
 
 ---
 
