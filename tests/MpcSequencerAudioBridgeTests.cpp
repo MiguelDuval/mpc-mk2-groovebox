@@ -54,6 +54,37 @@ int main() {
     assert(mismatched.dropped == 0);
     assert(mismatched.invalid == 3);
 
+    // Both public bridge overloads reject pad indices outside the real 16-pad
+    // domain and velocities outside the MIDI 1..127 range. Pad 16 and velocity
+    // 128 must never be published to the real-time audio queue.
+    const std::array<mpc::sequencer::ScheduledPadEvent, 3> boundaryInput{{
+            {0, 16, 100, 0},
+            {0, 1, 128, 1},
+            {0, 15, 127, 2}}};
+    const std::array<std::int32_t, 3> boundaryOffsets{{0, 0, 0}};
+    const auto boundary = mpc::sequencer::enqueueScheduledPadEventsAsFrames(
+            queue, boundaryInput, boundaryOffsets);
+    assert(boundary.input == 3);
+    assert(boundary.written == 1);
+    assert(boundary.dropped == 0);
+    assert(boundary.invalid == 2);
+    mpc::audio::AudioTriggerEvent maxBoundaryEvent;
+    assert(queue.tryDequeue(maxBoundaryEvent));
+    assert(maxBoundaryEvent.padIndex == 15);
+    assert(maxBoundaryEvent.velocity == 127);
+    assert(!queue.tryDequeue(maxBoundaryEvent));
+
+    const std::array<mpc::sequencer::ScheduledPadEvent, 2> invalidTickInput{{
+            {0, 16, 100, 0},
+            {0, 1, 128, 1}}};
+    const auto invalidTick = mpc::sequencer::enqueueScheduledPadEvents(
+            queue, invalidTickInput, 120.0, 48000);
+    assert(invalidTick.input == 2);
+    assert(invalidTick.written == 0);
+    assert(invalidTick.dropped == 0);
+    assert(invalidTick.invalid == 2);
+    assert(!queue.tryDequeue(maxBoundaryEvent));
+
     mpc::audio::AudioTriggerQueue fullQueue;
     for (std::size_t index = 0;
             index < mpc::audio::kAudioTriggerQueueCapacity;
