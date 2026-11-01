@@ -14417,9 +14417,10 @@ if ! grep -Fq -- "$SAMP_CURSOR_NAME" "$SAMP_CURSOR_QUERY"; then
 fi
 echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTAL frames)."
 
+# UIAutomator may stall transiently after long Project/sample runs. Retry only fresh, validated dumps; never reuse stale XML.
 # The Project workflow leaves a valid drum project open. Return to Main using
 # the existing measured Menu helper instead of relying on a stale workspace route.
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML"; then
+if ! dump_device_ui_retry "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML" 8 3; then
   echo "ERROR: could not capture the shared MPC shell before leaving Project"; exit 1
 fi
 if ! tap_project_toolbar_menu; then
@@ -14428,7 +14429,7 @@ fi
 if ! tap_mpc_menu_tile 0 0; then
   echo "ERROR: could not return to Main before the cursor workflow"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
+if ! dump_device_ui_retry "$DEVICE_DUMP" "$DUMP" 8 3; then
   echo "ERROR: could not capture Main before opening Browser for SAMP-007"; exit 1
 fi
 if ! tap_ui_description "$DUMP" "MPC Project Browser"; then
