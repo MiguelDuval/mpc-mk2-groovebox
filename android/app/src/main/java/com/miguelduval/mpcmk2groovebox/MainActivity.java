@@ -5427,6 +5427,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
         sampleZoomReset.setContentDescription("Sample Edit reset waveform zoom");
         row2.addView(sampleZoomReset, weight());
+        Button sampleExportWav = actionButton("EXPORT WAV", v -> {
+            final String result = nativeAudioExportPadSampleToWav(selectedPad, selectedLayer);
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        });
+        sampleExportWav.setContentDescription("Sample Edit export pad/layer sample to WAV");
+        row2.addView(sampleExportWav, weight());
         page.addView(row2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
     }
