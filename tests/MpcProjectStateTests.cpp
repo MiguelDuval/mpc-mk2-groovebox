@@ -207,10 +207,10 @@ int main() {
     // A new Sequence inherits the currently active Drum Program, not a
     // hard-coded factory Program ID.
     mpc::MpcProjectState activeProgramSequenceState;
-    auto secondProgram = activeProgramSequenceState.project().drumPrograms.front();
-    secondProgram.id = "drum-program-2";
-    secondProgram.name = "Drum Program 2";
-    activeProgramSequenceState.project().drumPrograms.push_back(secondProgram);
+    auto activeDrumProgram = activeProgramSequenceState.project().drumPrograms.front();
+    activeDrumProgram.id = "drum-program-2";
+    activeDrumProgram.name = "Drum Program 2";
+    activeProgramSequenceState.project().drumPrograms.push_back(activeDrumProgram);
     assert(activeProgramSequenceState.setTrackProgram(0, "drum-program-2"));
     assert(activeProgramSequenceState.activeDrumProgram().id == "drum-program-2");
     assert(activeProgramSequenceState.addSequence());
