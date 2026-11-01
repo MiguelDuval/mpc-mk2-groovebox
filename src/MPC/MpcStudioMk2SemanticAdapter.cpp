@@ -22,6 +22,9 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
         case InputEventType::PadAftertouch:
+            if (e.padIndex >= 16 || e.value > 127) {
+                return std::nullopt;
+            }
             return make(
                     Type::PadAftertouch,
                     static_cast<std::int32_t>(e.padIndex),
@@ -52,9 +55,17 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
 }
 PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noexcept {
     PadRoutingResult r;
-    r.velocity=e.value;
-    r.targetPadIndex=e.padIndex;
-    if(e.type!=InputEventType::PadNote) return r;
+    if (e.type != InputEventType::PadNote) {
+        r.velocity = e.value;
+        r.targetPadIndex = e.padIndex;
+        return r;
+    }
+    if (e.padIndex >= 16 || e.value > 127 || (e.pressed && e.value == 0)) {
+        r.consumed = true;
+        return r;
+    }
+    r.velocity = e.value;
+    r.targetPadIndex = e.padIndex;
     if(!e.pressed){
         if(copyMode_ != CopyMode::None){
             r.consumed=true;

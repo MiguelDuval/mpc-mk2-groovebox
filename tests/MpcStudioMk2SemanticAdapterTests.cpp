@@ -166,5 +166,50 @@ int main(){
   typeOf(pressureAction,SemanticActionType::PadAftertouch);
   assert(pressureAction->value0==0 && pressureAction->value1==96);
 
+  MpcStudioMk2SemanticAdapter invalidPad;
+  auto invalidPadEvent = invalidPad.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(invalidPadEvent.consumed && !invalidPadEvent.action.has_value());
+  assert(invalidPadEvent.targetPadIndex == 0xFF && invalidPadEvent.velocity == 0);
+  assert(invalidPad.lastPadIndex() == 0xFF);
+  auto nextValidPad = invalidPad.handlePad(pad(7));
+  assert(!nextValidPad.consumed && nextValidPad.targetPadIndex == 7);
+  assert(invalidPad.lastPadIndex() == 7);
+
+  MpcStudioMk2SemanticAdapter invalidVelocity;
+  auto outOfRangeVelocity = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 128, 3, true});
+  assert(outOfRangeVelocity.consumed && !outOfRangeVelocity.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+  auto zeroVelocityPress = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 0, 3, true});
+  assert(zeroVelocityPress.consumed && !zeroVelocityPress.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+
+  MpcStudioMk2SemanticAdapter malformedCopy;
+  static_cast<void>(malformedCopy.handleControl(btn(122)));
+  auto validSourceBeforeMalformed = malformedCopy.handlePad(pad(2));
+  typeOf(validSourceBeforeMalformed.action, SemanticActionType::CopyPadSelection);
+  auto malformedCopyPad = malformedCopy.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(malformedCopyPad.consumed && !malformedCopyPad.action.has_value());
+  auto validDestinationAfterMalformed = malformedCopy.handlePad(pad(4));
+  typeOf(validDestinationAfterMalformed.action, SemanticActionType::CopyPadSelection);
+  assert(validDestinationAfterMalformed.action->value1 == 4);
+  typeOf(malformedCopy.handleControl(btn(122, false)), SemanticActionType::CopyPadCommit);
+
+  MpcStudioMk2SemanticAdapter pressure;
+  auto pressureAction = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
+  typeOf(pressureAction,SemanticActionType::PadAftertouch);
+  assert(pressureAction->value0==0 && pressureAction->value1==96);
+  auto maximumPressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,127,15,true});
+  typeOf(maximumPressure,SemanticActionType::PadAftertouch);
+  assert(maximumPressure->value0==15 && maximumPressure->value1==127);
+  assert(!pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,128,0,true}).has_value());
+  assert(!pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,16,true}).has_value());
   return 0;
 }
