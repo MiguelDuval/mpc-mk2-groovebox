@@ -48,13 +48,13 @@
 
 ## Mission Status
 - Mission A: Complete (state documented, APK candidate preserved, SAMP-007 diagnosis documented)
-- Mission B: In progress — Track Solo vertical slice complete (native gating + JNI + UI Function Bar + compact context status + unit tests)
-  - Commits: dabe2076 (impl), f768c3cf (tests) on fix/p0-mute-grid-ui-recovery-20261027 (pushed to origin)
-  - Files: MainActivity.java, MpcSequencePlaybackSession.h, MpcSequencerPlayback.h, NativeEngine.cpp, tests/MpcSequencerPlaybackSoloTests.cpp, NEMOTRON-AUTONOMOUS-HANDOFF.md
+- Mission B: In progress — Track Solo vertical slice complete + UI completeness matrix created
+  - Commits: dabe2076 (impl), f768c3cf (tests), 7ecb624b (docs handoff), 9397536f (docs matrix) on fix/p0-mute-grid-ui-recovery-20261027 (pushed to origin)
+  - Files: MainActivity.java, MpcSequencePlaybackSession.h, MpcSequencerPlayback.h, NativeEngine.cpp, tests/MpcSequencerPlaybackSoloTests.cpp, docs/NEMOTRON-AUTONOMOUS-HANDOFF.md, docs/MPC-GROOVEBOX-CONFIGURATION-CATALOG.md
+  - Matrix: 25+ screen/action rows with VIS IDs, status, gaps, priority
 
 ## Next Concrete Action
-- Read remaining knowledge base (MPC3-REFERENCE-INDEX.md, MPC-STYLE-UI-ROADMAP.md, MPC-UX-REFERENCE.md)
-- Build UI completeness matrix (VIS ID × action ID × status × gap)
-- Implement next P0 UI slice (Grid / Step Sequencer / Main Mode completeness)
-- Add C++ unit test for Track Solo gating
+- Audit Grid/Step Sequencer native data binding (P0) — SequenceGridView.setState() integration
+- Audit Arrangement move/copy/paste (P0) — MpcArrangeView event/placement ops
+- Re-verify Track Solo on emulator (current HEAD CI)
 - Commit, push, update handoff
