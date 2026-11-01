@@ -147,6 +147,60 @@ void testEncodeInvalidChannelCount() {
     assert(encoded.empty());
 }
 
+void testEncodeBoundaryValues() {
+    // Test full-scale positive and negative values
+    mpc::audio::SampleBuffer buf;
+    buf.sampleRate = 44100;
+    buf.channelCount = 1;
+    buf.interleaved = {-1.0f, -0.5f, 0.0f, 0.5f, 1.0f};
+
+    const auto encoded = mpc::audio::encodeWav(buf);
+    assert(!encoded.empty());
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->frameCount() == 5);
+    assert(decoded->sampleAt(0, 0) <= -0.99f);
+    assert(decoded->sampleAt(4, 0) >= 0.99f);
+}
+
+void testEncodeSilence() {
+    mpc::audio::SampleBuffer buf;
+    buf.sampleRate = 22050;
+    buf.channelCount = 2;
+    buf.interleaved.assign(100, 0.0f);
+
+    const auto encoded = mpc::audio::encodeWav(buf);
+    assert(!encoded.empty());
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->sampleRate == 22050);
+    assert(decoded->channelCount == 2);
+    assert(decoded->frameCount() == 50);
+    for (std::size_t f = 0; f < decoded->frameCount(); ++f) {
+        assert(decoded->sampleAt(f, 0) == 0.0f);
+        assert(decoded->sampleAt(f, 1) == 0.0f);
+    }
+}
+
+void testEncodeClipping() {
+    // Values outside [-1, 1] should be clamped
+    mpc::audio::SampleBuffer buf;
+    buf.sampleRate = 44100;
+    buf.channelCount = 1;
+    buf.interleaved = {-2.0f, 2.0f, 0.0f};
+
+    const auto encoded = mpc::audio::encodeWav(buf);
+    assert(!encoded.empty());
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->sampleAt(0, 0) <= -0.99f);
+    assert(decoded->sampleAt(1, 0) >= 0.99f);
+    assert(decoded->sampleAt(2, 0) == 0.0f);
+}
+
 } // namespace
 
 int main() {
@@ -154,5 +208,8 @@ int main() {
     testRoundTripStereo();
     testEncodeEmptyBuffer();
     testEncodeInvalidChannelCount();
+    testEncodeBoundaryValues();
+    testEncodeSilence();
+    testEncodeClipping();
     return 0;
 }

@@ -160,6 +160,11 @@ public:
             std::uint8_t padIndex,
             std::uint8_t layerIndex,
             std::vector<std::uint8_t>& outBytes);
+    // Exports the last stopped RAM recording to PCM 16-bit WAV bytes.
+    // Returns empty string on success with outBytes populated, or an error
+    // message string on failure (no recording available).
+    std::string exportRecordingToWav(
+            std::vector<std::uint8_t>& outBytes);
     std::string deletePadAssignments(
             std::uint16_t padMask);
 

@@ -1113,6 +1113,32 @@ std::string AudioEngine::exportPadSampleToWav(
            + " • " + std::to_string(outBytes.size()) + " bytes";
 }
 
+std::string AudioEngine::exportRecordingToWav(
+        std::vector<std::uint8_t>& outBytes) {
+    if (recordedFrameCount_ == 0 || recordedSamples_.empty()) {
+        return "Export WAV failed: no recording available";
+    }
+
+    SampleBuffer buffer;
+    buffer.sampleRate = recordingSampleRate_.load(std::memory_order_relaxed);
+    if (buffer.sampleRate == 0) {
+        buffer.sampleRate = 48000;
+    }
+    buffer.channelCount = 1;
+    buffer.interleaved.assign(
+            recordedSamples_.begin(),
+            recordedSamples_.begin() + recordedFrameCount_);
+
+    outBytes = encodeWav(buffer);
+    if (outBytes.empty()) {
+        return "Export WAV failed: recording has no valid PCM data";
+    }
+
+    return "EXPORT WAV • RECORDING • "
+           + std::to_string(recordedFrameCount_) + " frames • "
+           + std::to_string(outBytes.size()) + " bytes";
+}
+
 std::string AudioEngine::deletePadAssignments(
         std::uint16_t padMask) {
     if (stream_ != nullptr) {
