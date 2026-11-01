@@ -617,6 +617,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native boolean nativeSequenceIsPadMuted(int padIndex);
     private static native String nativeSequenceTogglePadMute(int padIndex);
     private static native String nativeSequenceToggleTrackMute(int trackIndex);
+    private static native boolean nativeSequenceIsTrackSoloed(int trackIndex);
+    private static native String nativeSequenceToggleTrackSolo(int trackIndex);
     private static native String nativeSequenceStart();
     private static native String nativeSequenceStop();
     private static native String nativeSequenceReset();
@@ -1819,19 +1821,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             final boolean armed = nativeSequenceIsSelectedTrackArmed();
             final boolean muted = nativeSequenceIsTrackMuted(trackIndex);
+            final boolean soloed = nativeSequenceIsTrackSoloed(trackIndex);
             compactTrackContext.setText(String.format(
                     Locale.ROOT,
-                    "TRACK %02d • %s\nREC %s • MUTE %s",
+                    "TRACK %02d • %s\nREC %s • MUTE %s • SOLO %s",
                     track,
                     trackType,
                     armed ? "ON" : "OFF",
-                    muted ? "ON" : "OFF"));
+                    muted ? "ON" : "OFF",
+                    soloed ? "ON" : "OFF"));
 
             if (compactTrackStateLabel != null) {
                 compactTrackStateLabel.setText(
                         "REC " + (armed ? "ON" : "OFF")
                                 + " • MUTE " + (muted ? "ON" : "OFF")
-                                + " • SOLO —");
+                                + " • SOLO " + (soloed ? "ON" : "OFF"));
             }
 
             if (compactProgramContext != null) {
@@ -2008,7 +2012,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            Button soloWorkspace = addFunction(
+                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+            soloWorkspace.setContentDescription(
+                    "MPC Function Bar Toggle Track Solo");
             return;
         }
 
@@ -2027,7 +2034,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MUTE", trackCount > 0, v -> showMutePage());
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
-            addFunction("SOLO", false, null);
+            Button soloWorkspace = addFunction(
+                    "SOLO", trackCount > 0, v -> toggleSelectedTrackSolo());
+            soloWorkspace.setContentDescription(
+                    "MPC Function Bar Toggle Track Solo");
             return;
         }
 
@@ -2562,6 +2572,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        refreshSequenceControls();
+        refreshMpcCompactContext();
+        if ("MAIN".equals(currentPage)) {
+            refreshMainArrangementPreview();
+        }
+    }
+
+    private void toggleSelectedTrackSolo() {
+        final int track = nativeSequenceGetSelectedTrack();
+        setBottomStatus(nativeSequenceToggleTrackSolo(track));
         refreshSequenceControls();
         refreshMpcCompactContext();
         if ("MAIN".equals(currentPage)) {
