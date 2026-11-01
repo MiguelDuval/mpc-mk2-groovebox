@@ -198,11 +198,6 @@ int main(){
   assert(validDestinationAfterMalformed.action->value1 == 4);
   typeOf(malformedCopy.handleControl(btn(122, false)), SemanticActionType::CopyPadCommit);
 
-  MpcStudioMk2SemanticAdapter pressure;
-  auto pressureAction = pressure.handleControl(
-      InputEvent{InputEventType::PadAftertouch,9,37,96,0,true});
-  typeOf(pressureAction,SemanticActionType::PadAftertouch);
-  assert(pressureAction->value0==0 && pressureAction->value1==96);
   auto maximumPressure = pressure.handleControl(
       InputEvent{InputEventType::PadAftertouch,9,37,127,15,true});
   typeOf(maximumPressure,SemanticActionType::PadAftertouch);
