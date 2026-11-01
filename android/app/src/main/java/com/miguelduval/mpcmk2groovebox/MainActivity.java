@@ -3694,6 +3694,57 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangement.addView(eventSummary, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(18)));
 
+        LinearLayout arrangementOps = row();
+        arrangementOps.setPadding(dp(4), 0, dp(4), 0);
+
+        Button arrangementSplit = actionButton("SPLIT", v -> {
+            if (!startupComplete) return;
+            final int trackIndex = state().activeTrackIndex();
+            final long tick = selectedArrangementEventTick;
+            if (tick < 0) {
+                setBottomStatus("SPLIT failed: no step selected");
+                return;
+            }
+            final String result = nativeSequenceSplitPatternPlacement(trackIndex, tick);
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementSplit.setContentDescription("Arrangement split at selected step tick");
+        arrangementOps.addView(arrangementSplit, weight());
+
+        Button arrangementDelete = actionButton("DELETE", v -> {
+            if (!startupComplete) return;
+            final int trackIndex = state().activeTrackIndex();
+            final long tick = selectedArrangementEventTick;
+            if (tick < 0) {
+                setBottomStatus("DELETE failed: no step selected");
+                return;
+            }
+            final String result = nativeSequenceDeleteArrangementPatternPlacement(trackIndex, tick);
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementDelete.setContentDescription("Arrangement delete selected step");
+        arrangementOps.addView(arrangementDelete, touchButtonWeight());
+
+        Button arrangementDuplicate = actionButton("DUPLICATE", v -> {
+            if (!startupComplete) return;
+            final int trackIndex = state().activeTrackIndex();
+            final long sourceTick = selectedArrangementEventTick;
+            if (sourceTick < 0) {
+                setBottomStatus("DUPLICATE failed: no step selected");
+                return;
+            }
+            final String result = nativeSequenceDuplicateArrangementPatternPlacement(trackIndex, sourceTick);
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementDuplicate.setContentDescription("Arrangement duplicate selected step");
+        arrangementOps.addView(arrangementDuplicate, weight());
+
+        arrangement.addView(arrangementOps, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
         mainTrackArrangementHost.addView(trackWorkspace,
                 new FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -5193,6 +5244,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
         }
     }
+
+    private void refreshArrangementView() {
+        final int trackIndex = startupComplete
+                ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+        if (!startupComplete || trackIndex < 0) return;
+
+        final String arrangementData =
+                nativeSequenceGetTrackArrangementData(trackIndex);
+        if (eventSummary != null) {
+            eventSummary.setText(
+                    "TRACK EVENTS • " + arrangementData);
+        }
+
+        if (mainArrangementPreview != null) {
+            mainArrangementPreview.invalidate();
+        }
+    }
+
     private View buildPadGrid() {
         LinearLayout grid = column();
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
