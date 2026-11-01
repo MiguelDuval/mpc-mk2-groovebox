@@ -606,6 +606,99 @@ int main() {
     assert(persistence::serializeProject(duplicateAssetIds, &error).empty());
     assert(!error.empty());
 
+    // Every serialized entity identity is required to be nonempty and
+    // unique in its documented scope, independently of the other validators.
+    const auto assertDuplicateIdentityRejected =
+            [&error](const domain::Project& invalid, const std::string& expected) {
+        error.clear();
+        assert(persistence::serializeProject(invalid, &error).empty());
+        assert(error == expected);
+    };
+
+    auto emptyProjectId = source;
+    emptyProjectId.id.clear();
+    assertDuplicateIdentityRejected(
+            emptyProjectId, "Project identifier must not be empty");
+
+    auto duplicateSampleStringId = source;
+    auto duplicateSampleString = duplicateSampleStringId.samples.front();
+    duplicateSampleString.assetId.value += 100;
+    duplicateSampleStringId.samples.push_back(duplicateSampleString);
+    assertDuplicateIdentityRejected(
+            duplicateSampleStringId,
+            "Sample identifiers must be nonempty and unique");
+
+    auto duplicateProgramId = source;
+    duplicateProgramId.drumPrograms.push_back(
+            duplicateProgramId.drumPrograms.front());
+    assertDuplicateIdentityRejected(
+            duplicateProgramId,
+            "Drum Program identifiers must be nonempty and unique");
+
+    auto duplicateSequenceId = source;
+    duplicateSequenceId.sequences.push_back(
+            duplicateSequenceId.sequences.front());
+    assertDuplicateIdentityRejected(
+            duplicateSequenceId,
+            "Sequence identifiers must be nonempty and unique");
+
+    auto duplicateTrackId = source;
+    duplicateTrackId.sequences.front().tracks.push_back(
+            duplicateTrackId.sequences.front().tracks.front());
+    assertDuplicateIdentityRejected(
+            duplicateTrackId,
+            "Track identifiers must be nonempty and unique within a Sequence");
+
+    auto duplicatePlacementId = source;
+    duplicatePlacementId.sequences.front().tracks.front().placements.push_back(
+            duplicatePlacementId.sequences.front().tracks.front().placements.front());
+    assertDuplicateIdentityRejected(
+            duplicatePlacementId,
+            "Placement identifiers must be nonempty and unique within a Track");
+
+    // A large valid Arrangement must remain practical to validate. Placements
+    // are deliberately stored in reverse timeline order to exercise sorting,
+    // not a best-case already-sorted fast path.
+    domain::Project largeArrangement = source;
+    auto& largeSequence = largeArrangement.sequences.front();
+    auto& largeTrack = largeSequence.tracks.front();
+    constexpr std::int32_t kPlacementCount = 12000;
+    constexpr std::int32_t kPatternCount = 4096;
+    largeSequence.lengthTicks = kPlacementCount * 2;
+    largeTrack.patterns.clear();
+    largeTrack.patterns.reserve(kPatternCount);
+    for (std::int32_t index = 0; index < kPatternCount; ++index) {
+        mpc::domain::Pattern pattern;
+        pattern.id = "large-pattern-" + std::to_string(index);
+        pattern.name = pattern.id;
+        pattern.lengthTicks = largeSequence.lengthTicks;
+        largeTrack.patterns.push_back(std::move(pattern));
+    }
+    largeTrack.placements.clear();
+    largeTrack.placements.reserve(kPlacementCount);
+    for (std::int32_t index = kPlacementCount - 1; index >= 0; --index) {
+        const auto& pattern = largeTrack.patterns[
+                static_cast<std::size_t>(index % kPatternCount)];
+        largeTrack.placements.push_back({
+                "large-clip-" + std::to_string(index),
+                pattern.id,
+                index * 2,
+                1,
+                0
+        });
+    }
+    error.clear();
+    const auto largeSerialized =
+            persistence::serializeProject(largeArrangement, &error);
+    assert(!largeSerialized.empty());
+    assert(error.empty());
+
+    // Scrambled input order must not hide an actual timeline overlap.
+    largeTrack.placements.back().startTick = 2;
+    error.clear();
+    assert(persistence::serializeProject(largeArrangement, &error).empty());
+    assert(!error.empty());
+
     std::remove(filePath.c_str());
     std::remove((filePath + ".tmp").c_str());
     return 0;
