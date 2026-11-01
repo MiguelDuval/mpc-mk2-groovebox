@@ -301,6 +301,23 @@ int main() {
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
+    // A syntactically complete v2 document can still fail its final semantic
+    // validation (here, a placement points at a Pattern that does not exist).
+    // The candidate must not replace the already-open Project on this late path.
+    std::string invalidPlacementReference = serialized;
+    const std::string validPlacementRecord =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 480 0";
+    const auto placementRecord = invalidPlacementReference.find(validPlacementRecord);
+    assert(placementRecord != std::string::npos);
+    invalidPlacementReference.replace(
+            placementRecord,
+            validPlacementRecord.size(),
+            "PLACEMENT \"clip-a\" \"missing-pattern\" 0 480 0");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidPlacementReference, loaded, &error));
+    assert(error.find("missing Pattern") != std::string::npos);
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
     // Unsupported format versions must obey the same all-or-nothing contract.
     error.clear();
     const auto loadedIdBeforeFailure = loaded.id;
