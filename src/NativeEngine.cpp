@@ -683,6 +683,70 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioClearRecording(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingStatus(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().recordingStatus());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingFrameCount(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return 0;
+    return static_cast<jint>(
+            mpc::audio::AudioEngine::instance().recordingFrameCount());
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingSampleRate(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return 0;
+    return static_cast<jint>(
+            mpc::audio::AudioEngine::instance().recordingSampleRate());
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingPeak(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return 0.0f;
+    return static_cast<jfloat>(
+            mpc::audio::AudioEngine::instance().recordingPeak());
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingWaveformPeaks(
+        JNIEnv* env, jobject /* thiz */, jint points)
+{
+    if (env == nullptr) return nullptr;
+    const auto peaks =
+            mpc::audio::AudioEngine::instance().recordingWaveformPeaks(
+                    static_cast<std::size_t>(points));
+    const std::size_t valueCount = peaks.size() * 2u;
+    if (valueCount > static_cast<std::size_t>(std::numeric_limits<jsize>::max()))
+        return nullptr;
+    const auto length = static_cast<jsize>(valueCount);
+    jfloatArray result = env->NewFloatArray(length);
+    if (result == nullptr) return nullptr;
+    std::vector<jfloat> values(valueCount);
+    for (std::size_t i = 0; i < peaks.size(); ++i) {
+        values[i * 2u] = peaks[i].minimum;
+        values[i * 2u + 1u] = peaks[i].maximum;
+    }
+    env->SetFloatArrayRegion(result, 0, length, values.data());
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return result;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadLayerGain(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jfloat gain)
 {
