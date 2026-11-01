@@ -17,10 +17,11 @@ import android.widget.TextView;
  * controller path.
  */
 final class MpcShortcutRailItemView extends FrameLayout {
-    private static final int BG = Color.rgb(23, 25, 28);
-    private static final int TEXT = Color.WHITE;
-    private static final int MUTED = Color.rgb(156, 166, 174);
-    private static final int RED = Color.rgb(224, 30, 61);
+    // Visual tokens centralised in MpcStyle.
+    private static final int BG = MpcStyle.PANEL_DARK;
+    private static final int TEXT = MpcStyle.TEXT;
+    private static final int MUTED = MpcStyle.MUTED;
+    private static final int RED = MpcStyle.SELECTION_RED;
 
     private final MpcUiState.Mode mode;
     private final String accessibleLabel;

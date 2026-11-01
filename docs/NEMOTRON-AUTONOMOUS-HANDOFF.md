@@ -12,9 +12,9 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `bde4e3399768344d7212e6fce5f2f5cfdfbac99b` |
-| Remote HEAD (origin) | `bde4e3399768344d7212e6fce5f2f5cfdfbac99b` — matches local, pushed via fast-forward |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) |
+| Exact HEAD | `cb9d33c97679df1e903dcd07c31f8dbc02644b95` |
+| Remote HEAD (origin) | `cb9d33c97679df1e903dcd07c31f8dbc02644b95` — matches local |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
 | Local clone | `.../chat/mpc-pr133`; full tracked tree materialized after recovery (1148 files). Promisor re-enabled during restore; `remote.origin.partialclonefilter=blob:none` remains. |
@@ -104,17 +104,31 @@ Compared the current shell implementation against `docs/MPC3-UI-SCREEN-BLUEPRINT
 - Exact visual parity: colors, typography, iconography, density, spacing vs reference images.
 - Runtime screenshot capture and before/after comparison (no local build environment).
 
-## 8. Environment limitation (honest, blocks CI verification)
+## 8. Design system consolidation (implemented, 2026-11-01)
 
-- Local Android build NOT possible: no `gradlew` in repo, four submodules (JUCE, tracktion_engine, oboe, ableton_link) not checked out, `ANDROID_HOME` unset, NDK unconfirmed, no Gradle in PATH.
-- GitHub Composio toolkit blocked; plain git/fetch_web_content work. Cannot create a Draft PR via authenticated GitHub CLI, so GitHub Actions CI (which triggers on PRs) cannot be invoked from here.
-- Physical MPC Studio MkII validation: NOT RUN.
-- All source changes below require CI/exact-SHA build verification before acceptance claims.
+Created `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcStyle.java` — a single class holding all MPC visual tokens (colours, typography, geometry). Previously colours were split between `MainActivity.java` (BG rgb(14,16,18), SURFACE rgb(25,29,33)) and `MpcShell.java` (BG rgb(17,19,22), SURFACE rgb(38,42,46)) with no shared source of truth.
 
-## 9. Next concrete task
+Changes:
+- **MpcStyle.java** (new): centralised tokens — BG, SURFACE, SURFACE_2, LINE, TEXT, MUTED, SELECTION_RED, SELECTED, ACTIVE, PANEL, PANEL_DARK, PANEL_BORDER, TIME_SIGNATURE_HIGHLIGHT, typography sizes, all shell/Main geometry (toolbar 44dp, rail 48dp, channel strip 210dp, function bar 40dp, etc.).
+- **MpcShell.java**: all color/geometry references now use `MpcStyle.*`; local constants and private `dp()` removed.
+- **MainActivity.java**: color/geometry constant declarations now alias `MpcStyle.*`; BG and SURFACE re-based to MpcStyle values (aligns MainActivity with MpcShell shell chrome). All existing code using `BG`, `SURFACE`, etc. continues to work unchanged.
+- **MpcShortcutRailItemView.java**: color references now use `MpcStyle.*`.
 
-Option A (preferred): provision a build environment (Android SDK 36, NDK 28.2, CMake 3.22, Gradle, check out the 4 submodules, `gradlew`), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1 and correct any measurable visual gaps.
-Option B: continue source-level P0 visual-fidelity edits (colors/tokens/typography per the reference catalog), commit, push, and await CI verification when a build environment / authenticated PR is available. Do NOT claim visual parity without a runtime screenshot comparison.
+## 9. Environment progress (bounded attempt, in progress)
+
+- **Android SDK** at `C:\Android\SDK`: platform 36, build-tools 36.0.0, platform-tools 37.0.1, cmdline-tools — present.
+- **CMake 3.22.1**: INSTALLED via sdkmanager.
+- **NDK 28.2.13676358**: INSTALLED via sdkmanager.
+- **Gradle 9.6**: NOT yet downloaded (download interrupted by tool timeout on large file).
+- **Submodules** (JUCE, tracktion_engine, oboe, ableton_link): NOT checked out.
+- **Emulator system image / AVD**: NOT present.
+- **Java**: 21 (CI wants 17).
+- Local build NOT yet possible. Source-level changes committed; CI verification pending environment completion.
+
+## 10. Next concrete task
+
+Option A (preferred): download Gradle 9.6, check out submodules (at minimum oboe which is required by CMakeLists.txt), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1.
+Option B: continue source-level P0 visual-fidelity edits per the reference catalog, commit, push, await CI verification. Do NOT claim visual parity without a runtime screenshot comparison.
 
 Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`.
 

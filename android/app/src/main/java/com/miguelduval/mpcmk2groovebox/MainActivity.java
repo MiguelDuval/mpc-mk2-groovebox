@@ -109,60 +109,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final boolean NATIVE_LIBRARY_LOADED;
     private static final String NATIVE_LIBRARY_ERROR;
 
-    private static final int BG = Color.rgb(14, 16, 18);
-    private static final int SURFACE = Color.rgb(25, 29, 33);
-
-    /**
-     * MPC-facing shell chrome uses compact rectangular surfaces rather than Android-style rounded cards.
-     */
-    private static final int MPC_FLAT_RADIUS_DP = 0;
-    private static final int SURFACE_2 = Color.rgb(32, 37, 42);
-    private static final int LINE = Color.rgb(64, 72, 80);
-    private static final int TEXT = Color.rgb(235, 239, 242);
-    private static final int MUTED = Color.rgb(156, 166, 174);
-    private static final int ACCENT = Color.rgb(69, 211, 255);
-    private static final int ACCENT_2 = Color.rgb(255, 180, 72);
-    private static final int DANGER = Color.rgb(236, 83, 83);
-    // MPC One / MPC3 visual language: vivid transport header over graphite UI.
-    // These are presentation constants only; semantic state continues to use
-    // the existing domain/UI-state model.
-    // MPC3 Toolbar is dark graphite; red is a selection/accent, not the
-    // persistent full-width Toolbar background.
-    private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);
+    // All MPC visual tokens are centralised in MpcStyle. These aliases keep
+    // existing MainActivity code working while sharing one source of truth
+    // with MpcShell and the shortcut rail.
+    private static final int BG = MpcStyle.BG;
+    private static final int SURFACE = MpcStyle.SURFACE;
+    private static final int MPC_FLAT_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;
+    private static final int SURFACE_2 = MpcStyle.SURFACE_2;
+    private static final int LINE = MpcStyle.LINE;
+    private static final int TEXT = MpcStyle.TEXT;
+    private static final int MUTED = MpcStyle.MUTED;
+    private static final int ACCENT = MpcStyle.ACCENT;
+    private static final int ACCENT_2 = MpcStyle.ACCENT_2;
+    private static final int DANGER = MpcStyle.DANGER;
+    private static final int MPC_TOOLBAR_BG = MpcStyle.BG;
     private static final int MPC_TOOLBAR_TEXT = Color.WHITE;
-    private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);
-    private static final int MPC_PANEL = Color.rgb(39, 43, 47);
-    private static final int MPC_PANEL_DARK = Color.rgb(28, 31, 34);
-    private static final int MPC_PANEL_BORDER = Color.rgb(75, 82, 88);
-    private static final int MPC_SELECTED = Color.rgb(235, 42, 68);
-    private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
-    private static final int ACTIVE = Color.rgb(63, 207, 117);
-    // MPC3 Toolbar geometry: fixed hit-target zones, with only the transport clock expanding.
-    private static final int MPC_TOOLBAR_INSET_DP = 6;
-    private static final int MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34;
-    private static final int MPC_TOOLBAR_GAP_DP = 2;
-    private static final int MPC_TOOLBAR_MENU_WIDTH_DP = 38;
-    private static final int MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106;
-    private static final int MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26;
-    private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = 60;
-    private static final int MPC_TOOLBAR_METRO_WIDTH_DP = 58;
-    private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = 48;
-    private static final int MPC_TOOLBAR_IO_WIDTH_DP = 40;
-
-    // MPC One Main geometry: dense, edge-tight, and independent of legacy page spacing.
-    private static final int MPC_MAIN_CONTENT_GUTTER_DP = 4;
-    private static final int MPC_MAIN_SECTION_GAP_DP = 2;
-    private static final int MPC_MAIN_FIELD_HEIGHT_DP = 40;
-    private static final int MPC_MAIN_METRIC_HEIGHT_DP = 36;
-    private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40;
-    private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36;
-    private static final int MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38;
-    private static final int MPC_SHORTCUT_SELECTION_WIDTH_DP = 3;
-    private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = 32;
+    private static final int MPC_SELECTION_RED = MpcStyle.SELECTION_RED;
+    private static final int MPC_PANEL = MpcStyle.PANEL;
+    private static final int MPC_PANEL_DARK = MpcStyle.PANEL_DARK;
+    private static final int MPC_PANEL_BORDER = MpcStyle.PANEL_BORDER;
+    private static final int MPC_SELECTED = MpcStyle.SELECTED;
+    private static final int MPC_TIME_SIGNATURE_HIGHLIGHT = MpcStyle.TIME_SIGNATURE_HIGHLIGHT;
+    private static final int ACTIVE = MpcStyle.ACTIVE;
+    private static final int MPC_TOOLBAR_INSET_DP = MpcStyle.TOOLBAR_INSET_DP;
+    private static final int MPC_TOOLBAR_CONTROL_HEIGHT_DP = MpcStyle.TOOLBAR_CONTROL_HEIGHT_DP;
+    private static final int MPC_TOOLBAR_GAP_DP = MpcStyle.TOOLBAR_GAP_DP;
+    private static final int MPC_TOOLBAR_MENU_WIDTH_DP = MpcStyle.TOOLBAR_MENU_WIDTH_DP;
+    private static final int MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = MpcStyle.TOOLBAR_PROJECT_IDENTITY_WIDTH_DP;
+    private static final int MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = MpcStyle.TOOLBAR_PROJECT_BROWSER_WIDTH_DP;
+    private static final int MPC_TOOLBAR_TIMING_WIDTH_DP = MpcStyle.TOOLBAR_TIMING_WIDTH_DP;
+    private static final int MPC_TOOLBAR_METRO_WIDTH_DP = MpcStyle.TOOLBAR_METRO_WIDTH_DP;
+    private static final int MPC_TOOLBAR_AUTO_WIDTH_DP = MpcStyle.TOOLBAR_AUTO_WIDTH_DP;
+    private static final int MPC_TOOLBAR_IO_WIDTH_DP = MpcStyle.TOOLBAR_IO_WIDTH_DP;
+    private static final int MPC_MAIN_CONTENT_GUTTER_DP = MpcStyle.MAIN_CONTENT_GUTTER_DP;
+    private static final int MPC_MAIN_SECTION_GAP_DP = MpcStyle.MAIN_SECTION_GAP_DP;
+    private static final int MPC_MAIN_FIELD_HEIGHT_DP = MpcStyle.MAIN_FIELD_HEIGHT_DP;
+    private static final int MPC_MAIN_METRIC_HEIGHT_DP = MpcStyle.MAIN_METRIC_HEIGHT_DP;
+    private static final int MPC_MAIN_TRACK_STATE_HEIGHT_DP = MpcStyle.MAIN_FIELD_HEIGHT_DP;
+    private static final int MPC_MAIN_TRACK_HEADER_HEIGHT_DP = MpcStyle.MAIN_TRACK_HEADER_HEIGHT_DP;
+    private static final int MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = MpcStyle.MAIN_TRACK_TYPE_ICON_WIDTH_DP;
+    private static final int MPC_SHORTCUT_SELECTION_WIDTH_DP = MpcStyle.SHORTCUT_SELECTION_WIDTH_DP;
+    private static final int MPC_MAIN_PROGRAM_HEIGHT_DP = MpcStyle.MAIN_PROGRAM_HEIGHT_DP;
     private static final float MPC_MAIN_WORKSPACE_WEIGHT = 1.0f;
-    private static final int MPC_MAIN_RADIUS_DP = 0;
-    // Thin MPC-style red boundary between the Sequence and Track zones.
-    private static final int MPC_MAIN_SECTION_DIVIDER_DP = 2;
+    private static final int MPC_MAIN_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;
+    private static final int MPC_MAIN_SECTION_DIVIDER_DP = MpcStyle.MAIN_SECTION_DIVIDER_DP;
 
 
     static {

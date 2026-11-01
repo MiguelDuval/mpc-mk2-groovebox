@@ -17,16 +17,7 @@ import android.widget.LinearLayout;
  */
 final class MpcShell {
     // MPC One-style graphite shell chrome. Keep this class presentation-only.
-    private static final int BG = Color.rgb(17, 19, 22);
-    private static final int SURFACE = Color.rgb(38, 42, 46);
-
-    // Canonical MPC shell geometry used by the UI migration smoke contract.
-    private static final int TOOLBAR_HEIGHT_DP = 44;
-    private static final int SHORTCUT_RAIL_WIDTH_DP = 48;
-    private static final int CHANNEL_STRIP_WIDTH_DP = 210;
-    private static final int FUNCTION_BAR_HEIGHT_DP = 40;
-    private static final int RAIL_CONTENT_INSET_DP = 4;
-    private static final int CONTEXT_CONTENT_INSET_DP = 4;
+    // All visual tokens are centralised in MpcStyle; this class only composes regions.
 
     private final LinearLayout root;
     private final LinearLayout toolbar;
@@ -40,32 +31,32 @@ final class MpcShell {
     MpcShell(Context context) {
         root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BG);
+        root.setBackgroundColor(MpcStyle.BG);
         // Keep shell chrome edge-tight; workspaces own their internal gutters.
 
         toolbar = new LinearLayout(context);
         toolbar.setOrientation(LinearLayout.HORIZONTAL);
-        toolbar.setBackgroundColor(BG);
+        toolbar.setBackgroundColor(MpcStyle.BG);
         root.addView(toolbar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, TOOLBAR_HEIGHT_DP)));
+                ViewGroup.LayoutParams.MATCH_PARENT, MpcStyle.dp(context, MpcStyle.TOOLBAR_HEIGHT_DP)));
 
         playheadStrip = new MpcPlayheadStrip(context);
         root.addView(playheadStrip, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 3)));
+                ViewGroup.LayoutParams.MATCH_PARENT, MpcStyle.dp(context, MpcStyle.POSITION_STRIP_HEIGHT_DP)));
 
         LinearLayout body = new LinearLayout(context);
         body.setOrientation(LinearLayout.HORIZONTAL);
 
         shortcutRail = new LinearLayout(context);
         shortcutRail.setOrientation(LinearLayout.VERTICAL);
-        shortcutRail.setBackgroundColor(Color.rgb(23, 25, 28));
+        shortcutRail.setBackgroundColor(MpcStyle.PANEL_DARK);
         shortcutRail.setPadding(
-                dp(context, RAIL_CONTENT_INSET_DP),
-                dp(context, RAIL_CONTENT_INSET_DP),
-                dp(context, RAIL_CONTENT_INSET_DP),
-                dp(context, RAIL_CONTENT_INSET_DP));
+                MpcStyle.dp(context, MpcStyle.RAIL_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.RAIL_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.RAIL_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.RAIL_CONTENT_INSET_DP));
         body.addView(shortcutRail, new LinearLayout.LayoutParams(
-                dp(context, SHORTCUT_RAIL_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+                MpcStyle.dp(context, MpcStyle.SHORTCUT_RAIL_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
         /*
          * Shortcuts and persistent context are separate columns. The context
@@ -75,14 +66,14 @@ final class MpcShell {
          */
         contextArea = new LinearLayout(context);
         contextArea.setOrientation(LinearLayout.VERTICAL);
-        contextArea.setBackgroundColor(Color.rgb(27, 30, 33));
+        contextArea.setBackgroundColor(MpcStyle.PANEL);
         contextArea.setPadding(
-                dp(context, CONTEXT_CONTENT_INSET_DP),
-                dp(context, CONTEXT_CONTENT_INSET_DP),
-                dp(context, CONTEXT_CONTENT_INSET_DP),
-                dp(context, CONTEXT_CONTENT_INSET_DP));
+                MpcStyle.dp(context, MpcStyle.CONTEXT_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.CONTEXT_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.CONTEXT_CONTENT_INSET_DP),
+                MpcStyle.dp(context, MpcStyle.CONTEXT_CONTENT_INSET_DP));
         body.addView(contextArea, new LinearLayout.LayoutParams(
-                dp(context, CHANNEL_STRIP_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
+                MpcStyle.dp(context, MpcStyle.CHANNEL_STRIP_WIDTH_DP), ViewGroup.LayoutParams.MATCH_PARENT));
 
         LinearLayout mainColumn = new LinearLayout(context);
         mainColumn.setOrientation(LinearLayout.VERTICAL);
@@ -101,12 +92,12 @@ final class MpcShell {
         channelStripRestoreButton.setMinimumHeight(0);
         channelStripRestoreButton.setPadding(0, 0, 0, 0);
         channelStripRestoreButton.setGravity(android.view.Gravity.CENTER);
-        channelStripRestoreButton.setBackgroundColor(SURFACE);
+        channelStripRestoreButton.setBackgroundColor(MpcStyle.SURFACE);
         channelStripRestoreButton.setContentDescription(
                 "MPC XL Channel Strip show");
         channelStripRestoreButton.setVisibility(View.GONE);
         workspace.addView(channelStripRestoreButton, new FrameLayout.LayoutParams(
-                dp(context, 20), dp(context, 30),
+                MpcStyle.dp(context, 20), MpcStyle.dp(context, 30),
                 android.view.Gravity.LEFT | android.view.Gravity.TOP));
 
         // mainColumn is vertical: weight distributes height, so workspace must
@@ -117,9 +108,9 @@ final class MpcShell {
         functionBar = new LinearLayout(context);
         functionBar.setOrientation(LinearLayout.HORIZONTAL);
         functionBar.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        functionBar.setBackgroundColor(SURFACE);
+        functionBar.setBackgroundColor(MpcStyle.SURFACE);
         mainColumn.addView(functionBar, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(context, FUNCTION_BAR_HEIGHT_DP)));
+                ViewGroup.LayoutParams.MATCH_PARENT, MpcStyle.dp(context, MpcStyle.FUNCTION_BAR_HEIGHT_DP)));
 
         body.addView(mainColumn, new LinearLayout.LayoutParams(
                 0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
@@ -164,7 +155,7 @@ final class MpcShell {
         LinearLayout.LayoutParams contextParams =
                 (LinearLayout.LayoutParams) contextArea.getLayoutParams();
         contextParams.width = visible
-                ? dp(contextArea.getContext(), CHANNEL_STRIP_WIDTH_DP)
+                ? MpcStyle.dp(contextArea.getContext(), MpcStyle.CHANNEL_STRIP_WIDTH_DP)
                 : 0;
         contextParams.weight = 0.0f;
         contextArea.setLayoutParams(contextParams);
@@ -176,7 +167,4 @@ final class MpcShell {
                         : "MPC XL Channel Strip show");
     }
 
-    private static int dp(Context context, int value) {
-        return Math.round(value * context.getResources().getDisplayMetrics().density);
-    }
 }
