@@ -5638,6 +5638,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     showRecordPage();
                 });
         controls2.addView(threshold, weight());
+        controls2.addView(actionButton("EXPORT WAV", v -> {
+            final String result = nativeAudioExportRecordingToWav();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        }), weight());
+        controls2.addView(actionButton("CLEAR REC", v -> {
+            final String result = nativeAudioClearRecording();
+            setBottomStatus(result);
+            refreshRecordingInfo();
+        }), weight());
         page.addView(controls2, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
 
