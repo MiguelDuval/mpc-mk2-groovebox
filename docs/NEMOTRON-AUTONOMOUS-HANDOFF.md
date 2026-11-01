@@ -12,8 +12,8 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `cb9d33c97679df1e903dcd07c31f8dbc02644b95` |
-| Remote HEAD (origin) | `cb9d33c97679df1e903dcd07c31f8dbc02644b95` — matches local |
+| Exact HEAD | `4dc17156430731d0333c1ef614fadab13ef5fa64` |
+| Remote HEAD (origin) | `4dc17156430731d0333c1ef614fadab13ef5fa64` — matches local |
 | Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
@@ -140,16 +140,39 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 - **Android SDK** at `C:\Android\SDK`: platform 36, build-tools 36.0.0, platform-tools 37.0.1, cmdline-tools — present.
 - **CMake 3.22.1**: INSTALLED via sdkmanager.
 - **NDK 28.2.13676358**: INSTALLED via sdkmanager.
-- **Gradle 9.6.0**: download repeatedly interrupted at ~7 MB / ~100 MB by tool timeout on long operations. NOT yet obtained.
-- **Submodules** (JUCE, tracktion_engine, oboe, ableton_link): checkout interrupted. oboe CMakeLists.txt not yet materialized.
+- **Gradle 9.7.1**: available in `C:\\Users\\migue\\.gradle\\wrapper\\dists\\gradle-9.7.1-bin\\1w1c7tv4s851m17nbqdsro2tv\\gradle-9.7.1\\bin\\gradle.bat` (CI uses 9.6.0).
+- **Submodules** (JUCE, tracktion_engine, oboe, ableton_link): NOT checked out. Empty directories exist. `git clone`/`git fetch` stalls at packfile transfer ("Compressing objects: 100%" but never receives packfile). oboe master ZIP downloaded (14 MB, `C:\\Users\\migue\\oboe.zip`) but PowerShell `Expand-Archive` hangs. .NET `ZipFile` extraction fails (assembly not loaded).
 - **Emulator system image / AVD**: NOT present.
-- **Java**: 21 (CI wants 17).
-- Local build NOT yet possible. Source-level changes committed; CI verification pending environment completion.
+- **Java**: 21 (CI wants 17). Eclipse Adoptium Temurin at `C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.12.101-hotspot`.
+- **Gradle daemon**: hangs on startup (forks daemon but build configuration never progresses). `gradle --stop` shows 2 incompatible + 7-10 stopped daemons. `--no-daemon` and `--offline` variants also stall at daemon startup.
+- **Local build**: NOT possible in current environment. Gradle daemon startup hangs on both Mozart and MPC projects. CMake native build requires oboe source which cannot be extracted.
+- **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**` and on all PRs. Does NOT trigger on push to `feature/mpc-one-ui-fidelity-continue`. CI verification requires opening a PR (workflow has no `pull_request` branch filter).
+- **Physical MPC Studio MkII validation**: NOT RUN.
 
-## 11. Next concrete task
+## 11. Source-level verification (complete, 2026-11-01)
 
-Option A (preferred): obtain Gradle 9.6.0 and check out submodules (at minimum oboe), then build the current branch and capture a landscape Main screenshot to compare against VIS-001/§1.1 and correct any measurable visual gaps.
-Option B: continue source-level P0 visual-fidelity edits per the reference catalog, commit, push, await CI verification. Do NOT claim visual parity without a runtime screenshot comparison.
+**Verified MATCH (source-level, not runtime-screenshot-verified) against `docs/MPC3-UI-SCREEN-BLUEPRINT.md` and `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` §1.1:**
+
+- Shell composition: Toolbar(44dp) → 3dp position strip → ShortcutRail(48dp) + XL Channel Strip context(210dp) → Workspace → Function Bar(40dp). Matches `MpcShell.java`.
+- Toolbar fields: project identity, transport position, Timing Correct, metronome (reserved/disabled), automation (reserved/disabled), MIDI IN/OUT status.
+- Five shortcuts: BROWSER, CHANNEL_MIXER, PAD_MIXER, SOUNDS, XYFX (exactly 5). Built from `navigationController.shortcuts()` → `MpcModeRegistry.DEFAULT_SHORTCUTS`. Unavailable ones truthfully marked (CHANNEL_MIXER=false, SOUNDS=false, XYFX=false).
+- Function Bar (MAIN): `+ NEW TRACK` / SEQ+Rec Arm group / −Track+ group / MUTE / SOLO (5 slots). Built in `refreshMpcFunctionBar()` (line 1993). SOLO has dynamic selected state via `nativeSequenceIsTrackSoloed()`.
+- MPC-red divider between Sequence and Track zones (2dp, `MPC_SELECTION_RED`). Present in `showMainPage()` (line 3758).
+- Flat rectangular surfaces (`MPC_FLAT_RADIUS_DP = 0`). No rounded cards.
+- No 4×4 pad matrix in Main (confirmed: no pad grid code in `showMainPage()`).
+- Track-state row: MONITOR ("—"), LENGTH ("SEQ"), VELOCITY ("—"), LAYER (real selected layer).
+- Context area: SEQUENCE ("SEQ 01\n120.0 BPM"), TRACK ("TRACK 01 • DRUM"), PROGRAM ("PROGRAM\n—").
+
+**NOT verified (requires runtime screenshot + build):**
+- Exact visual parity: colors, typography, iconography, density, spacing vs VIS-001 reference images.
+- Runtime screenshot capture and before/after comparison.
+
+## 12. Next concrete task
+
+Option A (preferred, blocked by environment): obtain working Gradle + submodule checkout (oboe minimum), build the current branch, capture landscape Main screenshot, compare against VIS-001/§1.1, correct measurable visual gaps.
+Option B (available now): continue source-level P0 visual-fidelity edits per reference catalog, commit, push, await CI verification via PR. Do NOT claim visual parity without runtime screenshot comparison.
+
+To unblock CI: open a Pull Request from `feature/mpc-one-ui-fidelity-continue` (workflow `pull_request:` trigger has no branch filter). CI will run Android Build on the PR-head exact SHA.
 
 Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`.
 
