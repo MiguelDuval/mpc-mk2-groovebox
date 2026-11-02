@@ -232,3 +232,13 @@ Next: run exact-head CI, verify the smoke reaches actual runtime interaction and
 - No visual archive was produced by #3664 because static source checks stopped before screenshot capture; upload log reports missing `mpc-groovebox-startup.png`. Do not claim UI smoke passed.
 
 Next exact-head run must pass all strict geometry-token checks, then continue into actual emulator interactions and upload inspectable PNG/XML evidence. Physical Studio MkII validation remains NOT RUN. Do not touch `main` or Mozart; no merges or history rewrites.
+
+
+## Build #3665 smoke follow-up — 2026-11-02
+
+- Exact product SHA: `0dda0e7ca7c0466d549c361526b5cc4336e38d8c`. Build #3665 / run `41429486377` passed preflight, all 52 native/Android tests, APK assembly/upload and smoke syntax preflight.
+- Emulator smoke advanced past Track Type width and all Main/Toolbar/Shell geometry token checks, then stopped on an outdated local-color expectation for `MPC_TOOLBAR_BG` and `MpcShell.BG`.
+- Current implementation centralises these in MpcStyle. Smoke now verifies `MPC_TOOLBAR_BG = MpcStyle.BG`, `MPC_SELECTION_RED = MpcStyle.SELECTION_RED`, both MpcShell root/toolbar use `MpcStyle.BG`, and the shared file retains graphite RGB(17,19,22) and selection red RGB(224,30,61).
+- APK artifact `13133623330`, 10,771,149 bytes, SHA-256 `4d729fbe9f20cc4de76856cb7be882d278da766629626d6071a9d7e5e410242f`, downloaded and integrity-checked. No smoke evidence archive exists because the source preflight failed before the startup screenshot.
+
+Continue with exact-head CI, then inspect actual emulator evidence. The test contract must follow the shared-token architecture without weakening numerical/color invariants. Physical controller remains NOT RUN; do not alter `main`, Mozart, or PR merge state.
