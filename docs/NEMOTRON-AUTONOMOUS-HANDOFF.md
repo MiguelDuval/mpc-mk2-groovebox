@@ -12,9 +12,9 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d` (current live override: see section 13 at end) |
-| Remote HEAD (origin) | `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d` — confirmed by live GitHub branch history |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) → `6f0f1348...` (fix(java): fix WAV export SAF file writing compilation errors) → `ca436485...` (Track Duplicate/Delete) → `d85b044...` (Java compile repair) → `0a9e207...` (Track clone identities/selection) → `f862476...` (CI WAV command/APK always attempt) → `eb74021...` (JNI duplicate cleanup) → `dcd17ee...` (Project State test index correction) |
+| Exact HEAD | `3e54b6c6cfd2d7275038fb9156924cbb84c3a7e1` |
+| Remote HEAD (origin) | `3e54b6c6cfd2d7275038fb9156924cbb84c3a7e1` — confirmed by live GitHub branch history |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) → `6f0f1348...` (fix(java): fix WAV export SAF file writing compilation errors) → `ca436485...` (Track Duplicate/Delete) → `d85b044...` (Java compile repair) → `0a9e207...` (Track clone identities/selection) → `f862476...` (CI WAV command/APK always attempt) → `eb74021...` (JNI duplicate cleanup) → `dcd17ee...` (Project State test index correction) → `59b98d0...` (feat(metronome): add Metronome workspace with level/sound control (VIS-076/G-006)) → `f0c22c9...` (feat(touch-strip): add Touch Strip workspace with mode cycling (VIS-079)) → `76e1fc10...` (feat(16-levels): add 16 Levels workspace with per-velocity pad triggers (VIS-050)) → `3e54b6c6...` (feat(list-edit): add List Edit workspace with per-event MIDI display (VIS-026)) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
 | Local clone | Cline workspace path is known; not independently inspected in this ChatGPT connector session. Cline must verify branch/HEAD/clean status before writing. |
@@ -242,3 +242,25 @@ Next exact-head run must pass all strict geometry-token checks, then continue in
 - APK artifact `13133623330`, 10,771,149 bytes, SHA-256 `4d729fbe9f20cc4de76856cb7be882d278da766629626d6071a9d7e5e410242f`, downloaded and integrity-checked. No smoke evidence archive exists because the source preflight failed before the startup screenshot.
 
 Continue with exact-head CI, then inspect actual emulator evidence. The test contract must follow the shared-token architecture without weakening numerical/color invariants. Physical controller remains NOT RUN; do not alter `main`, Mozart, or PR merge state.
+
+## Build #3669/3670 CI status — 2026-11-02
+
+- Commit `59b98d05` (feat(metronome)): Android Build #3669 / run 41449788894 — fast preflight SUCCESS; all 52 Android/native tests SUCCESS; APK assembly/upload FAILED (pre-existing Gradle issue, same as #3659-#3668).
+- Commit `f0c22c9d` (feat(touch-strip)): Android Build #3670 / run 41454351359 — in_progress at time of documentation.
+- Commit `3e54b6c6` (feat(list-edit)): Android Build #3672 / run 41456234805 — in_progress at time of documentation.
+- Pre-existing Gradle/Android SDK environment issue causes android-debug job to fail at APK assembly step on all recent commits. Preflight and all native/JUnit tests pass on every commit.
+
+## 10. Next concrete task
+
+**Completed — Commits `59b98d05`, `f0c22c9d`, `76e1fc10`, `3e54b6c6`:**
+- `59b98d05` — feat(metronome): add Metronome workspace (VIS-076/G-006) — native metronome state with realtime click generation, JNI bindings, toolbar button with ON/OFF visual state, dialog with volume/sound selection
+- `f0c22c9d` — feat(touch-strip): add Touch Strip workspace (VIS-079) — mode cycling with Data Dial integration, hardware sync
+- `76e1fc10` — feat(16-levels): add 16 Levels workspace (VIS-050) — 4×4 grid with velocities 8-127, native pad triggering
+- `3e54b6c6` — feat(list-edit): add List Edit workspace (VIS-026) — per-event MIDI display (tick, note, velocity, duration, probability, ratchet, nudge) with native `getTrackNotesAsString()` and JNI binding
+
+**Next steps:**
+1. Verify CI preflight passes on exact HEAD `3e54b6c6` (check GitHub Actions run #3672)
+2. Continue source-level MPC Groovebox feature development on `feature/mpc-one-ui-fidelity-continue`
+3. Remaining RESERVED modes: PAD_PERFORM (VIS-051), ARPEGGIATOR (VIS-052), SOUNDS (VIS-064), XYFX (VIS-057) — require native engine extensions not yet implemented
+4. Do NOT claim visual parity without runtime screenshot comparison
+5. Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`

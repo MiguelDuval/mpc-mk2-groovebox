@@ -561,3 +561,53 @@ Next: rerun smoke on the corrected geometry-contract commit, then inspect actual
 - No visual-evidence archive is accepted for #3665: smoke stopped at the source preflight before startup screenshot capture; uploader reported missing `/tmp/mpc-groovebox-startup.png`.
 
 Next: rerun corrected Toolbar token check, then proceed through remaining source contracts into app launch/touch evidence. Do not alter product colors or weaken the zero-radius/geometry tests to match old literals.
+
+## Build #3669 Metro fix — 2026-11-02
+
+- Product source/test SHA: `59b98d05fe49868b40b2edd8ca1c2b8cb1b9a399`.
+- Android Build #3669 / [run 41449788894](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41449788894): fast preflight SUCCESS; all 52 Android/native test steps SUCCESS; APK assembly/upload FAILED (pre-existing Gradle/native toolchain issue, unrelated to product code changes — same failure mode as #3659-#3668).
+- No visual-evidence archive; smoke did not reach screenshot capture.
+
+## Commits since checkpoint baseline — feature/mpc-one-ui-fidelity-continue
+
+| SHA | Summary |
+|-----|---------|
+| `54e7ccef` | fix(wav-export): fix JNI type mismatch (`byte[]` vs `String`), add actual SAF file saving (`ACTION_CREATE_DOCUMENT`, MIME `audio/wav`), fix recording buffer thread safety (no `.clear()` on callback-written buffer; atomic frame-count snapshot), add WAV export encoder tests to CI |
+| `6f0f1348` | fix(java): fix WAV export SAF compilation errors (`ParcelFileDescriptor.getFileDescriptor()` instead of `OutputStream.getFD()`), fix `sameSession` scope |
+| `ca436485` | feat(track): add Track Duplicate/Delete (TRK-007) — native `duplicateTrack()`/`deleteTrack()` with JNI bindings, per-track DUP/DEL buttons in Sequence page, regression tests |
+| `590bb8ce` | feat(channel-mixer): add Channel Mixer workspace with per-track level/pan (VIS-044/045) — native `setTrackLevel`/`trackLevel`/`setTrackPan`/`trackPan`, JNI bindings, per-track fader/pan strips |
+| `989624ca` | feat(track-edit): persist Track Edit view across page revisits — `MpcTrackEditView` created once and reused instead of recreated |
+| `53ca5cc9` | fix(smoke): validate shared graphite and selection color tokens — replace hardcoded color literals with `MpcStyle` tokens |
+| `0dda0e7c` | fix(smoke): validate Main and shell geometry through shared style tokens |
+| `e15ac0d1` | fix(smoke): validate shared flat-radius token and clean handoff whitespace |
+| `74ac9e3c` | merge: incorporate remote smoke token validation fix |
+| `59b98d05` | feat(metronome): add Metronome workspace with level/sound control (VIS-076/G-006) — native metronome state, realtime click generation with beat-1 accent, JNI bindings, toolbar button with ON/OFF visual state, dialog with volume/sound selection |
+| `f0c22c9d` | feat(touch-strip): add Touch Strip workspace with mode cycling (VIS-079) — native touch strip mode state, Java UI with mode buttons and Data Dial integration |
+| `76e1fc10` | feat(16-levels): add 16 Levels workspace with per-velocity pad triggers (VIS-050) — 4×4 grid, velocities 8-127, native pad trigger |
+| `3e54b6c6` | feat(list-edit): add List Edit workspace with per-event MIDI display (VIS-026) — native `getTrackNotesAsString()`, JNI binding, event list with tick/note/velocity/duration/probability/ratchet/nudge |
+
+### Summary of new functional slices since checkpoint
+
+| Area | Feature | VIS ID | Action Catalog | Files |
+|------|---------|--------|----------------|-------|
+| WAV export | JNI type fix, SAF file saving, recording buffer thread safety | — | — | MainActivity.java, AudioEngine.{h,cpp}, NativeEngine.cpp, WavSampleExportTests.cpp, android-build.yml |
+| Track management | Duplicate/Delete Track | — | TRK-007 | MpcProjectState.{h,cpp}, NativeEngine.cpp, MainActivity.java, MpcProjectStateTests.cpp |
+| Channel Mixer | Per-track level/pan strips | VIS-044/045 | MIX-006 (partial) | MpcChannelMixerView.java (new), MainActivity.java, MpcUiState.java, MpcDomain.h, AudioEngine.{h,cpp}, NativeEngine.cpp |
+| Track Edit | View persistence across revisits | VIS-028/029/030 | — | MainActivity.java |
+| Metronome | Enable/disable, volume, sound selection | VIS-076 | G-006/SYS-004 | AudioEngine.{h,cpp}, NativeEngine.cpp, MainActivity.java |
+| Touch Strip | Mode cycling, Data Dial control | VIS-079 | — | MpcUiState.java, MainActivity.java |
+| 16 Levels | Per-velocity pad triggers | VIS-050 | — | MpcModeRegistry.java, MainActivity.java |
+| List Edit | Event list with tick/note/velocity/duration/probability/ratchet/nudge | VIS-026 | — | MpcModeRegistry.java, MainActivity.java, AudioEngine.{h,cpp}, NativeEngine.cpp |
+
+### Remaining unavailable modes (RESERVED/GAP)
+
+| Mode | VIS ID | Status |
+|------|--------|--------|
+| PAD_PERFORM | VIS-051 | RESERVED — requires chord/progression generation backend |
+| ARPEGGIATOR | VIS-052 | RESERVED — requires arpeggiator engine |
+| SOUNDS | VIS-064 | RESERVED — requires sound store integration |
+| XYFX | VIS-057 | RESERVED — requires XY effects engine |
+
+### CI status
+
+All commits pushed to `feature/mpc-one-ui-fidelity-continue`. CI runs triggered on each push. Pre-existing Gradle/Android SDK environment issue causes android-debug job to fail at APK assembly step (#3659-#3669), but preflight and all native/JUnit tests pass on every commit. Physical MPC Studio MkII validation remains NOT RUN.
