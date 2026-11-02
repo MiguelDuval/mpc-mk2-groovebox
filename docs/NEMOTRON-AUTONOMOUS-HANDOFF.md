@@ -12,12 +12,12 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `ca4364858235b8df469ef1a9d3fdee8f2328ab24` |
-| Remote HEAD (origin) | `ca4364858235b8df469ef1a9d3fdee8f2328ab24` — matches local |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) → `6f0f1348...` (fix(java): fix WAV export SAF file writing compilation errors) → `ca436485...` (feat(track): add Track Duplicate/Delete TRK-007) |
+| Exact HEAD | `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d` (current live override: see section 13 at end) |
+| Remote HEAD (origin) | `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d` — confirmed by live GitHub branch history |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) → `6f0f1348...` (fix(java): fix WAV export SAF file writing compilation errors) → `ca436485...` (Track Duplicate/Delete) → `d85b044...` (Java compile repair) → `0a9e207...` (Track clone identities/selection) → `f862476...` (CI WAV command/APK always attempt) → `eb74021...` (JNI duplicate cleanup) → `dcd17ee...` (Project State test index correction) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
-| Local clone | `.../chat/mpc-mk2-groovebox`; working tree clean. |
+| Local clone | Cline workspace path is known; not independently inspected in this ChatGPT connector session. Cline must verify branch/HEAD/clean status before writing. |
 
 ## 0.x Repository recovery (completed this session)
 
@@ -185,3 +185,28 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 ---
 
 **Guidance for next session:** read `docs/SESSION-STATE.md` and `docs/DEVELOPMENT-OPERATING-PROTOCOL.md`; verify live GitHub refs/Actions before relying on any SHA; keep one writer on this branch; do not merge PR #124/#133 automatically or touch `main`.
+
+
+## 13. Superseding live continuation — 2026-11-02
+
+This section supersedes the stale `ca436485` live-state table above. Always refetch GitHub before relying on any status because this branch is actively moving.
+
+- **Repository:** `MiguelDuval/mpc-mk2-groovebox`
+- **Branch:** `feature/mpc-one-ui-fidelity-continue`
+- **Exact pushed HEAD at this update:** `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`
+- **Latest exact-head build:** #3662 / run `41423435808`; preflight succeeded; `android-debug` was in progress during setup. The Project State / APK / emulator / evidence gates have not yet been confirmed for this SHA.
+- **Latest APK actually recovered:** #3661 / run `41421692177`, exact SHA `eb74021caefe821a8681e5c811f71728bf1bbb07`, artifact ID `13129962429`, size `10,771,149` bytes, SHA-256 `eae3f971678b19b091bc7b7edf99aaa266bee0a33215da89c4b6f2fc5bee9ae7`. It is a real debug APK; installable, but not accepted because Project State test failed and emulator smoke was skipped.
+
+### Fixes performed after the Cline report
+
+- `d85b044`: fixed the Java compile blockers found in Android Build #3657. The focused Gradle/Java tests passed on #3658 and later runs.
+- `0a9e207`: re-keyed copied Patterns and Placements, remapped Placement→Pattern references, preserved selected Track identity when deleting an earlier Track, and extended native regression coverage.
+- `f862476`: fixed double-escaped shell continuations in the WAV encoder test step; made debug APK assembly use `if: always()`. The WAV encoder test passed in #3660/#3661.
+- `eb74021`: removed four duplicate recording JNI definitions and fixed the doubled Arrangement Move signature. NDK/CMake application build then succeeded; #3661 produced the APK artifact. Track clone checks include note metadata preservation.
+- `dcd17ee`: fixed the remaining stale test expectation for the new Track index after the test had reduced the sequence to one Track. The assertion now derives `addedTrackIndex=tracks.size()-1` and verifies selection/program state at that index.
+
+### Acceptance rules
+
+Do not call #3661 green: its Project State assertion failed and emulator smoke was skipped, even though APK assembly/upload succeeded. Do not weaken tests to obtain a green job. Next action is to inspect exact #3662 Project State step and follow the run through APK + emulator smoke + evidence. Physical MkII validation remains **NOT RUN**. The full current details and commit table are in `docs/SESSION-STATE.md` under “Superseding live continuation state — 2026-11-02”.
+
+After #3662 passes, continue product development at the same efficient feature cadence: coherent feature slices, focused tests, normal commit/push, exact-SHA CI, APK and emulator/evidence checkpoint. No audit-only stopping. No Mozart changes, no `main` changes, no merge of PR #124/#133, no reset/rebase/force-push/history rewrite. Inspect the relevant VIS image before UI changes.

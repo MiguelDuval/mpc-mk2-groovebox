@@ -444,3 +444,67 @@ Physical Akai MPC Studio MkII acceptance remains **NOT RUN**. These successful A
 - Reserved/unsupported areas remain unavailable unless their real domain/backend is implemented. This catalog does not claim completion of every MPC 3.x feature.
 
 PR #133 remains Draft for product review. Do not merge automatically or change main.
+
+
+---
+
+## Superseding live continuation state — 2026-11-02
+
+This section is the authoritative live handoff for `feature/mpc-one-ui-fidelity-continue`. It supersedes earlier session notes that describe HEAD `ca436485` or the October checkpoint as current. Historical acceptance evidence remains historical; only the exact live SHA/run below determines current acceptance.
+
+**Repository:** `MiguelDuval/mpc-mk2-groovebox`  
+**Branch:** `feature/mpc-one-ui-fidelity-continue`  
+**Current pushed HEAD at this update:** `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`  
+**Parent:** `eb74021caefe821a8681e5c811f71728bf1bbb07`  
+**main:** untouched. No merge, rebase, reset, force-push, amend or history rewrite.
+
+### Recovery/fix commits on this continuation branch
+
+| SHA | Change | Current interpretation |
+|---|---|---|
+| `54e7ccef` | WAV export JNI return-type correction, SAF picker/write, recording buffer snapshot safety, encoder tests | Source change; exact acceptance superseded by current branch CI. |
+| `6f0f1348` | Correct SAF file-descriptor/fsync API and lambda scope | Source compile fix; not independently accepted on current branch. |
+| `ca436485` | Native/JNI/UI Track Duplicate/Delete (TRK-007) | Feature source, now under expanded identity/selection regression coverage. |
+| `d85b044` | Restore Android Java compile baseline: MpcStyle palette/Typeface types, MpcShell background, selected track accessor, arrangement summary lookup | Android Java compilation passed in #3658 and #3660. |
+| `0a9e207` | Give duplicated Pattern/Placement records independent IDs, remap placement→pattern references; preserve selected-track identity after deleting an earlier track | Native implementation source included in #3661/#3662. |
+| `f862476` | Fix over-escaped WAV encoder workflow continuations; run debug APK assembly with `if: always()` | WAV encoder command passed in #3660/#3661; APK can still be built after an unrelated test failure. |
+| `eb74021` | Remove duplicate recording JNI definitions, repair doubled Arrangement Move signature, correct Track clone regression assertions and verify copied MIDI-note fields | Native C++/NDK build passed far enough to produce APK #3661. |
+| `dcd17ee` | Replace stale hard-coded new-track index in Project State test with index derived from current track count | Current exact-head CI #3662 is in progress; no result claim yet. |
+
+### Exact Android CI history for this repair sequence
+
+| Build | Exact SHA | Run | Result / evidence |
+|---|---|---:|---|
+| #3657 | `54a707f7be805e78f93101ee846ef41f164ddfb8` | [41417386372](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41417386372) | FAILED: 11 Java compiler diagnostics. |
+| #3658 | `d85b044afb9b4f20e20997c953031715ac1ca190` | [41419858490](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41419858490) | Java focused Gradle tests passed; WAV export test command failed because YAML passed literal backslashes to g++. |
+| #3659 | `0a9e207e76b41602cbb500aa257c8060b9f2e3de` | [41420572679](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41420572679) | Same pre-workflow-fix WAV command failure; earlier native/JVM checks passed. |
+| #3660 | `f8624766a9b19aa64db259d0ae4a655663c32b54` | [41420719399](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41420719399) | WAV encoder step passed; Project State test exposed stale hard-coded name/type expectation; APK attempt exposed duplicate JNI definitions and duplicate Arrangement Move signature. |
+| #3661 | `eb74021caefe821a8681e5c811f71728bf1bbb07` | [41421692177](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41421692177) | **APK assembly and upload SUCCESS** after native/JNI fixes. Project State test still failed on an outdated expected active index after prior track deletion. |
+| #3662 | `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d` | [41423435808](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41423435808) | At this update: preflight SUCCESS; android-debug queued/in progress during setup. Project State test, APK and emulator smoke not yet reported. Verify live status before proceeding. |
+
+### APK recovered and inspected
+
+Build #3661 uploaded artifact `app-debug.apk`, artifact ID `13129962429`, size `10,771,149` bytes, SHA-256 `eae3f971678b19b091bc7b7edf99aaa266bee0a33215da89c4b6f2fc5bee9ae7`. The GitHub workflow artifact download returned the APK bytes directly (workflow has `archive: false`); file signature identifies it as an Android package and `unzip -t` reported no compressed-data errors. It contains `libmpcgroovebox.so` for arm64-v8a, armeabi-v7a, x86 and x86_64. It was copied to `/mnt/data/mpc-mk2-groovebox-debug.apk` for user delivery.
+
+**Acceptance boundary:** this APK is a real build from exact SHA `eb74021`, but it is NOT a fully accepted release checkpoint. #3661 Project State test failed; smoke preflight and emulator smoke were skipped. Physical MPC Studio MkII hardware validation remains NOT RUN. Rebuild/download a fresh APK from a later green exact-head run when available.
+
+### Correct implementation details / known invariants
+
+- Java compile errors from #3657 are fixed: palette tokens ACCENT/ACCENT_2/DANGER, Typeface static field types, MpcShell BG reference, native selected-track getter, and arrangement summary view lookup.
+- WAV workflow command must contain single shell line-continuation backslashes; never reintroduce doubled backslashes. #3660/#3661 show the corrected encoder test passes.
+- Track duplicate must generate new Track, Pattern and Placement IDs, remap every copied Placement's `patternId` to the copied Pattern, and preserve copied MIDI-note metadata. Deleting a Track before the selected Track must keep selection attached to the same surviving Track identity; deleting selected Track chooses nearest valid surviving index.
+- The Project State test now derives the index of a newly added Track from `tracks.size() - 1`; do not restore the stale constant index 2.
+- NativeEngine.cpp must contain exactly one definition for each recording waveform/frame-count/sample-rate/peak JNI method and a single well-formed `nativeSequenceMoveArrangementEvent` signature. The #eb74021 source scan found zero duplicate native JNI names and no missing Java-declared JNI implementation.
+- APK assembly has `if: always()` so a separate test failure does not suppress diagnostic APK generation. This must not be used to call a failing test suite green.
+
+### Next actions — execute, do not stop at reporting
+
+1. Refetch #3662 and confirm exact `head_sha=dcd17ee...`; inspect Project State step #41. If it fails, use the exact assertion/log and fix the underlying code/test without disabling or weakening coverage.
+2. Confirm #3662 APK artifact, exact size/digest, smoke preflight, emulator smoke and evidence archive. Inspect the actual APK and PNG/XML evidence from that exact run; no source-only visual-parity claims.
+3. If #3662 is green, update this section and start the next product feature slice. If any gate fails, repair it before further product scope. Avoid docs-only commits except when recording a verified state transition.
+4. Continue the existing fast Cline cadence: implement a coherent feature slice (potentially several related files), add focused regression tests, commit/push, and let exact-SHA CI build/validate it. Do not force a full manual APK loop after every tiny edit, but do require exact-head acceptance checkpoints and inspect failures. Do not stop after an audit or a status report.
+5. Before any UI screen changes, open and visually inspect its correct VIS reference from `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md` / `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md`; record actual before/after PNG/XML evidence.
+6. Preserve one writer on this branch. Do not edit Mozart, do not modify `main`, do not merge PR #124/#133 automatically, do not reset/rebase/force-push or rewrite history.
+7. Physical MkII acceptance remains **NOT RUN** until the actual controller is connected and tested.
+
+---
