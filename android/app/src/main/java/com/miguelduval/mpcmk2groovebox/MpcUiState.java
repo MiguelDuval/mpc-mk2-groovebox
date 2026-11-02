@@ -31,6 +31,7 @@ final class MpcUiState {
         LOOPER("LOOPER"),
         XYFX("XYFX"),
         SOUNDS("SOUNDS"),
+        TOUCH_STRIP("TOUCH STRIP"),
         RESERVED("RESERVED");
 
         private final String label;

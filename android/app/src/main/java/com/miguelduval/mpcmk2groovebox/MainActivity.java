@@ -235,6 +235,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Button metronomeTopButton;
     private float metronomeVolume = 0.8f;
     private int metronomeSound = 0; // 0=click,1=beep,2=wood,3=none
+    private int touchStripMode = 0; // 0=Level,1=Pan,2=Tune,3=Sample Start,4=Sample End
     private Button automationTopButton;
     private TextView midiInTopStatus;
     private TextView midiOutTopStatus;
@@ -1687,6 +1688,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MIDI_CONTROL:
                 showMidiPage();
                 break;
+            case TOUCH_STRIP:
+                showTouchStripPage();
+                break;
             case PREFERENCES:
                 showAudioSettingsPage();
                 break;
@@ -3069,6 +3073,110 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 .create();
         dialog.show();
         activeMpcParameterDialog = dialog;
+    }
+
+    private void showTouchStripPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "TOUCH_STRIP";
+        navigationController.navigate(MpcUiState.Mode.TOUCH_STRIP);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("TOUCH STRIP");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), 2);
+
+        TextView heading = label(
+                "TOUCH STRIP  •  MODE " + touchStripModeLabel(touchStripMode),
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        heading.setContentDescription("Touch Strip heading");
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        TextView hint = label(
+                "Slide strip to set value  •  Buttons cycle mode  •  Data Dial adjusts",
+                10, MUTED);
+        hint.setPadding(dp(10), 0, dp(10), dp(10));
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+        LinearLayout modes = row();
+        String[] modeLabels = {"LEVEL", "PAN", "TUNE", "SAMPLE START", "SAMPLE END"};
+        for (int m = 0; m < 5; m++) {
+            final int mode = m;
+            Button b = actionButton(modeLabels[m], v -> {
+                touchStripMode = mode;
+                navigationController.setDataDialFocus(
+                        touchStripModeToDataDialFocus(mode));
+                setBottomStatus("TOUCH STRIP • " + modeLabels[mode]);
+                refreshTouchStripPage();
+                syncHardwareTouchStripModeLeds();
+            });
+            b.setTextSize(9);
+            b.setEnabled(touchStripMode != m);
+            b.setAlpha(touchStripMode != m ? 0.45f : 1.0f);
+            b.setContentDescription("Touch Strip mode " + modeLabels[m]);
+            modes.addView(b, weight());
+        }
+        page.addView(modes, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
+
+        TextView modeInfo = label(
+                "Mode " + (touchStripMode + 1) + " of 5: " + touchStripModeLabel(touchStripMode),
+                11, MUTED);
+        modeInfo.setGravity(Gravity.CENTER);
+        page.addView(modeInfo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        page.addView(label(
+                "VERTICAL STRIP • finger Y = value  •  momentary release returns to 0",
+                9, MUTED), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        Button touchStripBack = actionButton("BACK", v -> navigateBackFromShell());
+        touchStripBack.setContentDescription("Touch Strip Back");
+        page.addView(touchStripBack, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+    }
+
+    private String touchStripModeLabel(int mode) {
+        switch (mode) {
+            case 0: return "LEVEL";
+            case 1: return "PAN";
+            case 2: return "TUNE";
+            case 3: return "SAMPLE START";
+            case 4: return "SAMPLE END";
+            default: return "LEVEL";
+        }
+    }
+
+    private MpcUiState.DataDialFocus touchStripModeToDataDialFocus(int mode) {
+        switch (mode) {
+            case 0: return MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+            case 1: return MpcUiState.DataDialFocus.PAD_MIXER_PAN;
+            case 2: return MpcUiState.DataDialFocus.PAD_MIXER_TUNE;
+            case 3: return MpcUiState.DataDialFocus.SAMPLE_START;
+            case 4: return MpcUiState.DataDialFocus.SAMPLE_END;
+            default: return MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
+        }
+    }
+
+    private void refreshTouchStripPage() {
+        if (!"TOUCH_STRIP".equals(currentPage)) return;
+        pageTitle.setText("TOUCH STRIP  •  MODE " + touchStripModeLabel(touchStripMode));
+        // Rebuild page with updated mode
+        showTouchStripPage();
     }
 
     private void showTimeSignatureDialog() {
