@@ -1141,6 +1141,66 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadFilterCutoff(
             static_cast<std::uint8_t>(pad));
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetMetronomeEnabled(
+        JNIEnv* env, jobject /* thiz */, jboolean enabled)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setMetronomeEnabled(
+                    static_cast<bool>(enabled)));
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioIsMetronomeEnabled(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return static_cast<jboolean>(
+            mpc::audio::AudioEngine::instance().metronomeEnabled());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetMetronomeVolume(
+        JNIEnv* env, jobject /* thiz */, jfloat volume)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setMetronomeVolume(volume));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetMetronomeVolume(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return mpc::audio::AudioEngine::instance().metronomeVolume();
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetMetronomeSound(
+        JNIEnv* env, jobject /* thiz */, jint soundIndex)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setMetronomeSound(
+                    soundIndex));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetMetronomeSound(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    return mpc::audio::AudioEngine::instance().metronomeSound();
+}
+
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadWaveformPeaks(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jint points)

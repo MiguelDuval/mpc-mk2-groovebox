@@ -255,6 +255,14 @@ private:
     static std::string validateInputConfiguration(
             const InputConfiguration& configuration);
 
+    // Metronome (VIS-076 / G-006).
+    std::string setMetronomeEnabled(bool enabled);
+    bool metronomeEnabled() const;
+    std::string setMetronomeVolume(float volume);   // 0.0..1.0
+    float metronomeVolume() const;
+    std::string setMetronomeSound(int soundIndex);  // 0=click,1=beep,2=wood,3=none
+    int metronomeSound() const;
+
     static constexpr std::size_t kMaxRecordingFrames = 960000;
     static constexpr std::size_t kMonitorBufferFrames = 8192;
     static constexpr std::size_t kRecordingWaveformBinCount = 2048;
@@ -300,6 +308,11 @@ private:
     std::array<float, kMonitorBufferFrames> monitorSamples_{};
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
     std::atomic<bool> monitorEnabled_{false};
+    // Metronome state (VIS-076 / G-006). Control-thread safe; read in the
+    // realtime output callback to generate click accents on beat 1.
+    std::atomic<bool> metronomeEnabled_{false};
+    std::atomic<std::int32_t> metronomeVolumeMilli_{800};   // 0..1000 -> 0..1.0
+    std::atomic<std::int32_t> metronomeSound_{0};           // 0=click,1=beep,2=wood,3=none
     std::atomic<bool> recordingEnabled_{false};
     std::atomic<bool> recordingArmed_{false};
     std::atomic<std::int32_t> recordingThresholdMilli_{0};
