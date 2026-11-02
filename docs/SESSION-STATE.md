@@ -547,3 +547,17 @@ This update supersedes the pending status previously recorded for Build #3662 an
 - #3664 APK artifact ID `13133191525`, 10,771,149 bytes, SHA-256 `987826e79994e9b37b6554c3ae591ff89539a5065840c372805c691db3037442`. Downloaded bytes match the GitHub digest; Android APK signature/file identification and ZIP integrity checks passed.
 
 Next: rerun smoke on the corrected geometry-contract commit, then inspect actual screenshots and UiAutomator XML. Keep the test numeric constraints intact; only test their correct source after design-token centralisation.
+
+
+---
+
+## Build #3665 Toolbar token follow-up — 2026-11-02
+
+- Product source/test SHA: `0dda0e7ca7c0466d549c361526b5cc4336e38d8c`.
+- Android Build #3665 / [run 41429486377](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41429486377): fast preflight SUCCESS; 52 Android/native test steps SUCCESS; APK build/upload and syntax/evidence preflight SUCCESS.
+- Emulator smoke passed the Main Track Type icon-width check, Toolbar geometry token checks, Main geometry token checks, shell geometry checks and the preceding Mute/Solo/Arrangement preflights. It stopped later at `MPC3 graphite Toolbar contract missing: private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);`.
+- This was another stale local-literal assertion. Current MainActivity aliases `MPC_TOOLBAR_BG = MpcStyle.BG` and `MPC_SELECTION_RED = MpcStyle.SELECTION_RED`; MpcShell sets its root and toolbar backgrounds from `MpcStyle.BG`. The canonical values remain graphite `Color.rgb(17, 19, 22)` and selection red `Color.rgb(224, 30, 61)` in MpcStyle. The smoke contract now validates the aliases, actual MpcShell token use, and exact canonical values.
+- #3665 APK artifact ID `13133623330`, 10,771,149 bytes, SHA-256 `4d729fbe9f20cc4de76856cb7be882d278da766629626d6071a9d7e5e410242f`. Downloaded APK matched the artifact digest and passed package/ZIP integrity checks.
+- No visual-evidence archive is accepted for #3665: smoke stopped at the source preflight before startup screenshot capture; uploader reported missing `/tmp/mpc-groovebox-startup.png`.
+
+Next: rerun corrected Toolbar token check, then proceed through remaining source contracts into app launch/touch evidence. Do not alter product colors or weaken the zero-radius/geometry tests to match old literals.

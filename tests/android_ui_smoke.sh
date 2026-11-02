@@ -931,15 +931,26 @@ if ! grep -Fq -- 'case LOOP:' "android/app/src/main/java/com/miguelduval/mpcmk2g
 fi
 
 echo "Running MPC Toolbar chrome preflight..."
-for required in   'private static final int MPC_TOOLBAR_BG = Color.rgb(17, 19, 22);'   'bar.setBackgroundColor(MPC_TOOLBAR_BG)'   'private static final int MPC_SELECTION_RED = Color.rgb(224, 30, 61);'   'MPC Toolbar Menu'   'MPC Project Browser'; do
+for required in \
+  'MPC_TOOLBAR_BG = MpcStyle.BG;' \
+  'bar.setBackgroundColor(MPC_TOOLBAR_BG)' \
+  'MPC_SELECTION_RED = MpcStyle.SELECTION_RED;' \
+  'MPC Toolbar Menu' \
+  'MPC Project Browser'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC3 graphite Toolbar contract missing: $required"
+    echo "ERROR: MPC3 graphite Toolbar alias/content contract missing: $required"
     exit 1
   fi
 done
-for required in   'private static final int BG = Color.rgb(17, 19, 22);'   'toolbar.setBackgroundColor(BG)'; do
-  if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"; then
-    echo "ERROR: outer MPC shell graphite Toolbar host contract missing: $required"
+for required in 'root.setBackgroundColor(MpcStyle.BG)' 'toolbar.setBackgroundColor(MpcStyle.BG)'; do
+  if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
+    echo "ERROR: outer MPC shell must consume the shared graphite token: $required"
+    exit 1
+  fi
+done
+for required in 'BG = Color.rgb(17, 19, 22);' 'SELECTION_RED = Color.rgb(224, 30, 61);'; do
+  if ! grep -Fq -- "$required" "$MPC_STYLE_SOURCE"; then
+    echo "ERROR: canonical MPC graphite/red design token missing or changed: $required"
     exit 1
   fi
 done
