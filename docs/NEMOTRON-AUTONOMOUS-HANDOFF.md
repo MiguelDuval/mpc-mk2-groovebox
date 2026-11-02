@@ -6,18 +6,18 @@
 
 ---
 
-## 1. Live state (verified against GitHub, 2026-11-01)
+## 1. Live state (verified against GitHub, 2026-11-02)
 
 | Item | Value |
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `981b339246a3d50ea6771470ddcd88c82cca25df` |
-| Remote HEAD (origin) | `981b339246a3d50ea6771470ddcd88c82cca25df` — matches local |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) |
+| Exact HEAD | `54e7ccef4aa28647126764fb67c08e60a337a0b6` |
+| Remote HEAD (origin) | `54e7ccef4aa28647126764fb67c08e60a337a0b6` — matches local |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
-| Local clone | `.../chat/mpc-pr133`; full tracked tree materialized after recovery (1148 files). Promisor re-enabled during restore; `remote.origin.partialclonefilter=blob:none` remains. |
+| Local clone | `.../chat/mpc-mk2-groovebox`; working tree clean. |
 
 ## 0.x Repository recovery (completed this session)
 
@@ -147,7 +147,7 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 - **Gradle daemon**: hangs on startup (forks daemon but build configuration never progresses). `gradle --stop` shows 2 incompatible + 7-10 stopped daemons. `--no-daemon` and `--offline` variants also stall at daemon startup.
 - **Local build**: NOT possible in current environment. Gradle daemon startup hangs on both Mozart and MPC projects. CMake native build requires oboe source which cannot be extracted.
 - **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**`, `feature/**` and on all PRs. CI runs on `feature/mpc-one-ui-fidelity-continue`.
-- **CI status on `981b3392`:** Android Build #3642 — FAILED (pre-existing issue; runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage). `git diff --check 1540b475 981b3392` passes locally. Changes don't touch any preflight-compiled files.
+- **CI status on `54e7ccef`:** Commit pushed; CI run pending via workflow trigger on `feature/mpc-one-ui-fidelity-continue`. Pre-existing Build #3642/#3640/#3641 failures were at preflight stage on earlier SHAs; this commit includes fixes to the WAV export path and CI test wiring.
 - **Physical MPC Studio MkII validation**: NOT RUN.
 
 ## 11. Source-level verification (complete, 2026-11-01)
@@ -170,15 +170,15 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 
 ## 12. Next concrete task
 
-**Commit `9ee4355f` — feat(audio): add WAV export for pad/layer samples (pushed to origin):**
-- `src/Audio/WavSample.h` — Added `encodeWav(const SampleBuffer& buffer)` declaration for PCM 16-bit WAV encoding
-- `src/Audio/WavSample.cpp` — Added `encodeWav` implementation with float-to-PCM16 conversion, RIFF/WAV header generation
-- `src/Audio/AudioEngine.h` — Added `exportPadSampleToWav(padIndex, layerIndex, outBytes)` declaration
-- `src/Audio/AudioEngine.cpp` — Added `exportPadSampleToWav` implementation (control-thread, requires stopped playback, validates pad/layer indices and sample presence)
-- `tests/WavSampleExportTests.cpp` — New test file with mono/stereo round-trip tests, empty buffer edge case, invalid channel count edge case
+**Completed — Commit `54e7ccef` — fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage**
+
+- `MainActivity.java`: fixed `byte[]` vs `String` type mismatch; implemented actual WAV file saving via SAF (`ACTION_CREATE_DOCUMENT`, `audio/wav`)
+- `AudioEngine.cpp`: fixed recording buffer thread safety (no `.clear()` on callback-written buffer; atomic frame count snapshot in export)
+- `WavSampleExportTests.cpp`: extended with NaN/Inf, multi-sample-rate, RIFF header structure tests
+- `.github/workflows/android-build.yml`: added WAV export encoder test to CI android-debug job
 
 **Next steps:**
-1. Fix pre-existing CI failure (was failing before this commit — runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage)
+1. Verify CI preflight passes on exact HEAD `54e7ccef` (check GitHub Actions run)
 2. Continue source-level MPC Groovebox feature development on `feature/mpc-one-ui-fidelity-continue`
 3. Do NOT claim visual parity without runtime screenshot comparison
 4. Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`

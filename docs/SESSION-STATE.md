@@ -25,6 +25,25 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 ## Held changes
 
 - PR #126 WAV export codec is NOT integrated. Its latest source run #3480 / `40710623733` failed at `MpcProjectState.cpp:209` on `-Werror=unused-variable` (`oldKind`); the decoder step itself passed. Its source also expects an `AudioEngine::exportSampleToWav` route absent from the checkpoint's current AudioEngine API. A temporary untested `encodeWav` addition to `WavSample.cpp/.h` was reverted. Re-evaluate as a fresh isolated feature only after defining the current product export API.
+
+## Current work — feature/mpc-one-ui-fidelity-continue — 2026-11-02
+
+**Commit `54e7ccef` — fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage**
+
+Changes:
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java`
+  - Fixed type mismatch: `nativeAudioExportPadSampleToWav()` / `nativeAudioExportRecordingToWav()` return `byte[]` but handlers assigned to `String`. Now correctly typed as `byte[]`.
+  - Implemented actual WAV file saving via Android Storage Access Framework (`ACTION_CREATE_DOCUMENT`, MIME `audio/wav`) on background executor with `fsync`, error handling, and cancellation support.
+  - Added request codes `REQUEST_EXPORT_WAV_PAD_SAMPLE` (1009) and `REQUEST_EXPORT_WAV_RECORDING` (1010).
+  - Added `openExportWavPicker()` and `writeWavBytesToUri()` methods.
+  - Added `onActivityResult` handlers for WAV export picker results.
+- `src/Audio/AudioEngine.cpp`
+  - `clearRecording()`: removed `.clear()` on `recordedSamples_` to prevent use-after-free with realtime audio callback. Now resets frame count atomically instead.
+  - `exportRecordingToWav()`: snapshots `recordedFrameCount_` atomically before copying data to avoid data race with audio callback.
+- `tests/WavSampleExportTests.cpp`: added NaN/Inf, multiple sample rates, RIFF header structure tests.
+- `.github/workflows/android-build.yml`: added WAV export encoder test step to android-debug job.
+
+Status: committed and pushed to `feature/mpc-one-ui-fidelity-continue` at SHA `54e7ccef`. CI run pending — need to verify preflight passes on exact HEAD.
 - PR #127 Browser XML assertion repair remains held; Build #3516 failed. Inspect the exact failing step and current checkpoint assertions before importing.
 - PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
 - Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
