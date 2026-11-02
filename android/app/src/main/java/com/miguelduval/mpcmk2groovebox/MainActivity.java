@@ -591,6 +591,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);
     private static native String nativeSequenceSplitPatternPlacement(int trackIndex, long splitTick);
+    private static native float nativeSequenceGetArrangementZoom();
+    private static native String nativeSequenceZoomInArrangement();
+    private static native String nativeSequenceZoomOutArrangement();
+    private static native String nativeSequenceResetArrangementZoom();
     private static native String nativeSequenceAddArrangementPatternPlacement(
             int trackIndex, long startTick, int lengthTicks);
     private static native String nativeSequenceMoveArrangementPatternPlacement(
@@ -3742,6 +3746,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         arrangementDuplicate.setContentDescription("Arrangement duplicate selected step");
         arrangementOps.addView(arrangementDuplicate, weight());
 
+        Button arrangementZoomIn = actionButton("ZOOM+", v -> {
+            if (!startupComplete) return;
+            final String result = nativeSequenceZoomInArrangement();
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementZoomIn.setContentDescription("Arrangement zoom in");
+        arrangementOps.addView(arrangementZoomIn, weight());
+
+        Button arrangementZoomOut = actionButton("ZOOM-", v -> {
+            if (!startupComplete) return;
+            final String result = nativeSequenceZoomOutArrangement();
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementZoomOut.setContentDescription("Arrangement zoom out");
+        arrangementOps.addView(arrangementZoomOut, weight());
+
+        Button arrangementZoomReset = actionButton("ZOOM 1:1", v -> {
+            if (!startupComplete) return;
+            final String result = nativeSequenceResetArrangementZoom();
+            setBottomStatus(result);
+            refreshArrangementView();
+        });
+        arrangementZoomReset.setContentDescription("Arrangement zoom reset");
+        arrangementOps.addView(arrangementZoomReset, weight());
+
         arrangement.addView(arrangementOps, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
@@ -5252,9 +5283,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final String arrangementData =
                 nativeSequenceGetTrackArrangementData(trackIndex);
+        final float zoom = nativeSequenceGetArrangementZoom();
         if (eventSummary != null) {
             eventSummary.setText(
-                    "TRACK EVENTS • " + arrangementData);
+                    "TRACK EVENTS • " + arrangementData + " • ZOOM "
+                            + Math.round(zoom * 100.0f) + "%");
         }
 
         if (mainArrangementPreview != null) {

@@ -2943,8 +2943,45 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSplitPatternPlac
             + " • clips " + originalPlacementId + " / " + rightPlacementId);
 }
 
+static float arrangementZoomLevel = 1.0f;
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetArrangementZoom(
+        JNIEnv*, jobject /* thiz */)
+{
+    return arrangementZoomLevel;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceZoomInArrangement(
+        JNIEnv* env, jobject /* thiz */)
+{
+    arrangementZoomLevel = std::min<std::float_t>(arrangementZoomLevel * 1.25f, 4.0f);
+    return toJString(env, std::string("ARRANGE ZOOM IN • ")
+            + std::to_string(static_cast<int>(arrangementZoomLevel * 100.0f)) + "%");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceZoomOutArrangement(
+        JNIEnv* env, jobject /* thiz */)
+{
+    arrangementZoomLevel = std::max<std::float_t>(arrangementZoomLevel / 1.25f, 0.25f);
+    return toJString(env, std::string("ARRANGE ZOOM OUT • ")
+            + std::to_string(static_cast<int>(arrangementZoomLevel * 100.0f)) + "%");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceResetArrangementZoom(
+        JNIEnv* env, jobject /* thiz */)
+{
+    arrangementZoomLevel = 1.0f;
+    return toJString(env, "ARRANGE ZOOM RESET • 100%");
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementEvent(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex,
+        jlong sourceTick, jint noteNumber, jlong targetTick)
         JNIEnv* env, jobject /* thiz */, jint trackIndex,
         jlong sourceTick, jint noteNumber, jlong targetTick)
 {
