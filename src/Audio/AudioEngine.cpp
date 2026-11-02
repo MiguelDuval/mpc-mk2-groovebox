@@ -1282,30 +1282,7 @@ int AudioEngine::metronomeTimeSigDenominator() const noexcept {
 }
 
 std::string AudioEngine::getTrackNotesAsString(std::uint8_t trackIndex) const {
-    return getTrackNotesAsString(projectState_, trackIndex);
-    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
-        return "";
-    }
-
-    const auto& track = sequence.tracks[trackIndex];
-    std::string result;
-
-    for (const auto& pattern : track.patterns) {
-        for (const auto& event : pattern.notes) {
-            if (!result.empty()) {
-                result += ";";
-            }
-            result += std::to_string(event.tick) + ","
-                    + std::to_string(event.durationTicks) + ","
-                    + std::to_string(event.note) + ","
-                    + std::to_string(event.velocity) + ","
-                    + std::to_string(event.probability) + ","
-                    + std::to_string(event.ratchet) + ","
-                    + std::to_string(event.nudgeTicks);
-        }
-    }
-
-    return result;
+    return mpc::audio::getTrackNotesAsString(projectState_, trackIndex);
 }
 
 std::string AudioEngine::deletePadAssignments(
