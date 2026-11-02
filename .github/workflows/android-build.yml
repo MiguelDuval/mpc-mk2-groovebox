@@ -274,10 +274,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build/native-tests
-          g++ -std=c++20 -Wall -Wextra -Werror \\
-            -Isrc \\
-            tests/WavSampleExportTests.cpp \\
-            src/Audio/WavSample.cpp \\
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/WavSampleExportTests.cpp \
+            src/Audio/WavSample.cpp \
             -o build/native-tests/wav_sample_export_tests
           build/native-tests/wav_sample_export_tests
 
@@ -606,6 +606,7 @@ jobs:
           build/native-tests/mpc_edit_history_tests
 
       - name: Assemble debug APK
+        if: always()
         timeout-minutes: 15
         run: gradle --no-daemon :app:assembleDebug
 
