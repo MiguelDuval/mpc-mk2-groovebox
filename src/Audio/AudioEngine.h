@@ -10,6 +10,9 @@
 #include "MPC/Domain/DrumProgram.h"
 #include "MPC/MpcProjectState.h"
 
+#include "Metronome.h"
+#include "TrackNotes.h"
+
 #include <array>
 #include <atomic>
 #include <cstdint>
@@ -231,8 +234,9 @@ public:
                 : 48000;
     }
 
-    // Metronome (VIS-076 / G-006). Public control-thread API; realtime
-    // callback reads atomic snapshots only.
+    // Metronome (VIS-076 / G-006). Public control-thread API delegates to
+    // the platform-independent Metronome implementation; realtime callback
+    // reads atomic snapshots via injected references.
     std::string setMetronomeEnabled(bool enabled);
     bool metronomeEnabled() const;
     std::string setMetronomeVolume(float volume);   // 0.0..1.0
@@ -321,19 +325,8 @@ private:
     std::array<float, kMonitorBufferFrames> monitorSamples_{};
     std::atomic<std::uint32_t> monitorWriteSequence_{0};
     std::atomic<bool> monitorEnabled_{false};
-    // Metronome state (VIS-076 / G-006). Control-thread safe; read in the
-    // realtime output callback to generate click accents on beat 1.
-    std::atomic<bool> metronomeEnabled_{false};
-    std::atomic<std::int32_t> metronomeVolumeMilli_{800};   // 0..1000 -> 0..1.0
-    std::atomic<std::int32_t> metronomeSound_{0};           // 0=click,1=beep,2=wood,3=none
-    // Atomic snapshots of tempo/time-signature for the realtime callback.
-    // Written on the control thread; read atomically in the callback.
-    std::atomic<double> metronomeTempoBpm_{120.0};
-    std::atomic<int> metronomeTimeSigNumerator_{4};
-    std::atomic<int> metronomeTimeSigDenominator_{4};
-    // Atomic reset request from the control thread; consumed by the realtime
-    // callback to reset its owned metronome phase/beat/frame state.
-    std::atomic<bool> metronomeResetRequested_{false};
+    // Platform-independent metronome (no Oboe dependency).
+    std::unique_ptr<Metronome> metronome_;
     std::atomic<bool> recordingEnabled_{false};
     std::atomic<bool> recordingArmed_{false};
     std::atomic<std::int32_t> recordingThresholdMilli_{0};

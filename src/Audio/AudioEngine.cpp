@@ -242,6 +242,7 @@ public:
             std::array<float, kMonitorBufferFrames>& monitorSamples,
             std::atomic<std::uint32_t>& monitorWriteSequence,
             std::atomic<bool>& monitorEnabled,
+            Metronome& metronome,
             std::atomic<std::uint64_t>& outputCallbackCount,
             std::atomic<std::uint64_t>& outputCallbackFrames,
             AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames,
@@ -274,12 +275,12 @@ public:
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled),
-              metronomeEnabled_(metronomeEnabled),
-              metronomeVolumeMilli_(metronomeVolumeMilli),
-              metronomeSound_(metronomeSound),
-              metronomeTempoBpm_(metronomeTempoBpm),
-              metronomeTimeSigNumerator_(metronomeTimeSigNumerator),
-              metronomeResetRequested_(metronomeResetRequested),
+              metronomeEnabled_(metronome.enabledRef()),
+              metronomeVolumeMilli_(metronome.volumeMilliRef()),
+              metronomeSound_(metronome.soundRef()),
+              metronomeTempoBpm_(metronome.tempoBpmRef()),
+              metronomeTimeSigNumerator_(metronome.timeSigNumeratorRef()),
+              metronomeResetRequested_(metronome.resetRequested),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
               samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
@@ -920,7 +921,8 @@ private:
 };
 
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
-        : projectState_(projectState) {
+        : projectState_(projectState),
+          metronome_(std::make_unique<Metronome>()) {
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
@@ -1280,82 +1282,52 @@ std::string AudioEngine::clearRecording() {
 }
 
 std::string AudioEngine::setMetronomeEnabled(bool enabled) {
-    metronomeEnabled_.store(enabled, std::memory_order_release);
-    if (!enabled) {
-        // Request a reset so the realtime callback clears its owned
-        // metronome phase/beat/frame state on the next invocation.
-        metronomeResetRequested_.store(true, std::memory_order_release);
-    }
-    return std::string("METRONOME • ")
-           + (enabled ? "ON" : "OFF")
-           + " • " + std::to_string(
-                   static_cast<int>(metronomeVolumeMilli_.load(
-                           std::memory_order_relaxed) / 10))
-           + "%";
+    return metronome_->setEnabled(enabled);
 }
 
 bool AudioEngine::metronomeEnabled() const {
-    return metronomeEnabled_.load(std::memory_order_relaxed);
+    return metronome_->enabled();
 }
 
 std::string AudioEngine::setMetronomeVolume(float volume) {
-    const float clamped = std::clamp(volume, 0.0f, 1.0f);
-    const auto milli = static_cast<std::int32_t>(
-            std::lround(clamped * 1000.0f));
-    metronomeVolumeMilli_.store(milli, std::memory_order_relaxed);
-    return "METRONOME VOLUME • " + std::to_string(milli / 10) + "%";
+    return metronome_->setVolume(volume);
 }
 
 float AudioEngine::metronomeVolume() const {
-    return static_cast<float>(
-            metronomeVolumeMilli_.load(std::memory_order_relaxed))
-           / 1000.0f;
+    return metronome_->volume();
 }
 
 std::string AudioEngine::setMetronomeSound(int soundIndex) {
-    if (soundIndex < 0 || soundIndex > 3) {
-        return "Metronome sound failed: invalid index";
-    }
-    metronomeSound_.store(soundIndex, std::memory_order_relaxed);
-    const char* names[] = {"click", "beep", "wood", "none"};
-    return std::string("METRONOME SOUND • ") + names[soundIndex];
+    return metronome_->setSound(soundIndex);
 }
 
 int AudioEngine::metronomeSound() const {
-    return metronomeSound_.load(std::memory_order_relaxed);
+    return metronome_->sound();
 }
 
 void AudioEngine::setMetronomeTempo(double bpm) noexcept {
-    const double clamped = std::clamp(bpm, 20.0, 300.0);
-    metronomeTempoBpm_.store(clamped, std::memory_order_relaxed);
+    metronome_->setTempo(bpm);
 }
 
 double AudioEngine::metronomeTempo() const noexcept {
-    return metronomeTempoBpm_.load(std::memory_order_relaxed);
+    return metronome_->tempo();
 }
 
 void AudioEngine::setMetronomeTimeSignature(
         int numerator, int denominator) noexcept {
-    if (numerator > 0) {
-        metronomeTimeSigNumerator_.store(
-                numerator, std::memory_order_relaxed);
-    }
-    if (denominator > 0) {
-        metronomeTimeSigDenominator_.store(
-                denominator, std::memory_order_relaxed);
-    }
+    metronome_->setTimeSignature(numerator, denominator);
 }
 
 int AudioEngine::metronomeTimeSigNumerator() const noexcept {
-    return metronomeTimeSigNumerator_.load(std::memory_order_relaxed);
+    return metronome_->timeSigNumerator();
 }
 
 int AudioEngine::metronomeTimeSigDenominator() const noexcept {
-    return metronomeTimeSigDenominator_.load(std::memory_order_relaxed);
+    return metronome_->timeSigDenominator();
 }
 
 std::string AudioEngine::getTrackNotesAsString(std::uint8_t trackIndex) const {
-    const auto& sequence = projectState_.activeSequence();
+    return getTrackNotesAsString(projectState_, trackIndex);
     if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
         return "";
     }
@@ -2924,12 +2896,7 @@ std::string AudioEngine::start() {
             samplePlaybackCursorFrames_,
             outputPeakMilli_,
             testToneRequestFrames_,
-            metronomeEnabled_,
-            metronomeVolumeMilli_,
-            metronomeSound_,
-            metronomeTempoBpm_,
-            metronomeTimeSigNumerator_,
-            metronomeResetRequested_);
+            *metronome_);
 
     outputErrorCallback_ =
             std::make_shared<OutputErrorCallback>(outputLastErrorCode_);
