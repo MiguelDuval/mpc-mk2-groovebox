@@ -89,6 +89,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int REQUEST_OPEN_PROJECT = 1006;
     private static final int REQUEST_SAVE_PROJECT_AS = 1007;
     private static final int REQUEST_EXPORT_PROJECT_RECOVERY = 1008;
+    private static final int REQUEST_EXPORT_WAV_PAD_SAMPLE = 1009;
+    private static final int REQUEST_EXPORT_WAV_RECORDING = 1010;
     private static final String PROJECT_RECOVERY_PREFERENCES = "mpc_project_recovery";
     private static final String PREF_PENDING_RECOVERY_EXPORT = "pending_recovery_export";
     private static final int MAX_PROJECT_FILE_BYTES = 128 * 1024 * 1024;
@@ -440,6 +442,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean projectRecoveryExportSmokeMode;
     private boolean projectPersistenceFixtureMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
+    private byte[] pendingExportWavBytes;
+    private int pendingExportWavPad = -1;
+    private int pendingExportWavLayer = -1;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
     private static native String nativeEngineInfo();
@@ -5530,9 +5535,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         sampleZoomReset.setContentDescription("Sample Edit reset waveform zoom");
         row2.addView(sampleZoomReset, weight());
         Button sampleExportWav = actionButton("EXPORT WAV", v -> {
-            final String result = nativeAudioExportPadSampleToWav(selectedPad, selectedLayer);
-            setBottomStatus(result);
-            refreshRecordingInfo();
+            final byte[] wavBytes = nativeAudioExportPadSampleToWav(selectedPad, selectedLayer);
+            if (wavBytes == null || wavBytes.length == 0) {
+                setBottomStatus("EXPORT WAV FAILED • no WAV data generated");
+                refreshRecordingInfo();
+                return;
+            }
+            pendingExportWavBytes = wavBytes;
+            pendingExportWavPad = selectedPad;
+            pendingExportWavLayer = selectedLayer;
+            openExportWavPicker(REQUEST_EXPORT_WAV_PAD_SAMPLE);
         });
         sampleExportWav.setContentDescription("Sample Edit export pad/layer sample to WAV");
         row2.addView(sampleExportWav, weight());
@@ -5748,9 +5760,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 });
         controls2.addView(threshold, weight());
         controls2.addView(actionButton("EXPORT WAV", v -> {
-            final String result = nativeAudioExportRecordingToWav();
-            setBottomStatus(result);
-            refreshRecordingInfo();
+            final byte[] wavBytes = nativeAudioExportRecordingToWav();
+            if (wavBytes == null || wavBytes.length == 0) {
+                setBottomStatus("EXPORT WAV FAILED • no WAV data generated");
+                refreshRecordingInfo();
+                return;
+            }
+            pendingExportWavBytes = wavBytes;
+            pendingExportWavPad = -1;
+            pendingExportWavLayer = -1;
+            openExportWavPicker(REQUEST_EXPORT_WAV_RECORDING);
         }), weight());
         controls2.addView(actionButton("CLEAR REC", v -> {
             final String result = nativeAudioClearRecording();
@@ -12806,6 +12825,95 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
     }
 
+    private void openExportWavPicker(int requestCode) {
+        if (pendingExportWavBytes == null || pendingExportWavBytes.length == 0) {
+            setBottomStatus("EXPORT WAV FAILED • no WAV data to save");
+            return;
+        }
+        String defaultName;
+        if (requestCode == REQUEST_EXPORT_WAV_PAD_SAMPLE) {
+            defaultName = "MPC_PAD"
+                    + (pendingExportWavPad + 1)
+                    + "_LAYER"
+                    + (pendingExportWavLayer + 1)
+                    + ".wav";
+        } else {
+            defaultName = "MPC_RECORDING_" + System.currentTimeMillis() + ".wav";
+        }
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("audio/wav");
+        intent.putExtra(Intent.EXTRA_TITLE, defaultName);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        try {
+            startActivityForResult(intent, requestCode);
+        } catch (RuntimeException error) {
+            setBottomStatus("EXPORT WAV • picker unavailable • " + error.getClass().getSimpleName());
+            Log.i(TAG, "WAV_EXPORT_PICKER_FAILED stateSha256=" + currentProjectStateSha256()
+                    + " error=" + error.getClass().getSimpleName());
+        }
+    }
+
+    private void writeWavBytesToUri(Uri target, byte[] wavBytes, int requestCode) {
+        if (target == null || wavBytes == null || wavBytes.length == 0) {
+            setBottomStatus("EXPORT WAV FAILED • invalid destination or data");
+            pendingExportWavBytes = null;
+            pendingExportWavPad = -1;
+            pendingExportWavLayer = -1;
+            return;
+        }
+        final byte[] snapshot = wavBytes.clone();
+        final long exportGeneration = projectSessionGeneration;
+        final String label = requestCode == REQUEST_EXPORT_WAV_PAD_SAMPLE
+                ? "EXPORT WAV • PAD " + (pendingExportWavPad + 1)
+                + " LAYER " + (pendingExportWavLayer + 1)
+                : "EXPORT WAV • RECORDING";
+        projectIoExecutor.execute(() -> {
+            OutputStream output = null;
+            try {
+                output = getContentResolver().openOutputStream(target, "wt");
+                if (output == null) {
+                    throw new IOException("Document provider returned no output stream");
+                }
+                output.write(snapshot);
+                output.flush();
+                output.getFD().sync();
+                output.close();
+                output = null;
+            } catch (IOException error) {
+                if (output != null) {
+                    try { output.close(); } catch (IOException ignored) { }
+                }
+                runOnUiThread(() -> {
+                    if (destroyed) return;
+                    setBottomStatus("EXPORT WAV FAILED • " + error.getClass().getSimpleName());
+                    pendingExportWavBytes = null;
+                    pendingExportWavPad = -1;
+                    pendingExportWavLayer = -1;
+                });
+                Log.i(TAG, "WAV_EXPORT_FAILED label=" + label
+                        + " stateSha256=" + currentProjectStateSha256()
+                        + " error=" + error.getClass().getSimpleName());
+                return;
+            }
+            runOnUiThread(() -> {
+                if (destroyed) return;
+                final boolean sameSession = exportGeneration == projectSessionGeneration;
+                final String suffix = sameSession ? " • saved" : " • saved (stale session)";
+                setBottomStatus(label + suffix + " • " + snapshot.length + " bytes");
+                pendingExportWavBytes = null;
+                pendingExportWavPad = -1;
+                pendingExportWavLayer = -1;
+            });
+            Log.i(TAG, "WAV_EXPORT_COMPLETE label=" + label
+                    + " bytes=" + snapshot.length
+                    + " stateSha256=" + currentProjectStateSha256()
+                    + " sameSession=" + sameSession);
+        });
+    }
+
     private void showProjectRecoveryChooser() {
         final List<File> copies = MpcProjectRecoveryStore.list(getFilesDir());
         if (copies.isEmpty()) {
@@ -13511,6 +13619,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             persistProjectUriGrantIfAvailable(uri, data.getFlags(), "PROJECT_SAVE_AS");
             saveProjectToUri(uri, true);
+            return;
+        }
+        if (requestCode == REQUEST_EXPORT_WAV_PAD_SAMPLE
+                || requestCode == REQUEST_EXPORT_WAV_RECORDING) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+                if (resultCode == RESULT_CANCELED) {
+                    setBottomStatus("EXPORT WAV CANCELLED • no destination selected");
+                } else {
+                    setBottomStatus("EXPORT WAV FAILED • picker returned no destination");
+                }
+                pendingExportWavBytes = null;
+                pendingExportWavPad = -1;
+                pendingExportWavLayer = -1;
+                return;
+            }
+            final Uri target = data.getData();
+            persistProjectUriGrantIfAvailable(target, data.getFlags(), "WAV_EXPORT");
+            writeWavBytesToUri(target, pendingExportWavBytes, requestCode);
             return;
         }
         if (requestCode == REQUEST_OPEN_DOCUMENT_TREE) {

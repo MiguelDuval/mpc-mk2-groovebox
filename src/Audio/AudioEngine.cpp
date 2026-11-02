@@ -1115,7 +1115,13 @@ std::string AudioEngine::exportPadSampleToWav(
 
 std::string AudioEngine::exportRecordingToWav(
         std::vector<std::uint8_t>& outBytes) {
-    if (recordedFrameCount_ == 0 || recordedSamples_.empty()) {
+    // Snapshot the frame count atomically first so the realtime audio
+    // callback cannot change it mid-copy. recordedSamples_ is pre-allocated
+    // to kMaxRecordingFrames in the constructor and never resized during
+    // recording, so its memory is stable for the duration of this copy.
+    const auto frameCount =
+            recordedFrameCount_.load(std::memory_order_acquire);
+    if (frameCount == 0 || recordedSamples_.empty()) {
         return "Export WAV failed: no recording available";
     }
 
@@ -1127,7 +1133,7 @@ std::string AudioEngine::exportRecordingToWav(
     buffer.channelCount = 1;
     buffer.interleaved.assign(
             recordedSamples_.begin(),
-            recordedSamples_.begin() + recordedFrameCount_);
+            recordedSamples_.begin() + frameCount);
 
     outBytes = encodeWav(buffer);
     if (outBytes.empty()) {
@@ -1135,19 +1141,23 @@ std::string AudioEngine::exportRecordingToWav(
     }
 
     return "EXPORT WAV • RECORDING • "
-           + std::to_string(recordedFrameCount_) + " frames • "
+           + std::to_string(frameCount) + " frames • "
            + std::to_string(outBytes.size()) + " bytes";
 }
 
 std::string AudioEngine::clearRecording() {
+    // Do not deallocate recordedSamples_ here: the realtime audio callback
+    // may be writing to it concurrently. .clear() would free the underlying
+    // buffer causing a use-after-free. Instead, just reset the frame count so
+    // the next recording overwrites the old data. The pre-allocated capacity
+    // (kMaxRecordingFrames, set in the constructor) remains stable.
     if (recordedFrameCount_.load(std::memory_order_relaxed) == 0
             && recordedSamples_.empty()) {
         return "Clear recording: nothing to clear";
     }
 
-    recordedSamples_.clear();
     recordedFrameCount_.store(0, std::memory_order_release);
-    recordingPeak_.store(0, std::memory_order_release);
+    recordingPeakMilli_.store(0, std::memory_order_release);
     recordingOverflowed_.store(false, std::memory_order_release);
 
     return "CLEAR RECORDING • recording buffer cleared";

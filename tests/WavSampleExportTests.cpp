@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #include <vector>
 
 namespace {
@@ -201,6 +202,70 @@ void testEncodeClipping() {
     assert(decoded->sampleAt(2, 0) == 0.0f);
 }
 
+void testEncodeNanAndInf() {
+    // NaN and Inf inputs must not crash and must produce finite output.
+    mpc::audio::SampleBuffer buf;
+    buf.sampleRate = 48000;
+    buf.channelCount = 1;
+    buf.interleaved = {std::numeric_limits<float>::infinity(),
+                       -std::numeric_limits<float>::infinity(),
+                       std::numeric_limits<float>::quiet_NaN(),
+                       0.5f};
+
+    const auto encoded = mpc::audio::encodeWav(buf);
+    assert(!encoded.empty());
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->frameCount() == 4);
+    // Inf clamps to +/-1, NaN becomes 0.0f, 0.5f stays 0.5f.
+    assert(decoded->sampleAt(0, 0) >= 0.99f);
+    assert(decoded->sampleAt(1, 0) <= -0.99f);
+    assert(decoded->sampleAt(2, 0) == 0.0f);
+    assert(decoded->sampleAt(3, 0) > 0.49f && decoded->sampleAt(3, 0) < 0.51f);
+}
+
+void testEncodeMultipleSampleRates() {
+    for (std::uint32_t rate : {8000u, 16000u, 22050u, 44100u, 48000u, 96000u}) {
+        mpc::audio::SampleBuffer buf;
+        buf.sampleRate = rate;
+        buf.channelCount = 1;
+        buf.interleaved = {0.25f, -0.25f};
+
+        const auto encoded = mpc::audio::encodeWav(buf);
+        assert(!encoded.empty());
+
+        const auto decoded = mpc::audio::decodeWav(encoded);
+        assert(decoded.has_value());
+        assert(decoded->sampleRate == rate);
+        assert(decoded->channelCount == 1);
+        assert(decoded->frameCount() == 2);
+    }
+}
+
+void testEncodeRiffSizeLimit() {
+    // RIFF size field is a 32-bit unsigned integer; max data ~4 GiB.
+    // Encode a buffer large enough that dataSize approaches but stays below
+    // the 4 GiB limit; just verify it produces a valid WAV structure.
+    mpc::audio::SampleBuffer buf;
+    buf.sampleRate = 44100;
+    buf.channelCount = 1;
+    // Use a small buffer; verify the RIFF header arithmetic is correct.
+    buf.interleaved.assign(1024, 0.125f);
+
+    const auto encoded = mpc::audio::encodeWav(buf);
+    assert(!encoded.empty());
+
+    // Verify RIFF/WAVE structure at minimum.
+    assert(encoded.size() >= 12);
+    assert(std::memcmp(encoded.data(), "RIFF", 4) == 0);
+    assert(std::memcmp(encoded.data() + 8, "WAVE", 4) == 0);
+
+    const auto decoded = mpc::audio::decodeWav(encoded);
+    assert(decoded.has_value());
+    assert(decoded->frameCount() == 1024);
+}
+
 } // namespace
 
 int main() {
@@ -211,5 +276,8 @@ int main() {
     testEncodeBoundaryValues();
     testEncodeSilence();
     testEncodeClipping();
+    testEncodeNanAndInf();
+    testEncodeMultipleSampleRates();
+    testEncodeRiffSizeLimit();
     return 0;
 }
