@@ -1691,6 +1691,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case TOUCH_STRIP:
                 showTouchStripPage();
                 break;
+            case LEVELS_16:
+                showSixteenLevelsPage();
+                break;
             case PREFERENCES:
                 showAudioSettingsPage();
                 break;
@@ -3177,6 +3180,93 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("TOUCH STRIP  •  MODE " + touchStripModeLabel(touchStripMode));
         // Rebuild page with updated mode
         showTouchStripPage();
+    }
+
+    private void showSixteenLevelsPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "LEVELS_16";
+        navigationController.navigate(MpcUiState.Mode.LEVELS_16);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD_MIXER_LEVEL);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("16 LEVELS");
+        content.removeAllViews();
+
+        final int pad = Math.max(0, Math.min(15, selectedPadIndexForUi()));
+        final String sampleName = nativeAudioGetPadSampleName(pad, selectedLayer);
+        final boolean hasSample = sampleName != null && !sampleName.isEmpty();
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), 2);
+
+        TextView heading = label(
+                "16 LEVELS  •  PAD " + (pad + 1) + "  •  " + (hasSample ? sampleName : "NO SAMPLE"),
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        heading.setContentDescription("16 Levels heading");
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        TextView hint = label(
+                "Tap a pad to trigger the sample at that velocity  •  Data Dial adjusts level",
+                10, MUTED);
+        hint.setPadding(dp(10), 0, dp(10), dp(10));
+        page.addView(hint, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+        // 4x4 grid of level pads
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setRowCount(4);
+        grid.setPadding(dp(4), dp(4), dp(4), dp(4));
+
+        for (int i = 0; i < 16; i++) {
+            final int level = (i + 1) * 127 / 16; // 8, 16, 24, ... 127
+            final int vel = level;
+            Button b = actionButton(
+                    String.valueOf(level),
+                    v -> {
+                        if (!hasSample) {
+                            setBottomStatus("16 LEVELS • no sample on Pad " + (pad + 1));
+                            return;
+                        }
+                        selectAndTriggerPad(pad, vel);
+                        setBottomStatus("16 LEVELS • PAD " + (pad + 1)
+                                + " • VEL " + vel);
+                    });
+            b.setTextSize(14);
+            b.setTypeface(Typeface.DEFAULT_BOLD);
+            b.setEnabled(hasSample);
+            b.setAlpha(hasSample ? 1.0f : 0.45f);
+            b.setContentDescription("16 Levels Pad " + (i + 1) + " Velocity " + level);
+            GridLayout.LayoutParams lp = new GridLayout.LayoutParams();
+            lp.width = 0;
+            lp.height = dp(70);
+            lp.columnSpec = GridLayout.spec(i % 4, 1f);
+            lp.rowSpec = GridLayout.spec(i / 4, 1f);
+            lp.setMargins(dp(2), dp(2), dp(2), dp(2));
+            grid.addView(b, lp);
+        }
+        page.addView(grid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+
+        page.addView(label(
+                "Levels 1-16 map to velocity " + (127 / 16) + "-" + 127,
+                9, MUTED), new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        Button levelsBack = actionButton("BACK", v -> navigateBackFromShell());
+        levelsBack.setContentDescription("16 Levels Back");
+        page.addView(levelsBack, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
     }
 
     private void showTimeSignatureDialog() {
