@@ -44,6 +44,22 @@ final class MpcChannelMixerView extends LinearLayout {
         void onTrackPanDelta(int track, float delta);
     }
 
+    /**
+     * Maps {@link MpcUiState.DataDialFocus} to {@link ControlFocus} explicitly.
+     * CHANNEL_MIXER_LEVEL -> LEVEL, CHANNEL_MIXER_PAN -> PAN.
+     * No unsafe casts; only the two channel-mixer-relevant values are mapped.
+     */
+    static ControlFocus fromDataDialFocus(MpcUiState.DataDialFocus focus) {
+        switch (focus) {
+            case CHANNEL_MIXER_LEVEL:
+                return ControlFocus.LEVEL;
+            case CHANNEL_MIXER_PAN:
+                return ControlFocus.PAN;
+            default:
+                return ControlFocus.LEVEL;
+        }
+    }
+
     private static final int BG = Color.rgb(14, 16, 18);
     private static final int PANEL = Color.rgb(28, 31, 34);
     private static final int PANEL_2 = Color.rgb(39, 43, 47);

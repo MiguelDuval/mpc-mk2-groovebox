@@ -222,7 +222,7 @@ final class MpcStudioMk2LcdRenderer {
         if ("PAD_MIXER".equals(state.page)) return "PAD MIX";
         if ("NEXT_SEQUENCE".equals(state.page)) return "NEXT SEQ";
         if ("ARRANGE".equals(state.page)) return "ARRANGE";
-        return "TOUCH " + touchStripModeLabel(state.touchStripMode);
+        return "TOUCH " + MpcStyle.touchStripModeLabel(state.touchStripMode);
     }
 
     private static String parameterLabel(int value) {
@@ -232,16 +232,6 @@ final class MpcStudioMk2LcdRenderer {
             case 3: return "NUDGE";
             case 4: return "DUR";
             default: return "VEL";
-        }
-    }
-
-    private static String touchStripModeLabel(int value) {
-        switch (value) {
-            case 1: return "PAN";
-            case 2: return "TUNE";
-            case 3: return "START";
-            case 4: return "END";
-            default: return "LEVEL";
         }
     }
 

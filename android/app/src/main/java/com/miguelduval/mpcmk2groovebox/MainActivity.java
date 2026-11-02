@@ -119,6 +119,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int SURFACE = MpcStyle.SURFACE;
     private static final int MPC_FLAT_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;
     private static final int SURFACE_2 = MpcStyle.SURFACE_2;
+    private static final int PANEL_2 = MpcStyle.PANEL_2;
     private static final int LINE = MpcStyle.LINE;
     private static final int TEXT = MpcStyle.TEXT;
     private static final int MUTED = MpcStyle.MUTED;
@@ -3098,7 +3099,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.setPadding(dp(8), dp(6), dp(8), 2);
 
         TextView heading = label(
-                "TOUCH STRIP  •  MODE " + touchStripModeLabel(touchStripMode),
+                "TOUCH STRIP  •  MODE " + MpcStyle.touchStripModeLabel(touchStripMode),
                 13, TEXT);
         heading.setTypeface(Typeface.DEFAULT_BOLD);
         heading.setContentDescription("Touch Strip heading");
@@ -3134,7 +3135,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(44)));
 
         TextView modeInfo = label(
-                "Mode " + (touchStripMode + 1) + " of 5: " + touchStripModeLabel(touchStripMode),
+                "Mode " + (touchStripMode + 1) + " of 5: " + MpcStyle.touchStripModeLabel(touchStripMode),
                 11, MUTED);
         modeInfo.setGravity(Gravity.CENTER);
         page.addView(modeInfo, new LinearLayout.LayoutParams(
@@ -3157,17 +3158,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         notifyMpcWorkspaceAccessibilityChanged();
     }
 
-    private String touchStripModeLabel(int mode) {
-        switch (mode) {
-            case 0: return "LEVEL";
-            case 1: return "PAN";
-            case 2: return "TUNE";
-            case 3: return "SAMPLE START";
-            case 4: return "SAMPLE END";
-            default: return "LEVEL";
-        }
-    }
-
     private MpcUiState.DataDialFocus touchStripModeToDataDialFocus(int mode) {
         switch (mode) {
             case 0: return MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
@@ -3181,7 +3171,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void refreshTouchStripPage() {
         if (!"TOUCH_STRIP".equals(currentPage)) return;
-        pageTitle.setText("TOUCH STRIP  •  MODE " + touchStripModeLabel(touchStripMode));
+        pageTitle.setText("TOUCH STRIP  •  MODE " + MpcStyle.touchStripModeLabel(touchStripMode));
         // Rebuild page with updated mode
         showTouchStripPage();
     }
@@ -18925,7 +18915,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 syncHardwareTouchStripModeLeds();
                 setBottomStatus(
                         "TOUCH STRIP • "
-                                + touchStripModeLabel(hardwareTouchStripMode)
+                                + MpcStyle.touchStripModeLabel(hardwareTouchStripMode)
                                 + " • SLIDE TO CONTROL");
                 return;
             case MpcStudioMk2SemanticActions.TOUCH_STRIP_TOUCH_STATE:
@@ -18935,16 +18925,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(
                         value0 != 0
                                 ? "TOUCH STRIP • "
-                                        + touchStripModeLabel(value1)
+                                        + MpcStyle.touchStripModeLabel(value1)
                                         + " • TOUCH"
                                 : "TOUCH STRIP • "
-                                        + touchStripModeLabel(value1));
+                                        + MpcStyle.touchStripModeLabel(value1));
                 return;
             case MpcStudioMk2SemanticActions.TOUCH_STRIP_CONFIG_CONTEXT:
                 setBottomStatus(
                         "TOUCH STRIP CONFIG • LEVEL / PAN / TUNE / SAMPLE START / SAMPLE END"
                                 + " • CURRENT "
-                                + touchStripModeLabel(value0));
+                                + MpcStyle.touchStripModeLabel(value0));
                 return;
             case MpcStudioMk2SemanticActions.FULL_LEVEL_STATE:
                 hardwareFullLevelActive = value0 != 0;
@@ -19333,7 +19323,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setActionAvailable(true);
 
         if (channelMixerView != null) {
-            channelMixerView.setControlFocus(next);
+            channelMixerView.setControlFocus(
+                    MpcChannelMixerView.fromDataDialFocus(next));
         }
 
         setBottomStatus(
@@ -19822,17 +19813,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             refreshSampleWaveform();
         }
         syncHardwareTouchStripValueLeds(value);
-    }
-
-    private String touchStripModeLabel(int mode) {
-        switch (mode) {
-            case TOUCH_STRIP_MODE_LEVEL: return "LEVEL";
-            case TOUCH_STRIP_MODE_PAN: return "PAN";
-            case TOUCH_STRIP_MODE_TUNE: return "TUNE";
-            case TOUCH_STRIP_MODE_SAMPLE_START: return "SAMPLE START";
-            case TOUCH_STRIP_MODE_SAMPLE_END: return "SAMPLE END";
-            default: return "LEVEL";
-        }
     }
 
     private void syncHardwareTouchStripValueLeds(int value) {

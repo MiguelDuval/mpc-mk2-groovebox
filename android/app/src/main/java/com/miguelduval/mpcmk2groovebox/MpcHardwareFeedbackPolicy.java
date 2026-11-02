@@ -76,9 +76,9 @@ final class MpcHardwareFeedbackPolicy {
         }
         if ("SAMPLE".equals(page) || "SAMPLE_EDIT".equals(page)) {
             switch (focus) {
-                case 7: return "SAMPLE START • " + touchStripModeLabel(touchStripMode);
-                case 8: return "SAMPLE END • " + touchStripModeLabel(touchStripMode);
-                case 9: return "TUNE • " + touchStripModeLabel(touchStripMode);
+                case 7: return "SAMPLE START • " + MpcStyle.touchStripModeLabel(touchStripMode);
+                case 8: return "SAMPLE END • " + MpcStyle.touchStripModeLabel(touchStripMode);
+                case 9: return "TUNE • " + MpcStyle.touchStripModeLabel(touchStripMode);
                 case 10: return "SAMPLE SELECT • layer";
                 case 11: return "ZOOM H • sample waveform";
                 case 12: return "ZOOM V • sample waveform";
@@ -156,12 +156,5 @@ final class MpcHardwareFeedbackPolicy {
                 "1/64", "1/4T", "1/8T", "1/16T"
         };
         return labels[Math.max(0, Math.min(labels.length - 1, index))];
-    }
-
-    private static String touchStripModeLabel(int mode) {
-        final String[] labels = {
-                "LEVEL", "PAN", "TUNE", "SAMPLE START", "SAMPLE END"
-        };
-        return labels[Math.max(0, Math.min(labels.length - 1, mode))];
     }
 }

@@ -56,6 +56,9 @@ final class MpcStyle {
     /** MPC panel surface used by context areas and strips. */
     static final int PANEL = Color.rgb(39, 43, 47);
 
+    /** Secondary panel surface for alternating rows and nested panels. */
+    static final int PANEL_2 = Color.rgb(39, 43, 47);
+
     /** Darker panel variant for nested surfaces. */
     static final int PANEL_DARK = Color.rgb(28, 31, 34);
 
@@ -64,6 +67,44 @@ final class MpcStyle {
 
     /** Time-signature highlight (MPC amber). */
     static final int TIME_SIGNATURE_HIGHLIGHT = Color.rgb(240, 194, 48);
+
+    // --- Touch Strip modes ----------------------------------------------------
+
+    /** Touch Strip controls track level. */
+    static final int TOUCH_STRIP_MODE_LEVEL = 0;
+
+    /** Touch Strip controls pan. */
+    static final int TOUCH_STRIP_MODE_PAN = 1;
+
+    /** Touch Strip controls tune. */
+    static final int TOUCH_STRIP_MODE_TUNE = 2;
+
+    /** Touch Strip controls sample start. */
+    static final int TOUCH_STRIP_MODE_SAMPLE_START = 3;
+
+    /** Touch Strip controls sample end. */
+    static final int TOUCH_STRIP_MODE_SAMPLE_END = 4;
+
+    /**
+     * Returns a readable label for a Touch Strip mode.
+     * Single canonical implementation; all callers should use this.
+     */
+    static String touchStripModeLabel(int mode) {
+        switch (mode) {
+            case TOUCH_STRIP_MODE_LEVEL:
+                return "LEVEL";
+            case TOUCH_STRIP_MODE_PAN:
+                return "PAN";
+            case TOUCH_STRIP_MODE_TUNE:
+                return "TUNE";
+            case TOUCH_STRIP_MODE_SAMPLE_START:
+                return "SAMPLE START";
+            case TOUCH_STRIP_MODE_SAMPLE_END:
+                return "SAMPLE END";
+            default:
+                return "LEVEL";
+        }
+    }
 
     // --- Typography ----------------------------------------------------------
 
