@@ -8,7 +8,7 @@
 namespace mpc::audio {
 
 std::string getTrackNotesAsString(const mpc::MpcProjectState& project,
-                                  std::uint8_t trackIndex) noexcept {
+                                  std::uint8_t trackIndex) {
     const auto& sequence = project.activeSequence();
     if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
         return "";

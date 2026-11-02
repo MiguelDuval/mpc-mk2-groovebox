@@ -247,13 +247,7 @@ public:
             std::atomic<std::uint64_t>& outputCallbackFrames,
             AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames,
             std::atomic<std::uint32_t>& outputPeakMilli,
-            std::atomic<std::uint32_t>& testToneRequestFrames,
-            std::atomic<bool>& metronomeEnabled,
-            std::atomic<std::int32_t>& metronomeVolumeMilli,
-            std::atomic<std::int32_t>& metronomeSound,
-            std::atomic<double>& metronomeTempoBpm,
-            std::atomic<int>& metronomeTimeSigNumerator,
-            std::atomic<bool>& metronomeResetRequested)
+            std::atomic<std::uint32_t>& testToneRequestFrames)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
               triggerQueue_(triggerQueue),
@@ -275,12 +269,7 @@ public:
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled),
-              metronomeEnabled_(metronome.enabledRef()),
-              metronomeVolumeMilli_(metronome.volumeMilliRef()),
-              metronomeSound_(metronome.soundRef()),
-              metronomeTempoBpm_(metronome.tempoBpmRef()),
-              metronomeTimeSigNumerator_(metronome.timeSigNumeratorRef()),
-              metronomeResetRequested_(metronome.resetRequested),
+              metronome_(metronome),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
               samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
@@ -892,14 +881,7 @@ private:
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
-    std::atomic<bool>& metronomeEnabled_;
-    std::atomic<std::int32_t>& metronomeVolumeMilli_;
-    std::atomic<std::int32_t>& metronomeSound_;
-    // Control-thread atomic snapshots injected by the owner; read-only in
-    // the realtime callback. Owned by AudioEngine, not by this callback.
-    std::atomic<double>& metronomeTempoBpm_;
-    std::atomic<int>& metronomeTimeSigNumerator_;
-    std::atomic<bool>& metronomeResetRequested_;
+    Metronome& metronome_;
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
     AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames_;
@@ -923,6 +905,10 @@ private:
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
         : projectState_(projectState),
           metronome_(std::make_unique<Metronome>()) {
+    metronome_->setTempo(projectState_.activeSequence().tempoBpm);
+    metronome_->setTimeSignature(
+            projectState_.activeSequence().numerator,
+            projectState_.activeSequence().denominator);
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
@@ -2891,12 +2877,12 @@ std::string AudioEngine::start() {
             monitorSamples_,
             monitorWriteSequence_,
             monitorEnabled_,
+            *metronome_,
             outputCallbackCount_,
             outputCallbackFrames_,
             samplePlaybackCursorFrames_,
             outputPeakMilli_,
-            testToneRequestFrames_,
-            *metronome_);
+            testToneRequestFrames_);
 
     outputErrorCallback_ =
             std::make_shared<OutputErrorCallback>(outputLastErrorCode_);

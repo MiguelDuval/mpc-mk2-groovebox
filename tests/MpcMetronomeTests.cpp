@@ -9,15 +9,30 @@
 #include <string>
 
 int main() {
-    // Construct project state and metronome directly (control-thread setup).
+    // Construct project state with non-default tempo and time signature.
     mpc::MpcProjectState projectState;
+    auto& sequence = projectState.activeSequence();
+    sequence.tempoBpm = 96.0;
+    sequence.numerator = 7;
+    sequence.denominator = 8;
+
     mpc::audio::Metronome metro;
 
-    // --- Initial snapshots reflect active sequence ---
-    const auto& initialSeq = projectState.activeSequence();
-    assert(std::abs(metro.tempo() - initialSeq.tempoBpm) < 0.001);
-    assert(metro.timeSigNumerator() == initialSeq.numerator);
-    assert(metro.timeSigDenominator() == initialSeq.denominator);
+    // --- Initial snapshots reflect active sequence values ---
+    // Simulate what AudioEngine constructor does: initialize metronome from
+    // active sequence tempo/time-signature.
+    metro.setTempo(sequence.tempoBpm);
+    metro.setTimeSignature(sequence.numerator, sequence.denominator);
+
+    assert(std::abs(metro.tempo() - 96.0) < 0.001);
+    assert(metro.timeSigNumerator() == 7);
+    assert(metro.timeSigDenominator() == 8);
+
+    // Verify default (120 BPM, 4/4) would be different:
+    mpc::audio::Metronome defaultMetro;
+    assert(std::abs(defaultMetro.tempo() - 120.0) < 0.001);
+    assert(defaultMetro.timeSigNumerator() == 4);
+    assert(defaultMetro.timeSigDenominator() == 4);
 
     // --- Metronome enable/disable ---
     // Initially disabled.

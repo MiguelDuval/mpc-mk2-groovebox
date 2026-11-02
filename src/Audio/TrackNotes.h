@@ -16,6 +16,6 @@ namespace mpc::audio {
  * No Oboe/Android dependency; safe to compile and test on any host.
  */
 std::string getTrackNotesAsString(const mpc::MpcProjectState& project,
-                                  std::uint8_t trackIndex) noexcept;
+                                  std::uint8_t trackIndex);
 
 } // namespace mpc::audio
