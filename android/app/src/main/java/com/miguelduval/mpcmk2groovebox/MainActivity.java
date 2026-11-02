@@ -4401,85 +4401,87 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("TRACK EDIT");
         content.removeAllViews();
 
-        mainTrackEditView = new MpcTrackEditView(
-                this,
-                new MpcTrackEditView.Listener() {
-                    @Override public void onBack() { navigateBackFromShell(); }
-                    @Override public void onAudition() {
-                        selectAndTriggerPad(selectedPadIndexForUi(), 112);
-                    }
-                    @Override public void onLayerDelta(int delta) {
-                        adjustTrackEditLayer(delta);
-                    }
-                    @Override public void onLayerGainDelta(float delta) {
-                        changeLayerGain(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onLayerTuningDelta(float delta) {
-                        changeLayerTuning(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onLayerPan(float pan) {
-                        setLayerPan(pan);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onLayerVelocityMinDelta(int delta) {
-                        adjustTrackEditVelocityMin(delta);
-                    }
-                    @Override public void onLayerVelocityMaxDelta(int delta) {
-                        adjustTrackEditVelocityMax(delta);
-                    }
-                    @Override public void onRegionStartDelta(long delta) {
-                        nudgeRegionStart(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onRegionEndDelta(long delta) {
-                        nudgeRegionEnd(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onRegionSelection(
-                            float startNormalized, float endNormalized) {
-                        commitMainTrackWaveformRegion(startNormalized, endNormalized);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onPadTuningDelta(float delta) {
-                        changePadTuning(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onPadLevelDelta(float delta) {
-                        changePadLevel(delta);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onPadPan(float pan) {
-                        setPadPan(pan);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onEnvelopeDelta(
-                            float attack, float decay,
-                            float sustain, float release) {
-                        changeEnvelope(attack, decay, sustain, release);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onEnvelopeReset() {
-                        setEnvelope(0, 0, 1, 0);
-                        refreshTrackEditView();
-                    }
-                    @Override public void onFilterDelta(float deltaHz) {
-                        final float current = nativeAudioGetPadFilterCutoff(selectedPad);
-                        final float next = Math.max(
-                                20f, Math.min(20000f, current + deltaHz));
-                        setBottomStatus(nativeAudioSetPadFilterCutoff(
-                                selectedPad, next));
-                        refreshTrackEditView();
-                    }
-                    @Override public void onFilterSet(float cutoffHz) {
-                        final float next = Math.max(
-                                20f, Math.min(20000f, cutoffHz));
-                        setBottomStatus(nativeAudioSetPadFilterCutoff(
-                                selectedPad, next));
-                        refreshTrackEditView();
-                    }
-                });
+        if (mainTrackEditView == null) {
+            mainTrackEditView = new MpcTrackEditView(
+                    this,
+                    new MpcTrackEditView.Listener() {
+                        @Override public void onBack() { navigateBackFromShell(); }
+                        @Override public void onAudition() {
+                            selectAndTriggerPad(selectedPadIndexForUi(), 112);
+                        }
+                        @Override public void onLayerDelta(int delta) {
+                            adjustTrackEditLayer(delta);
+                        }
+                        @Override public void onLayerGainDelta(float delta) {
+                            changeLayerGain(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onLayerTuningDelta(float delta) {
+                            changeLayerTuning(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onLayerPan(float pan) {
+                            setLayerPan(pan);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onLayerVelocityMinDelta(int delta) {
+                            adjustTrackEditVelocityMin(delta);
+                        }
+                        @Override public void onLayerVelocityMaxDelta(int delta) {
+                            adjustTrackEditVelocityMax(delta);
+                        }
+                        @Override public void onRegionStartDelta(long delta) {
+                            nudgeRegionStart(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onRegionEndDelta(long delta) {
+                            nudgeRegionEnd(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onRegionSelection(
+                                float startNormalized, float endNormalized) {
+                            commitMainTrackWaveformRegion(startNormalized, endNormalized);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onPadTuningDelta(float delta) {
+                            changePadTuning(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onPadLevelDelta(float delta) {
+                            changePadLevel(delta);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onPadPan(float pan) {
+                            setPadPan(pan);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onEnvelopeDelta(
+                                float attack, float decay,
+                                float sustain, float release) {
+                            changeEnvelope(attack, decay, sustain, release);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onEnvelopeReset() {
+                            setEnvelope(0, 0, 1, 0);
+                            refreshTrackEditView();
+                        }
+                        @Override public void onFilterDelta(float deltaHz) {
+                            final float current = nativeAudioGetPadFilterCutoff(selectedPad);
+                            final float next = Math.max(
+                                    20f, Math.min(20000f, current + deltaHz));
+                            setBottomStatus(nativeAudioSetPadFilterCutoff(
+                                    selectedPad, next));
+                            refreshTrackEditView();
+                        }
+                        @Override public void onFilterSet(float cutoffHz) {
+                            final float next = Math.max(
+                                    20f, Math.min(20000f, cutoffHz));
+                            setBottomStatus(nativeAudioSetPadFilterCutoff(
+                                    selectedPad, next));
+                            refreshTrackEditView();
+                        }
+                    });
+        }
 
         content.addView(mainTrackEditView,
                 new FrameLayout.LayoutParams(
