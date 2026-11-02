@@ -230,6 +230,26 @@ public:
                 : 48000;
     }
 
+    // Metronome (VIS-076 / G-006). Public control-thread API; realtime
+    // callback reads atomic snapshots only.
+    std::string setMetronomeEnabled(bool enabled);
+    bool metronomeEnabled() const;
+    std::string setMetronomeVolume(float volume);   // 0.0..1.0
+    float metronomeVolume() const;
+    std::string setMetronomeSound(int soundIndex);  // 0=click,1=beep,2=wood,3=none
+    int metronomeSound() const;
+    // Snapshot tempo from the control thread; read atomically in the callback.
+    void setMetronomeTempo(double bpm) noexcept;
+    double metronomeTempo() const noexcept;
+    // Snapshot time signature from the control thread; read atomically in the callback.
+    void setMetronomeTimeSignature(int numerator, int denominator) noexcept;
+    int metronomeTimeSigNumerator() const noexcept;
+    int metronomeTimeSigDenominator() const noexcept;
+
+    // List Edit (VIS-026): get all MIDI note events for a track as a
+    // semicolon-separated string: "tick,dur,note,vel,prob,rat,nudge;..."
+    std::string getTrackNotesAsString(std::uint8_t trackIndex) const;
+
 private:
     static constexpr std::size_t kPadCount = mpc::domain::kMaxProgramPads;
     static constexpr std::size_t kSampleLayerCount = mpc::domain::kMaxSampleLayers;
@@ -255,21 +275,7 @@ private:
     static std::string validateInputConfiguration(
             const InputConfiguration& configuration);
 
-    // Metronome (VIS-076 / G-006).
-    std::string setMetronomeEnabled(bool enabled);
-    bool metronomeEnabled() const;
-    std::string setMetronomeVolume(float volume);   // 0.0..1.0
-    float metronomeVolume() const;
-    std::string setMetronomeSound(int soundIndex);  // 0=click,1=beep,2=wood,3=none
-    int metronomeSound() const;
-
-    // List Edit (VIS-026): get all MIDI note events for a track as a
-    // semicolon-separated string: "tick,dur,note,vel,prob,rat,nudge;..."
-    std::string getTrackNotesAsString(std::uint8_t trackIndex) const;
-
     static constexpr std::size_t kMaxRecordingFrames = 960000;
-    static constexpr std::size_t kMonitorBufferFrames = 8192;
-    static constexpr std::size_t kRecordingWaveformBinCount = 2048;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;
@@ -317,6 +323,14 @@ private:
     std::atomic<bool> metronomeEnabled_{false};
     std::atomic<std::int32_t> metronomeVolumeMilli_{800};   // 0..1000 -> 0..1.0
     std::atomic<std::int32_t> metronomeSound_{0};           // 0=click,1=beep,2=wood,3=none
+    // Atomic snapshots of tempo/time-signature for the realtime callback.
+    // Written on the control thread; read atomically in the callback.
+    std::atomic<double> metronomeTempoBpm_{120.0};
+    std::atomic<int> metronomeTimeSigNumerator_{4};
+    std::atomic<int> metronomeTimeSigDenominator_{4};
+    // Atomic reset request from the control thread; consumed by the realtime
+    // callback to reset its owned metronome phase/beat/frame state.
+    std::atomic<bool> metronomeResetRequested_{false};
     std::atomic<bool> recordingEnabled_{false};
     std::atomic<bool> recordingArmed_{false};
     std::atomic<std::int32_t> recordingThresholdMilli_{0};

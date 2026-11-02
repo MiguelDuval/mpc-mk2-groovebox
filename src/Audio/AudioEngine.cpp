@@ -388,9 +388,23 @@ public:
             // Metronome click generator. Beat interval in frames depends on
             // sequence tempo; click fires on every beat with beat-1 accent.
             if (metronomeEnabled_.load(std::memory_order_relaxed)) {
+                // Consume a control-thread reset request before using
+                // callback-owned metronome state. The callback owns
+                // metronomeFramesRemaining_, metronomePhase_ and
+                // metronomeBeatInBar_; only this thread writes them.
+                if (owner_.metronomeResetRequested_.load(
+                        std::memory_order_acquire)) {
+                    metronomeFramesRemaining_ = 0u;
+                    metronomePhase_ = 0.0;
+                    metronomeBeatInBar_ = 0;
+                    owner_.metronomeResetRequested_.store(
+                            false, std::memory_order_release);
+                }
+
                 const float tempoBpm =
                         static_cast<float>(
-                                projectState_.activeSequence().tempoBpm);
+                                owner_.metronomeTempoBpm_.load(
+                                        std::memory_order_relaxed));
                 if (tempoBpm > 0.0f && sampleRate > 0) {
                     const double beatFrames =
                             static_cast<double>(sampleRate) * 60.0
@@ -439,9 +453,10 @@ public:
                         metronomeBeatInBar_ =
                                 (metronomeBeatInBar_ + 1)
                                 % static_cast<int>(
-                                        projectState_
-                                                .activeSequence()
-                                                .numerator);
+                                        owner_
+                                                .metronomeTimeSigNumerator_
+                                                .load(
+                                                        std::memory_order_relaxed));
                     } else {
                         --metronomeFramesRemaining_;
                     }
@@ -1039,6 +1054,19 @@ void AudioEngine::syncPadRuntimeProjection(
                 static_cast<std::int32_t>(layerState.velocityMaximum),
                 std::memory_order_relaxed);
     }
+
+    // Snapshot sequence tempo and time signature for the metronome so the
+    // realtime callback can read them atomically without touching project state.
+    metronomeTempoBpm_.store(
+            static_cast<double>(
+                    projectState_.activeSequence().tempoBpm),
+            std::memory_order_relaxed);
+    metronomeTimeSigNumerator_.store(
+            projectState_.activeSequence().numerator,
+            std::memory_order_relaxed);
+    metronomeTimeSigDenominator_.store(
+            projectState_.activeSequence().denominator,
+            std::memory_order_relaxed);
 }
 
 AudioEngine::~AudioEngine() {
@@ -1243,10 +1271,9 @@ std::string AudioEngine::clearRecording() {
 std::string AudioEngine::setMetronomeEnabled(bool enabled) {
     metronomeEnabled_.store(enabled, std::memory_order_release);
     if (!enabled) {
-        // Reset phase so the next enable starts on beat 1.
-        metronomeFramesRemaining_.store(0, std::memory_order_relaxed);
-        metronomeBeatInBar_.store(0, std::memory_order_relaxed);
-        metronomePhase_ = 0.0;
+        // Request a reset so the realtime callback clears its owned
+        // metronome phase/beat/frame state on the next invocation.
+        metronomeResetRequested_.store(true, std::memory_order_release);
     }
     return std::string("METRONOME • ")
            + (enabled ? "ON" : "OFF")
@@ -1285,6 +1312,35 @@ std::string AudioEngine::setMetronomeSound(int soundIndex) {
 
 int AudioEngine::metronomeSound() const {
     return metronomeSound_.load(std::memory_order_relaxed);
+}
+
+void AudioEngine::setMetronomeTempo(double bpm) noexcept {
+    const double clamped = std::clamp(bpm, 20.0, 300.0);
+    metronomeTempoBpm_.store(clamped, std::memory_order_relaxed);
+}
+
+double AudioEngine::metronomeTempo() const noexcept {
+    return metronomeTempoBpm_.load(std::memory_order_relaxed);
+}
+
+void AudioEngine::setMetronomeTimeSignature(
+        int numerator, int denominator) noexcept {
+    if (numerator > 0) {
+        metronomeTimeSigNumerator_.store(
+                numerator, std::memory_order_relaxed);
+    }
+    if (denominator > 0) {
+        metronomeTimeSigDenominator_.store(
+                denominator, std::memory_order_relaxed);
+    }
+}
+
+int AudioEngine::metronomeTimeSigNumerator() const noexcept {
+    return metronomeTimeSigNumerator_.load(std::memory_order_relaxed);
+}
+
+int AudioEngine::metronomeTimeSigDenominator() const noexcept {
+    return metronomeTimeSigDenominator_.load(std::memory_order_relaxed);
 }
 
 std::string AudioEngine::getTrackNotesAsString(std::uint8_t trackIndex) const {
