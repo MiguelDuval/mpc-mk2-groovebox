@@ -1287,6 +1287,33 @@ int AudioEngine::metronomeSound() const {
     return metronomeSound_.load(std::memory_order_relaxed);
 }
 
+std::string AudioEngine::getTrackNotesAsString(std::uint8_t trackIndex) const {
+    const auto& sequence = projectState_.activeSequence();
+    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
+        return "";
+    }
+
+    const auto& track = sequence.tracks[trackIndex];
+    std::string result;
+
+    for (const auto& pattern : track.patterns) {
+        for (const auto& event : pattern.notes) {
+            if (!result.empty()) {
+                result += ";";
+            }
+            result += std::to_string(event.tick) + ","
+                    + std::to_string(event.durationTicks) + ","
+                    + std::to_string(event.note) + ","
+                    + std::to_string(event.velocity) + ","
+                    + std::to_string(event.probability) + ","
+                    + std::to_string(event.ratchet) + ","
+                    + std::to_string(event.nudgeTicks);
+        }
+    }
+
+    return result;
+}
+
 std::string AudioEngine::deletePadAssignments(
         std::uint16_t padMask) {
     if (stream_ != nullptr) {

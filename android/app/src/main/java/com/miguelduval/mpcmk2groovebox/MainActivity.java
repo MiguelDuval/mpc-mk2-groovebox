@@ -610,6 +610,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackType(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);
+    private static native String nativeSequenceGetTrackNotes(int trackIndex);
     private static native String nativeSequenceSplitPatternPlacement(int trackIndex, long splitTick);
     private static native float nativeSequenceGetArrangementZoom();
     private static native String nativeSequenceZoomInArrangement();
@@ -1693,6 +1694,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
             case LEVELS_16:
                 showSixteenLevelsPage();
+                break;
+            case LIST_EDIT:
+                showListEditPage();
                 break;
             case PREFERENCES:
                 showAudioSettingsPage();
@@ -3267,6 +3271,115 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcFunctionBar();
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
+    }
+
+    private void showListEditPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "LIST_EDIT";
+        navigationController.navigate(MpcUiState.Mode.LIST_EDIT);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.STEP);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("LIST EDIT");
+        content.removeAllViews();
+
+        final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String trackType = nativeSequenceGetTrackType(trackIndex);
+
+        LinearLayout page = page();
+        page.setPadding(dp(8), dp(6), dp(8), 2);
+
+        TextView heading = label(
+                "LIST EDIT  •  TRACK " + (trackIndex + 1) + "  •  " + trackType,
+                13, TEXT);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(heading, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
+
+        final String notesData = nativeSequenceGetTrackNotes(trackIndex);
+        final String[] events = notesData.isEmpty()
+                ? new String[0] : notesData.split(";");
+
+        TextView countLabel = label(
+                "EVENTS • " + events.length, 11, MUTED);
+        countLabel.setGravity(Gravity.CENTER);
+        page.addView(countLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
+
+        if (events.length == 0) {
+            TextView noEvents = label("No MIDI events in this track", 12, MUTED);
+            noEvents.setGravity(Gravity.CENTER);
+            page.addView(noEvents, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(200)));
+        } else {
+            ScrollView scroll = new ScrollView(this);
+            scroll.setFillViewport(true);
+            LinearLayout eventList = new LinearLayout(this);
+            eventList.setOrientation(LinearLayout.VERTICAL);
+            eventList.setPadding(dp(4), dp(4), dp(4), dp(4));
+
+            for (int i = 0; i < events.length; i++) {
+                final String[] p = events[i].split(",");
+                if (p.length < 7) continue;
+                final int tick = Integer.parseInt(p[0]);
+                final int dur = Integer.parseInt(p[1]);
+                final int note = Integer.parseInt(p[2]);
+                final int vel = Integer.parseInt(p[3]);
+                final int prob = Integer.parseInt(p[4]);
+                final int rat = Integer.parseInt(p[5]);
+                final int nud = Integer.parseInt(p[6]);
+
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(dp(4), dp(2), dp(4), dp(2));
+                row.setBackground(strokeBackground(
+                        i % 2 == 0 ? SURFACE_2 : PANEL_2, LINE, 4));
+
+                addListField(row, String.format("%04d", tick), 50, true);
+                addListField(row, "N" + note, 40, false);
+                addListField(row, "VEL " + vel, 45, false);
+                addListField(row, "DUR " + dur, 45, false);
+                addListField(row, "PROB " + prob, 45, false);
+                addListField(row, "RAT " + rat, 45, false);
+
+                final int fTick = tick, fNote = note, fVel = vel;
+                final int fDur = dur, fProb = prob, fRat = rat, fNud = nud;
+                row.setOnClickListener(v -> setBottomStatus(
+                        "LIST EDIT • TICK " + fTick + " • NOTE " + fNote
+                                + " • VEL " + fVel + " • DUR " + fDur
+                                + " • PROB " + fProb + " • RAT " + fRat
+                                + " • NUDGE " + fNud));
+
+                eventList.addView(row, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+            }
+
+            scroll.addView(eventList);
+            page.addView(scroll, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        }
+
+        Button listBack = actionButton("BACK", v -> navigateBackFromShell());
+        listBack.setContentDescription("List Edit Back");
+        page.addView(listBack, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
+
+        content.addView(page);
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+    }
+
+    private void addListField(LinearLayout row, String text, int widthDp, boolean bold) {
+        TextView tv = label(text, 9, TEXT);
+        if (bold) tv.setTypeface(Typeface.DEFAULT_BOLD);
+        tv.setGravity(Gravity.CENTER);
+        row.addView(tv, new LinearLayout.LayoutParams(dp(widthDp),
+                ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     private void showTimeSignatureDialog() {

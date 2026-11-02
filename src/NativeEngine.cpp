@@ -1201,6 +1201,19 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetMetronomeSound(
     return mpc::audio::AudioEngine::instance().metronomeSound();
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackNotes(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().getTrackNotesAsString(
+                    static_cast<std::uint8_t>(trackIndex)));
+}
+
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadWaveformPeaks(
         JNIEnv* env, jobject /* thiz */, jint pad, jint layer, jint points)

@@ -263,6 +263,10 @@ private:
     std::string setMetronomeSound(int soundIndex);  // 0=click,1=beep,2=wood,3=none
     int metronomeSound() const;
 
+    // List Edit (VIS-026): get all MIDI note events for a track as a
+    // semicolon-separated string: "tick,dur,note,vel,prob,rat,nudge;..."
+    std::string getTrackNotesAsString(std::uint8_t trackIndex) const;
+
     static constexpr std::size_t kMaxRecordingFrames = 960000;
     static constexpr std::size_t kMonitorBufferFrames = 8192;
     static constexpr std::size_t kRecordingWaveformBinCount = 2048;
