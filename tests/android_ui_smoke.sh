@@ -1003,6 +1003,9 @@ for required in \
   'MPC Toolbar Menu' \
   'MPC Toolbar MIDI IN' \
   'MPC Toolbar MIDI OUT' \
+  'MPC Toolbar Metronome reserved' \
+  'metronomeTopButton.setEnabled(false)' \
+  'metronomeTopButton.setAlpha(0.55f)' \
   'midiInTopStatus' \
   'midiOutTopStatus' \
   'MPC 3.9 keeps the Toolbar status-oriented' \
@@ -6090,6 +6093,7 @@ nodes = list(root.iter("node"))
 required = [
     "MPC One Main Toolbar",
     "MPC Toolbar Menu",
+    "MPC Toolbar Metronome reserved",
     "MPC shortcut BROWSER",
     "Main Track and Arrangement workspace",
     "MPC Main XL Mixer Strips",
@@ -6110,6 +6114,10 @@ for description in required:
     x1, y1, x2, y2 = dimensions(found[0])
     if x2 <= x1 or y2 <= y1 or found[0].attrib.get("visible-to-user") == "false":
         raise AssertionError(f"Main control is not visible with positive bounds: {description!r}")
+metro = next(n for n in nodes
+             if n.attrib.get("content-desc") == "MPC Toolbar Metronome reserved")
+if metro.attrib.get("text") != "METRO" or metro.attrib.get("enabled") != "false":
+    raise AssertionError("G-006 Metro toolbar slot must remain visibly reserved and disabled")
 track_types = [
     n for n in nodes
     if n.attrib.get("content-desc", "").startswith("Main Track Type DRUM ")
@@ -6118,7 +6126,7 @@ if len(track_types) != 1:
     raise AssertionError(f"expected one truthful Main Track Type state; got {len(track_types)}")
 if "type conversion unavailable" not in track_types[0].attrib.get("content-desc", ""):
     raise AssertionError("Main Track Type must not advertise a missing conversion operation")
-print("Ready Main accessibility controls verified:", len(required), "+ Track Type truthfulness")
+print("Ready Main accessibility controls verified:", len(required), "+ reserved Metro + Track Type truthfulness")
 PY
     then
       echo "ERROR: ready Main hierarchy failed canonical control checks"

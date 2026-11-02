@@ -233,8 +233,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private AlertDialog activeMpcParameterDialog;
     private Button timingCorrectTopButton;
     private Button metronomeTopButton;
-    private float metronomeVolume = 0.8f;
-    private int metronomeSound = 0; // 0=click,1=beep,2=wood,3=none
     private int touchStripMode = 0; // 0=Level,1=Pan,2=Tune,3=Sample Start,4=Sample End
     private Button automationTopButton;
     private TextView midiInTopStatus;
@@ -507,12 +505,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadEnvelopeRelease(int pad);
     private static native String nativeAudioSetPadFilterCutoff(int pad, float cutoffHz);
     private static native float nativeAudioGetPadFilterCutoff(int pad);
-    private static native String nativeAudioSetMetronomeEnabled(boolean enabled);
-    private static native boolean nativeAudioIsMetronomeEnabled();
-    private static native String nativeAudioSetMetronomeVolume(float volume);
-    private static native float nativeAudioGetMetronomeVolume();
-    private static native String nativeAudioSetMetronomeSound(int soundIndex);
-    private static native int nativeAudioGetMetronomeSound();
     private static native String nativeAudioConfigureOutput(
             int deviceId, int sampleRate, int bufferSizeFrames,
             boolean exclusive, boolean lowLatency);
@@ -1738,16 +1730,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 enabled ? Color.WHITE : Color.TRANSPARENT,
                 MPC_FLAT_RADIUS_DP));
 
-        if (metronomeTopButton != null) {
-            final boolean metroOn = startupComplete
-                    && nativeAudioIsMetronomeEnabled();
-            metronomeTopButton.setText(metroOn ? "METRO ON" : "METRO");
-            metronomeTopButton.setTextColor(metroOn ? ACTIVE : MPC_TOOLBAR_TEXT);
-            metronomeTopButton.setBackground(strokeBackground(
-                    metroOn ? Color.rgb(74, 124, 88) : Color.TRANSPARENT,
-                    metroOn ? Color.WHITE : Color.TRANSPARENT,
-                    MPC_FLAT_RADIUS_DP));
-        }
         if (automationTopButton != null) {
             automationTopButton.setText("AUTO");
         }
@@ -2775,18 +2757,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         bar.addView(timingCorrectTopButton, timingLp);
 
         metronomeTopButton = topButton("METRO");
-        metronomeTopButton.setContentDescription("Metronome on/off");
-        metronomeTopButton.setEnabled(true);
-        metronomeTopButton.setAlpha(1.0f);
-        metronomeTopButton.setOnClickListener(v -> {
-            if (!startupComplete) {
-                setBottomStatus("METRONOME • waiting for sequencer");
-                return;
-            }
-            final boolean next = !nativeAudioIsMetronomeEnabled();
-            setBottomStatus(nativeAudioSetMetronomeEnabled(next));
-            refreshMpcToolbarState();
-        });
+        metronomeTopButton.setContentDescription("MPC Toolbar Metronome reserved");
+        metronomeTopButton.setEnabled(false);
+        metronomeTopButton.setAlpha(0.55f);
         LinearLayout.LayoutParams metroLp = new LinearLayout.LayoutParams(
                 dp(MPC_TOOLBAR_METRO_WIDTH_DP),
                 dp(MPC_TOOLBAR_CONTROL_HEIGHT_DP));
@@ -2969,119 +2942,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         activeMpcParameterDialog = dialog;
     }
 
-    private void showMetronomeDialog() {
-        final LinearLayout root = column();
-        root.setContentDescription("Metronome dialog");
-        root.setPadding(dp(14), dp(6), dp(14), 0);
-
-        final boolean[] enabledState = {nativeAudioIsMetronomeEnabled()};
-        final float[] volumeState = {nativeAudioGetMetronomeVolume()};
-        final int[] soundState = {nativeAudioGetMetronomeSound()};
-
-        final TextView enabled = label(
-                "ENABLED\n" + (enabledState[0] ? "ON" : "OFF"),
-                11, TEXT);
-        enabled.setTypeface(Typeface.DEFAULT_BOLD);
-        enabled.setGravity(Gravity.CENTER_VERTICAL);
-        enabled.setPadding(dp(10), 0, dp(10), 0);
-        enabled.setBackground(strokeBackground(
-                SURFACE_2,
-                enabledState[0] ? ACTIVE : LINE,
-                5));
-        enabled.setContentDescription("Metronome enabled field");
-        enabled.setOnClickListener(v -> {
-            enabledState[0] = !enabledState[0];
-            enabled.setText("ENABLED\n" + (enabledState[0] ? "ON" : "OFF"));
-            enabled.setBackground(strokeBackground(
-                    SURFACE_2,
-                    enabledState[0] ? ACTIVE : LINE,
-                    5));
-        });
-        root.addView(enabled,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        final TextView volume = label(
-                "VOLUME\n" + Math.round(volumeState[0] * 100f) + "%",
-                11, TEXT);
-        volume.setTypeface(Typeface.DEFAULT_BOLD);
-        volume.setGravity(Gravity.CENTER_VERTICAL);
-        volume.setPadding(dp(10), 0, dp(10), 0);
-        volume.setBackground(strokeBackground(SURFACE_2, LINE, 5));
-        volume.setContentDescription("Metronome volume field");
-        root.addView(volume,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        LinearLayout volumeButtons = row();
-        for (float delta : new float[]{-0.10f, -0.01f, 0.01f, 0.10f}) {
-            Button b = actionButton(
-                    delta > 0 ? "+" + Math.round(delta * 100f)
-                            : "−" + Math.round(Math.abs(delta) * 100f),
-                    v -> {
-                        volumeState[0] = Math.max(
-                                0.0f, Math.min(1.0f, volumeState[0] + delta));
-                        volume.setText(
-                                "VOLUME\n" + Math.round(volumeState[0] * 100f)
-                                + "%");
-                    });
-            b.setTextSize(9);
-            volumeButtons.addView(b, weight());
-        }
-        root.addView(volumeButtons,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
-
-        final String[] soundNames = {"Click", "Beep", "Wood", "None"};
-        final TextView sound = label(
-                "SOUND\n" + soundNames[soundState[0]],
-                11, TEXT);
-        sound.setTypeface(Typeface.DEFAULT_BOLD);
-        sound.setGravity(Gravity.CENTER_VERTICAL);
-        sound.setPadding(dp(10), 0, dp(10), 0);
-        sound.setBackground(strokeBackground(SURFACE_2, LINE, 5));
-        sound.setContentDescription("Metronome sound field");
-        root.addView(sound,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
-
-        LinearLayout soundButtons = row();
-        for (int s = 0; s < 4; s++) {
-            final int soundIndex = s;
-            Button b = actionButton(soundNames[s], v -> {
-                soundState[0] = soundIndex;
-                sound.setText("SOUND\n" + soundNames[soundIndex]);
-            });
-            b.setTextSize(9);
-            soundButtons.addView(b, weight());
-        }
-        root.addView(soundButtons,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
-
-        final AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle("Metronome")
-                .setView(root)
-                .setNegativeButton("CANCEL", null)
-                .setPositiveButton("DO IT", (d, which) -> {
-                    setBottomStatus(
-                            nativeAudioSetMetronomeEnabled(enabledState[0]));
-                    setBottomStatus(
-                            nativeAudioSetMetronomeVolume(volumeState[0]));
-                    setBottomStatus(
-                            nativeAudioSetMetronomeSound(soundState[0]));
-                    refreshMpcToolbarState();
-                    setBottomStatus(
-                            "METRONOME • "
-                                    + (enabledState[0] ? "ON" : "OFF")
-                                    + " • " + Math.round(volumeState[0] * 100f)
-                                    + "% • " + soundNames[soundState[0]]);
-                })
-                .create();
-        dialog.show();
-        activeMpcParameterDialog = dialog;
-    }
-
     private void showTouchStripPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -3155,17 +3015,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMpcFunctionBar();
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
-    }
-
-    private String touchStripModeLabel(int mode) {
-        switch (mode) {
-            case 0: return "LEVEL";
-            case 1: return "PAN";
-            case 2: return "TUNE";
-            case 3: return "SAMPLE START";
-            case 4: return "SAMPLE END";
-            default: return "LEVEL";
-        }
     }
 
     private MpcUiState.DataDialFocus touchStripModeToDataDialFocus(int mode) {
@@ -3336,7 +3185,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(dp(4), dp(2), dp(4), dp(2));
                 row.setBackground(strokeBackground(
-                        i % 2 == 0 ? SURFACE_2 : PANEL_2, LINE, 4));
+                        i % 2 == 0 ? SURFACE_2 : MPC_PANEL, LINE, 4));
 
                 addListField(row, String.format("%04d", tick), 50, true);
                 addListField(row, "N" + note, 40, false);
@@ -19333,7 +19182,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setActionAvailable(true);
 
         if (channelMixerView != null) {
-            channelMixerView.setControlFocus(next);
+            final MpcChannelMixerView.ControlFocus focus =
+                    next == MpcUiState.DataDialFocus.CHANNEL_MIXER_PAN
+                            ? MpcChannelMixerView.ControlFocus.PAN
+                            : MpcChannelMixerView.ControlFocus.LEVEL;
+            channelMixerView.setControlFocus(focus);
         }
 
         setBottomStatus(
