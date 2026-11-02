@@ -245,10 +245,7 @@ public:
             std::atomic<std::uint64_t>& outputCallbackFrames,
             AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames,
             std::atomic<std::uint32_t>& outputPeakMilli,
-            std::atomic<std::uint32_t>& testToneRequestFrames,
-            std::atomic<bool>& metronomeEnabled,
-            std::atomic<std::int32_t>& metronomeVolumeMilli,
-            std::atomic<std::int32_t>& metronomeSound)
+            std::atomic<std::uint32_t>& testToneRequestFrames)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
               triggerQueue_(triggerQueue),
@@ -270,9 +267,6 @@ public:
               monitorSamples_(monitorSamples),
               monitorWriteSequence_(monitorWriteSequence),
               monitorEnabled_(monitorEnabled),
-              metronomeEnabled_(metronomeEnabled),
-              metronomeVolumeMilli_(metronomeVolumeMilli),
-              metronomeSound_(metronomeSound),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
               samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
@@ -383,69 +377,6 @@ public:
                     testTonePhase_ -= 2.0 * kPi;
                 }
                 --testToneFramesRemaining_;
-            }
-
-            // Metronome click generator. Beat interval in frames depends on
-            // sequence tempo; click fires on every beat with beat-1 accent.
-            if (metronomeEnabled_.load(std::memory_order_relaxed)) {
-                const float tempoBpm =
-                        static_cast<float>(
-                                projectState_.activeSequence().tempoBpm);
-                if (tempoBpm > 0.0f && sampleRate > 0) {
-                    const double beatFrames =
-                            static_cast<double>(sampleRate) * 60.0
-                            / static_cast<double>(tempoBpm);
-                    if (metronomeFramesRemaining_ == 0u) {
-                        metronomeFramesRemaining_ =
-                                static_cast<std::uint32_t>(beatFrames);
-                        const int sound =
-                                metronomeSound_.load(
-                                        std::memory_order_relaxed);
-                        const float volume =
-                                static_cast<float>(
-                                        metronomeVolumeMilli_.load(
-                                                std::memory_order_relaxed))
-                                / 1000.0f;
-                        const bool accent =
-                                metronomeBeatInBar_ == 0;
-                        const float clickVol =
-                                volume * (accent ? 1.0f : 0.6f);
-                        float clickSample = 0.0f;
-                        if (sound == 0) {
-                            // Acoustic click: short decaying transient.
-                            clickSample = clickVol * 0.8f;
-                        } else if (sound == 1) {
-                            // Electronic beep: short sine at 1000 Hz.
-                            const double beepPhase =
-                                    metronomePhase_
-                                    * (1000.0 / 440.0);
-                            clickSample = clickVol
-                                    * static_cast<float>(
-                                            std::sin(static_cast<float>(
-                                                    beepPhase)));
-                        } else if (sound == 2) {
-                            // Wood block: band-limited noise burst (approximate
-                            // with a fast-decaying square pulse).
-                            clickSample = clickVol
-                                    * (metronomePhase_ < 0.5 ? 1.0f : -1.0f);
-                        }
-                        // sound == 3: none (silent metronome, visual only).
-                        left += clickSample;
-                        right += clickSample;
-                        metronomePhase_ += 0.1;
-                        if (metronomePhase_ >= 1.0) {
-                            metronomePhase_ -= 1.0;
-                        }
-                        metronomeBeatInBar_ =
-                                (metronomeBeatInBar_ + 1)
-                                % static_cast<int>(
-                                        projectState_
-                                                .activeSequence()
-                                                .numerator);
-                    } else {
-                        --metronomeFramesRemaining_;
-                    }
-                }
             }
 
             if (monitorEnabled) {
@@ -870,9 +801,6 @@ private:
     std::array<float, kMonitorBufferFrames>& monitorSamples_;
     std::atomic<std::uint32_t>& monitorWriteSequence_;
     std::atomic<bool>& monitorEnabled_;
-    std::atomic<bool>& metronomeEnabled_;
-    std::atomic<std::int32_t>& metronomeVolumeMilli_;
-    std::atomic<std::int32_t>& metronomeSound_;
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
     AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames_;
@@ -882,11 +810,6 @@ private:
     bool monitorWasEnabled_ = false;
     std::uint32_t testToneFramesRemaining_ = 0;
     double testTonePhase_ = 0.0;
-    // Metronome click generator state (realtime-safe: atomics read only,
-    // phase doubles written by this thread only).
-    std::uint32_t metronomeFramesRemaining_ = 0;
-    double metronomePhase_ = 0.0;
-    int metronomeBeatInBar_ = 0;
     std::array<std::array<PadVoice, kMaxPadVoices>, kPadCount> voices_{};
     std::array<std::uint8_t, kPadCount> nextVoiceIndex_{};
     std::array<AudioTriggerEvent, kAudioTriggerQueueCapacity> pendingTriggerEvents_{};
@@ -1238,53 +1161,6 @@ std::string AudioEngine::clearRecording() {
     recordingOverflowed_.store(false, std::memory_order_release);
 
     return "CLEAR RECORDING • recording buffer cleared";
-}
-
-std::string AudioEngine::setMetronomeEnabled(bool enabled) {
-    metronomeEnabled_.store(enabled, std::memory_order_release);
-    if (!enabled) {
-        // Reset phase so the next enable starts on beat 1.
-        metronomeFramesRemaining_.store(0, std::memory_order_relaxed);
-        metronomeBeatInBar_.store(0, std::memory_order_relaxed);
-        metronomePhase_ = 0.0;
-    }
-    return std::string("METRONOME • ")
-           + (enabled ? "ON" : "OFF")
-           + " • " + std::to_string(
-                   static_cast<int>(metronomeVolumeMilli_.load(
-                           std::memory_order_relaxed) / 10))
-           + "%";
-}
-
-bool AudioEngine::metronomeEnabled() const {
-    return metronomeEnabled_.load(std::memory_order_relaxed);
-}
-
-std::string AudioEngine::setMetronomeVolume(float volume) {
-    const float clamped = std::clamp(volume, 0.0f, 1.0f);
-    const auto milli = static_cast<std::int32_t>(
-            std::lround(clamped * 1000.0f));
-    metronomeVolumeMilli_.store(milli, std::memory_order_relaxed);
-    return "METRONOME VOLUME • " + std::to_string(milli / 10) + "%";
-}
-
-float AudioEngine::metronomeVolume() const {
-    return static_cast<float>(
-            metronomeVolumeMilli_.load(std::memory_order_relaxed))
-           / 1000.0f;
-}
-
-std::string AudioEngine::setMetronomeSound(int soundIndex) {
-    if (soundIndex < 0 || soundIndex > 3) {
-        return "Metronome sound failed: invalid index";
-    }
-    metronomeSound_.store(soundIndex, std::memory_order_relaxed);
-    const char* names[] = {"click", "beep", "wood", "none"};
-    return std::string("METRONOME SOUND • ") + names[soundIndex];
-}
-
-int AudioEngine::metronomeSound() const {
-    return metronomeSound_.load(std::memory_order_relaxed);
 }
 
 std::string AudioEngine::getTrackNotesAsString(std::uint8_t trackIndex) const {
@@ -2856,10 +2732,7 @@ std::string AudioEngine::start() {
             outputCallbackFrames_,
             samplePlaybackCursorFrames_,
             outputPeakMilli_,
-            testToneRequestFrames_,
-            metronomeEnabled_,
-            metronomeVolumeMilli_,
-            metronomeSound_);
+            testToneRequestFrames_);
 
     outputErrorCallback_ =
             std::make_shared<OutputErrorCallback>(outputLastErrorCode_);
