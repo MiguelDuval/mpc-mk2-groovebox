@@ -3157,17 +3157,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         notifyMpcWorkspaceAccessibilityChanged();
     }
 
-    private String touchStripModeLabel(int mode) {
-        switch (mode) {
-            case 0: return "LEVEL";
-            case 1: return "PAN";
-            case 2: return "TUNE";
-            case 3: return "SAMPLE START";
-            case 4: return "SAMPLE END";
-            default: return "LEVEL";
-        }
-    }
-
     private MpcUiState.DataDialFocus touchStripModeToDataDialFocus(int mode) {
         switch (mode) {
             case 0: return MpcUiState.DataDialFocus.PAD_MIXER_LEVEL;
@@ -3336,7 +3325,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 row.setPadding(dp(4), dp(2), dp(4), dp(2));
                 row.setBackground(strokeBackground(
-                        i % 2 == 0 ? SURFACE_2 : PANEL_2, LINE, 4));
+                        i % 2 == 0 ? SURFACE_2 : MPC_PANEL, LINE, 4));
 
                 addListField(row, String.format("%04d", tick), 50, true);
                 addListField(row, "N" + note, 40, false);
@@ -19333,7 +19322,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setActionAvailable(true);
 
         if (channelMixerView != null) {
-            channelMixerView.setControlFocus(next);
+            final MpcChannelMixerView.ControlFocus focus =
+                    next == MpcUiState.DataDialFocus.CHANNEL_MIXER_PAN
+                            ? MpcChannelMixerView.ControlFocus.PAN
+                            : MpcChannelMixerView.ControlFocus.LEVEL;
+            channelMixerView.setControlFocus(focus);
         }
 
         setBottomStatus(
