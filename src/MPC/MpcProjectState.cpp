@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <unordered_map>
 #include <unordered_set>
 
 namespace mpc {
@@ -672,6 +673,34 @@ bool MpcProjectState::duplicateTrack(std::size_t trackIndex) noexcept {
     copy.recordArmed = false;
     copy.soloed = false;
 
+    // A duplicated Track owns independent Pattern and Placement identities.
+    // Re-key every copied Pattern first, then remap each Placement reference
+    // so edits to the duplicate cannot resolve back to the source Track.
+    std::unordered_map<std::string, std::string> copiedPatternIds;
+    copiedPatternIds.reserve(copy.patterns.size());
+    for (std::size_t i = 0; i < copy.patterns.size(); ++i) {
+        auto& pattern = copy.patterns[i];
+        const std::string originalPatternId = pattern.id;
+        const std::string copiedPatternId =
+                copy.id + "-pattern-" + std::to_string(i + 1);
+        copiedPatternIds.emplace(originalPatternId, copiedPatternId);
+        pattern.id = copiedPatternId;
+    }
+
+    for (std::size_t i = 0; i < copy.placements.size(); ++i) {
+        auto& placement = copy.placements[i];
+        placement.id =
+                copy.id + "-placement-" + std::to_string(i + 1);
+        const auto mappedPatternId =
+                copiedPatternIds.find(placement.patternId);
+        if (mappedPatternId == copiedPatternIds.end()) {
+            // Do not create a clone that silently aliases a Pattern owned by
+            // another Track (or preserves a stale/dangling reference).
+            return false;
+        }
+        placement.patternId = mappedPatternId->second;
+    }
+
     sequence.tracks.push_back(std::move(copy));
     const auto newIndex = sequence.tracks.size() - 1;
     activeTrackIndex_ = newIndex;
@@ -684,13 +713,19 @@ bool MpcProjectState::deleteTrack(std::size_t trackIndex) noexcept {
     if (trackIndex >= sequence.tracks.size()) return false;
     if (sequence.tracks.size() <= 1) return false;
 
+    const std::size_t previousActiveTrackIndex = activeTrackIndex_;
     sequence.tracks.erase(sequence.tracks.begin() +
             static_cast<std::ptrdiff_t>(trackIndex));
 
     const auto lastIndex = sequence.tracks.size() - 1;
-    if (activeTrackIndex_ > lastIndex) {
-        activeTrackIndex_ = lastIndex;
+    if (trackIndex < previousActiveTrackIndex) {
+        // Removing an earlier Track shifts the selected Track one slot left.
+        activeTrackIndex_ = previousActiveTrackIndex - 1;
+    } else {
+        // Removing the selected Track keeps the nearest surviving index.
+        activeTrackIndex_ = std::min(previousActiveTrackIndex, lastIndex);
     }
+    activeTrackIndex_ = std::min(activeTrackIndex_, lastIndex);
     selectTrack(activeTrackIndex_);
     return true;
 }

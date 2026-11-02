@@ -123,10 +123,25 @@ int main() {
     assert(state.activeSequence().tracks[2].placements.size() == 1);
     assert(state.activeSequence().tracks[2].recordArmed == false);
     assert(state.activeSequence().tracks[2].soloed == false);
-    // The duplicated track should not share the same ID
-    assert(state.activeSequence().tracks[2].id != state.activeSequence().tracks[0].id);
-    // Patterns are distinct copies
-    assert(state.activeSequence().tracks[2].patterns.front().id != state.activeSequence().tracks[0].patterns.front().id);
+    // The duplicated Track, Patterns and Placements have independent IDs.
+    const auto& sourceTrack = state.activeSequence().tracks[0];
+    const auto& duplicateTrack = state.activeSequence().tracks[2];
+    assert(duplicateTrack.id != sourceTrack.id);
+    assert(duplicateTrack.patterns.front().id != sourceTrack.patterns.front().id);
+    assert(duplicateTrack.placements.front().id != sourceTrack.placements.front().id);
+    // Every copied Placement must reference the copied Pattern, not the source.
+    assert(duplicateTrack.placements.front().patternId
+            == duplicateTrack.patterns.front().id);
+    assert(duplicateTrack.placements.front().patternId
+            != sourceTrack.patterns.front().id);
+    assert(duplicateTrack.placements.front().startTick
+            == sourceTrack.placements.front().startTick);
+    assert(duplicateTrack.placements.front().lengthTicks
+            == sourceTrack.placements.front().lengthTicks);
+    assert(duplicateTrack.placements.front().sourceOffsetTicks
+            == sourceTrack.placements.front().sourceOffsetTicks);
+    assert(duplicateTrack.patterns.front().notes.size()
+            == sourceTrack.patterns.front().notes.size());
 
     // Duplicate Track 1 (Drum)
     assert(state.addTrack(mpc::domain::TrackKind::Drum));
@@ -140,10 +155,19 @@ int main() {
     assert(state.activeSequence().tracks.size() == 4);
     assert(state.activeTrackIndex() == 3);
 
-    // Delete all but one track should fail (must keep at least 1)
+    // Removing a Track before the selected one preserves selection by identity.
+    assert(state.selectTrack(2));
+    const std::string selectedTrackIdBeforeEarlierDelete =
+            state.activeSequence().tracks[2].id;
     assert(state.deleteTrack(0));
-    assert(state.deleteTrack(0));
-    assert(state.deleteTrack(0));
+    assert(state.activeTrackIndex() == 1);
+    assert(state.activeSequence().tracks[state.activeTrackIndex()].id
+            == selectedTrackIdBeforeEarlierDelete);
+
+    // Delete all but one track; the final Track must remain protected.
+    while (state.activeSequence().tracks.size() > 1) {
+        assert(state.deleteTrack(0));
+    }
     assert(!state.deleteTrack(0)); // Last track cannot be deleted
     assert(state.activeSequence().tracks.size() == 1);
 
