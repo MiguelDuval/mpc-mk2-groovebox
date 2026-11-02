@@ -276,6 +276,8 @@ private:
             const InputConfiguration& configuration);
 
     static constexpr std::size_t kMaxRecordingFrames = 960000;
+    static constexpr std::size_t kMonitorBufferFrames = 8192;
+    static constexpr std::size_t kRecordingWaveformBinCount = 2048;
 
     std::shared_ptr<const SampleBuffer> sample_;
     std::string sampleDescription_;

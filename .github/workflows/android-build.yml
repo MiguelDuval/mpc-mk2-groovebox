@@ -171,7 +171,11 @@ jobs:
             -Ithird_party/oboe/include -Isrc \
             tests/MpcMetronomeTests.cpp \
             src/Audio/AudioEngine.cpp \
+            src/Audio/WavSample.cpp \
+            src/Audio/Waveform.cpp \
+            src/MPC/MpcCore.cpp \
             src/MPC/MpcProjectState.cpp \
+            src/MPC/Domain/MpcDomain.cpp \
             -o build/native-tests/mpc_metronome_tests
           build/native-tests/mpc_metronome_tests
 

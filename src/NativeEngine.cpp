@@ -209,6 +209,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
     }
 
     core.audio().refreshActiveProgramRuntimeProjection();
+    // Sync metronome tempo/time-signature snapshots from the new default
+    // sequence so the realtime callback reads consistent values.
+    {
+        const auto& seq = core.projectState().activeSequence();
+        core.audio().setMetronomeTempo(seq.tempoBpm);
+        core.audio().setMetronomeTimeSignature(seq.numerator, seq.denominator);
+    }
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();
@@ -257,6 +264,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     const std::string patternId = pattern.id;
     if (!core.projectState().replaceProject(std::move(candidate))) {
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
+    }
+    // Sync metronome tempo/time-signature snapshots from the replaced
+    // project's active sequence.
+    {
+        const auto& seq = core.projectState().activeSequence();
+        core.audio().setMetronomeTempo(seq.tempoBpm);
+        core.audio().setMetronomeTimeSignature(seq.numerator, seq.denominator);
     }
     core.editHistory().clear();
     arrangementEventClipboard.reset();
@@ -2290,6 +2304,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTempo(
     stopSequenceForMutation();
     if (mpc::MpcCore::instance().projectState().setSequenceTempo(tempo)) {
         syncSequenceTransportStopped();
+        mpc::audio::AudioEngine::instance().setMetronomeTempo(tempo);
         return toJString(env, "Sequence tempo updated");
     }
     return toJString(env, "Sequence tempo failed: use 20–300 BPM");
@@ -2340,6 +2355,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTimeSignature
     if (mpc::MpcCore::instance().projectState().setSequenceTimeSignature(
             numerator, denominator)) {
         syncSequenceTransportStopped();
+        mpc::audio::AudioEngine::instance().setMetronomeTimeSignature(
+                numerator, denominator);
         return toJString(env, "Sequence time signature updated");
     }
     return toJString(env, "Time signature failed: 1–16 / 4, 8, 16 or 32");

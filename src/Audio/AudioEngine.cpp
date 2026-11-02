@@ -248,7 +248,10 @@ public:
             std::atomic<std::uint32_t>& testToneRequestFrames,
             std::atomic<bool>& metronomeEnabled,
             std::atomic<std::int32_t>& metronomeVolumeMilli,
-            std::atomic<std::int32_t>& metronomeSound)
+            std::atomic<std::int32_t>& metronomeSound,
+            std::atomic<double>& metronomeTempoBpm,
+            std::atomic<int>& metronomeTimeSigNumerator,
+            std::atomic<bool>& metronomeResetRequested)
             : samples_(std::move(samples)),
               regions_(std::move(regions)),
               triggerQueue_(triggerQueue),
@@ -273,6 +276,9 @@ public:
               metronomeEnabled_(metronomeEnabled),
               metronomeVolumeMilli_(metronomeVolumeMilli),
               metronomeSound_(metronomeSound),
+              metronomeTempoBpm_(metronomeTempoBpm),
+              metronomeTimeSigNumerator_(metronomeTimeSigNumerator),
+              metronomeResetRequested_(metronomeResetRequested),
               outputCallbackCount_(outputCallbackCount),
               outputCallbackFrames_(outputCallbackFrames),
               samplePlaybackCursorFrames_(samplePlaybackCursorFrames),
@@ -392,18 +398,18 @@ public:
                 // callback-owned metronome state. The callback owns
                 // metronomeFramesRemaining_, metronomePhase_ and
                 // metronomeBeatInBar_; only this thread writes them.
-                if (owner_.metronomeResetRequested_.load(
+                if (metronomeResetRequested_.load(
                         std::memory_order_acquire)) {
                     metronomeFramesRemaining_ = 0u;
                     metronomePhase_ = 0.0;
                     metronomeBeatInBar_ = 0;
-                    owner_.metronomeResetRequested_.store(
+                    metronomeResetRequested_.store(
                             false, std::memory_order_release);
                 }
 
                 const float tempoBpm =
                         static_cast<float>(
-                                owner_.metronomeTempoBpm_.load(
+                                metronomeTempoBpm_.load(
                                         std::memory_order_relaxed));
                 if (tempoBpm > 0.0f && sampleRate > 0) {
                     const double beatFrames =
@@ -453,8 +459,7 @@ public:
                         metronomeBeatInBar_ =
                                 (metronomeBeatInBar_ + 1)
                                 % static_cast<int>(
-                                        owner_
-                                                .metronomeTimeSigNumerator_
+                                        metronomeTimeSigNumerator_
                                                 .load(
                                                         std::memory_order_relaxed));
                     } else {
@@ -888,6 +893,11 @@ private:
     std::atomic<bool>& metronomeEnabled_;
     std::atomic<std::int32_t>& metronomeVolumeMilli_;
     std::atomic<std::int32_t>& metronomeSound_;
+    // Control-thread atomic snapshots injected by the owner; read-only in
+    // the realtime callback. Owned by AudioEngine, not by this callback.
+    std::atomic<double>& metronomeTempoBpm_;
+    std::atomic<int>& metronomeTimeSigNumerator_;
+    std::atomic<bool>& metronomeResetRequested_;
     std::atomic<std::uint64_t>& outputCallbackCount_;
     std::atomic<std::uint64_t>& outputCallbackFrames_;
     AudioEngine::SamplePlaybackCursorGrid& samplePlaybackCursorFrames_;
@@ -2915,7 +2925,10 @@ std::string AudioEngine::start() {
             testToneRequestFrames_,
             metronomeEnabled_,
             metronomeVolumeMilli_,
-            metronomeSound_);
+            metronomeSound_,
+            metronomeTempoBpm_,
+            metronomeTimeSigNumerator_,
+            metronomeResetRequested_);
 
     outputErrorCallback_ =
             std::make_shared<OutputErrorCallback>(outputLastErrorCode_);
