@@ -212,9 +212,11 @@ int main() {
     assert(state.activeDrumProgram().id == "drum-program-2");
 
     assert(state.addTrack(mpc::domain::TrackKind::Drum));
-    assert(state.activeTrackIndex() == 2);
-    assert(state.activeSequence().tracks[2].programId == "drum-program-2");
-    assert(state.activeProgramIndexForTrack(2) == 1);
+    const std::size_t addedTrackIndex = state.activeSequence().tracks.size() - 1;
+    assert(state.activeTrackIndex() == addedTrackIndex);
+    assert(state.activeSequence().tracks[addedTrackIndex].programId
+            == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(addedTrackIndex) == 1);
 
     assert(!state.setTrackProgram(0, "missing-program"));
 
