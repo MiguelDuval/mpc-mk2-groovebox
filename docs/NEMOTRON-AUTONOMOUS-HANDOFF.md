@@ -12,9 +12,9 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `4dc17156430731d0333c1ef614fadab13ef5fa64` |
-| Remote HEAD (origin) | `4dc17156430731d0333c1ef614fadab13ef5fa64` — matches local |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) |
+| Exact HEAD | `981b339246a3d50ea6771470ddcd88c82cca25df` |
+| Remote HEAD (origin) | `981b339246a3d50ea6771470ddcd88c82cca25df` — matches local |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
 | Local clone | `.../chat/mpc-pr133`; full tracked tree materialized after recovery (1148 files). Promisor re-enabled during restore; `remote.origin.partialclonefilter=blob:none` remains. |
@@ -147,7 +147,7 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 - **Gradle daemon**: hangs on startup (forks daemon but build configuration never progresses). `gradle --stop` shows 2 incompatible + 7-10 stopped daemons. `--no-daemon` and `--offline` variants also stall at daemon startup.
 - **Local build**: NOT possible in current environment. Gradle daemon startup hangs on both Mozart and MPC projects. CMake native build requires oboe source which cannot be extracted.
 - **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**`, `feature/**` and on all PRs. CI runs on `feature/mpc-one-ui-fidelity-continue`.
-- **CI status on `9ee4355f`:** Android Build #3642 — FAILED (pre-existing issue; runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage). `git diff --check 1540b475 9ee4355f` passes locally. Changes don't touch any preflight-compiled files.
+- **CI status on `981b3392`:** Android Build #3642 — FAILED (pre-existing issue; runs #3640 `#ef910bb` and #3641 `#1540b475` also failed at same preflight stage). `git diff --check 1540b475 981b3392` passes locally. Changes don't touch any preflight-compiled files.
 - **Physical MPC Studio MkII validation**: NOT RUN.
 
 ## 11. Source-level verification (complete, 2026-11-01)
