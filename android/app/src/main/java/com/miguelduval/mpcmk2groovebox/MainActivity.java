@@ -20,6 +20,7 @@ import android.os.Bundle;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
 import android.system.ErrnoException;
 import android.system.Os;
@@ -12870,21 +12871,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ? "EXPORT WAV • PAD " + (pendingExportWavPad + 1)
                 + " LAYER " + (pendingExportWavLayer + 1)
                 : "EXPORT WAV • RECORDING";
+        final boolean sameSession = exportGeneration == projectSessionGeneration;
         projectIoExecutor.execute(() -> {
-            OutputStream output = null;
+            ParcelFileDescriptor pfd = null;
+            FileOutputStream output = null;
             try {
-                output = getContentResolver().openOutputStream(target, "wt");
-                if (output == null) {
-                    throw new IOException("Document provider returned no output stream");
+                pfd = getContentResolver().openFileDescriptor(target, "wt");
+                if (pfd == null) {
+                    throw new IOException("Document provider returned no file descriptor");
                 }
+                output = new FileOutputStream(pfd.getFileDescriptor());
                 output.write(snapshot);
                 output.flush();
-                output.getFD().sync();
+                pfd.getFileDescriptor().sync();
                 output.close();
                 output = null;
+                pfd.close();
+                pfd = null;
             } catch (IOException error) {
                 if (output != null) {
                     try { output.close(); } catch (IOException ignored) { }
+                }
+                if (pfd != null) {
+                    try { pfd.close(); } catch (IOException ignored) { }
                 }
                 runOnUiThread(() -> {
                     if (destroyed) return;
@@ -12900,7 +12909,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             }
             runOnUiThread(() -> {
                 if (destroyed) return;
-                final boolean sameSession = exportGeneration == projectSessionGeneration;
                 final String suffix = sameSession ? " • saved" : " • saved (stale session)";
                 setBottomStatus(label + suffix + " • " + snapshot.length + " bytes");
                 pendingExportWavBytes = null;
