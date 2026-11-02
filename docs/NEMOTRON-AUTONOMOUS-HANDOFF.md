@@ -12,9 +12,9 @@
 |---|---|
 | Active working branch | `feature/mpc-one-ui-fidelity-continue` |
 | Branch created from | `checkpoint/mpc-ui-reference-and-product-20261030` (PR #133) |
-| Exact HEAD | `54e7ccef4aa28647126764fb67c08e60a337a0b6` |
-| Remote HEAD (origin) | `54e7ccef4aa28647126764fb67c08e60a337a0b6` — matches local |
-| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) |
+| Exact HEAD | `ca4364858235b8df469ef1a9d3fdee8f2328ab24` |
+| Remote HEAD (origin) | `ca4364858235b8df469ef1a9d3fdee8f2328ab24` — matches local |
+| Parent chain | `0d53d709...` (PR #133 checkpoint) → `04b1626...` (bad partial-tree commit, PRESERVED) → `ab83a43...` (restoration) → `bde4e33...` (fix-up) → `cb9d33c...` (Phase 1 baseline assessment) → `4dc17156...` (Main Mode blueprint) → `2d12da78...` (visual tokens) → `cb9d33c9...` → `f76b6245...` (arrangement Grid Split/Delete/Duplicate) → `3573134a...` (WAV export Sample Edit button) → `b48e260b...` (WAV export buttons recording page) → `a36b5670...` (recording query JNI bindings) → `48d914b9...` (clearRecording()) → `2029caf8...` (WAV export JNI bindings) → `981b3392...` (arrangement zoom controls) → `8091ee1e...` (docs: update handoff with arrangement zoom commit) → `54e7ccef...` (fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage) → `6f0f1348...` (fix(java): fix WAV export SAF file writing compilation errors) → `ca436485...` (feat(track): add Track Duplicate/Delete TRK-007) |
 | Product baseline | `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`) |
 | main | NOT modified (and must not be) |
 | Local clone | `.../chat/mpc-mk2-groovebox`; working tree clean. |
@@ -147,7 +147,7 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 - **Gradle daemon**: hangs on startup (forks daemon but build configuration never progresses). `gradle --stop` shows 2 incompatible + 7-10 stopped daemons. `--no-daemon` and `--offline` variants also stall at daemon startup.
 - **Local build**: NOT possible in current environment. Gradle daemon startup hangs on both Mozart and MPC projects. CMake native build requires oboe source which cannot be extracted.
 - **CI workflow** (`.github/workflows/android-build.yml`): triggers on push to `main`, `foundation/**`, `work/**`, `feature/**` and on all PRs. CI runs on `feature/mpc-one-ui-fidelity-continue`.
-- **CI status on `54e7ccef`:** Commit pushed; CI run pending via workflow trigger on `feature/mpc-one-ui-fidelity-continue`. Pre-existing Build #3642/#3640/#3641 failures were at preflight stage on earlier SHAs; this commit includes fixes to the WAV export path and CI test wiring.
+- **CI status on `ca436485`:** Commit pushed; CI run triggered via workflow on `feature/mpc-one-ui-fidelity-continue`. Pre-existing Build #3642/#3640/#3641 failures were at preflight stage on earlier SHAs; this commit includes fixes to the WAV export path, CI test wiring, and Track Duplicate/Delete.
 - **Physical MPC Studio MkII validation**: NOT RUN.
 
 ## 11. Source-level verification (complete, 2026-11-01)
@@ -170,15 +170,14 @@ Compared `showMainPage()` and Main Track canvas against `docs/MPC3-UI-SCREEN-BLU
 
 ## 12. Next concrete task
 
-**Completed — Commit `54e7ccef` — fix(wav-export): fix JNI type mismatch, add SAF file saving, recording buffer thread safety, and CI test coverage**
+**Completed — Commits `54e7ccef`, `6f0f1348`, `ca436485`**
 
-- `MainActivity.java`: fixed `byte[]` vs `String` type mismatch; implemented actual WAV file saving via SAF (`ACTION_CREATE_DOCUMENT`, `audio/wav`)
-- `AudioEngine.cpp`: fixed recording buffer thread safety (no `.clear()` on callback-written buffer; atomic frame count snapshot in export)
-- `WavSampleExportTests.cpp`: extended with NaN/Inf, multi-sample-rate, RIFF header structure tests
-- `.github/workflows/android-build.yml`: added WAV export encoder test to CI android-debug job
+- `54e7ccef` — fix(wav-export): fixed Java/JNI `byte[]` vs `String` type mismatch; implemented actual WAV file saving via SAF (`ACTION_CREATE_DOCUMENT`, `audio/wav`); fixed recording buffer thread safety; added WAV export encoder tests to CI
+- `6f0f1348` — fix(java): fixed `OutputStream.getFD()` → `ParcelFileDescriptor.getFileDescriptor()` for SAF fsync; fixed `sameSession` scope
+- `ca436485` — feat(track): added Track Duplicate/Delete (TRK-007) — native `duplicateTrack()`/`deleteTrack()` with JNI bindings, per-track DUP/DEL buttons in Sequence page, regression tests
 
 **Next steps:**
-1. Verify CI preflight passes on exact HEAD `54e7ccef` (check GitHub Actions run)
+1. Verify CI preflight passes on exact HEAD `ca436485` (check GitHub Actions run via REST API)
 2. Continue source-level MPC Groovebox feature development on `feature/mpc-one-ui-fidelity-continue`
 3. Do NOT claim visual parity without runtime screenshot comparison
 4. Preserve one writer on `feature/mpc-one-ui-fidelity-continue`; do not merge PR #124/#133 automatically; do not touch `main`

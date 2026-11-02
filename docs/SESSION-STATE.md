@@ -43,7 +43,29 @@ Changes:
 - `tests/WavSampleExportTests.cpp`: added NaN/Inf, multiple sample rates, RIFF header structure tests.
 - `.github/workflows/android-build.yml`: added WAV export encoder test step to android-debug job.
 
-Status: committed and pushed to `feature/mpc-one-ui-fidelity-continue` at SHA `54e7ccef`. CI run pending — need to verify preflight passes on exact HEAD.
+Status: committed and pushed to `feature/mpc-one-ui-fidelity-continue` at SHA `54e7ccef`.
+
+**Commit `6f0f1348` — fix(java): fix WAV export SAF file writing compilation errors**
+
+- Replaced `OutputStream.getFD()` with `ParcelFileDescriptor.getFileDescriptor()` via `ContentResolver.openFileDescriptor()` for correct SAF fsync support
+- Wrapped in `FileOutputStream` for write operations, close both FD and stream
+- Moved `sameSession` boolean to outer scope so it's accessible by both `runOnUiThread` lambda and post-callback `Log.i()`
+- Added import `android.os.ParcelFileDescriptor`
+
+Status: committed and pushed at SHA `6f0f1348`.
+
+**Commit `ca436485` — feat(track): add Track Duplicate/Delete (TRK-007)**
+
+- `src/MPC/MpcProjectState.h/cpp`: added `duplicateTrack()` and `deleteTrack()`
+  - `duplicateTrack` copies patterns, placements, kind, programId; resets arm/solo; assigns new ID
+  - `deleteTrack` refuses to delete last track; moves selection to nearest remaining track
+- `src/NativeEngine.cpp`: JNI bindings `nativeSequenceDuplicateTrack` / `nativeSequenceDeleteTrack`
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java`: native declarations + Java handlers + DUP/DEL buttons per track in Sequence page
+- `tests/MpcProjectStateTests.cpp`: regression tests for duplicate/delete edge cases (invalid index, last-track protection, pattern isolation)
+- VIS-014 reference: Main Track fields / Program Select
+- Closes TRK-007 GAP in MPC3-USER-ACTION-CATALOG.md
+
+Status: committed and pushed at SHA `ca436485`. CI run triggered on push.
 - PR #127 Browser XML assertion repair remains held; Build #3516 failed. Inspect the exact failing step and current checkpoint assertions before importing.
 - PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
 - Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
