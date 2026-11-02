@@ -452,10 +452,13 @@ PR #133 remains Draft for product review. Do not merge automatically or change m
 
 This section is the authoritative live handoff for `feature/mpc-one-ui-fidelity-continue`. It supersedes earlier session notes that describe HEAD `ca436485` or the October checkpoint as current. Historical acceptance evidence remains historical; only the exact live SHA/run below determines current acceptance.
 
-**Repository:** `MiguelDuval/mpc-mk2-groovebox`  
-**Branch:** `feature/mpc-one-ui-fidelity-continue`  
-**Current pushed HEAD at this update:** `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`  
-**Parent:** `eb74021caefe821a8681e5c811f71728bf1bbb07`  
+**Repository:** `MiguelDuval/mpc-mk2-groovebox`
+
+**Branch:** `feature/mpc-one-ui-fidelity-continue`
+
+**Product source SHA under the #3662 exact-head validation:** `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`
+
+**Parent:** `eb74021caefe821a8681e5c811f71728bf1bbb07`
 **main:** untouched. No merge, rebase, reset, force-push, amend or history rewrite.
 
 ### Recovery/fix commits on this continuation branch
@@ -508,3 +511,25 @@ Build #3661 uploaded artifact `app-debug.apk`, artifact ID `13129962429`, size `
 7. Physical MkII acceptance remains **NOT RUN** until the actual controller is connected and tested.
 
 ---
+
+
+---
+
+## Latest exact-run smoke diagnosis — 2026-11-02
+
+This update supersedes the pending status previously recorded for Build #3662 and corrects the source-level smoke contract before another emulator run.
+
+- Product source SHA: `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`.
+- Android Build #3662 / [run 41423435808](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41423435808): native/Android test suite passed (52 steps), debug APK assembly and upload passed, and smoke syntax/evidence preflight passed. Step 56 entered `tests/android_ui_smoke.sh` but stopped at the early source preflight: `MPC Main/shell flat-chrome radius contract is missing`.
+- This was a **stale shell-script assertion**, not an app runtime failure. `MainActivity.java` aliases `MPC_FLAT_RADIUS_DP` and `MPC_MAIN_RADIUS_DP` to `MpcStyle.FLAT_RADIUS_DP`; `MpcStyle.java` defines the canonical token as `FLAT_RADIUS_DP = 0`. The old smoke check incorrectly demanded the literal assignment `MPC_FLAT_RADIUS_DP = 0` in MainActivity, contrary to the centralised design-token architecture.
+- The source smoke assertion is corrected to require both MainActivity aliases and the shared `MpcStyle.FLAT_RADIUS_DP = 0` token. It does not weaken flat-chrome validation. The separate Browser-specific zero-radius check remains intact because BrowserView still owns its own zero-radius local token.
+- The visual evidence uploader step ran, but reported that `/tmp/mpc-groovebox-startup.png` was absent; the run's artifact API contains only the APK. Therefore **no visual-evidence archive is accepted for #3662** and no emulator interaction is claimed.
+- #3662 APK artifact ID `13130917211`, size `10,771,149` bytes, SHA-256 `1a26277f4737f773ad881dad7484ad5af4d0384561c030ee91227a98e273860c`. The APK bytes were downloaded and `file`/ZIP integrity checks passed.
+- Documentation Build #3663 / [run 41423784051](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41423784051) failed only at `git diff --check`: four Markdown hard-break lines introduced in the prior handoff had trailing whitespace. Those four lines are now separate Markdown paragraphs without trailing spaces; unrelated historical whitespace elsewhere in the file is not part of this change.
+
+### Next acceptance boundary
+
+1. Run the corrected emulator smoke against the latest exact branch HEAD; ensure the script advances past all source preflights and into actual app launch/touch assertions.
+2. Inspect the resulting PNG/XML evidence archive and confirm artifact IDs and checksums before claiming emulator acceptance.
+3. Keep physical Akai MPC Studio MkII validation **NOT RUN** until actual hardware is available.
+4. Continue feature development only after the current smoke preflight/runtime gate is correctly understood. Do not remove or relax the test; keep the flat-radius design invariant at zero.

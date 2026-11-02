@@ -17,6 +17,7 @@ NATIVE_ENGINE_SOURCE="src/NativeEngine.cpp"
 SOLO_POLICY_SOURCE="src/MPC/Sequencer/MpcSequenceSoloPolicy.h"
 TRACK_EDIT_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcTrackEditView.java"
 SHELL_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShell.java"
+MPC_STYLE_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcStyle.java"
 
 echo "Running Shortcut popup-scroll driver preflight..."
 if ! grep -Fq -- 'scroll_popup_until_ui_text()' "$0" \
@@ -560,8 +561,10 @@ if ! grep -Fq -- 'Main Sequence Edit/Copy RESERVED until semantic backend exists
   exit 1
 fi
 
-if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP = 0' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: MPC Main/shell flat-chrome radius contract is missing"
+if ! grep -Fq -- 'MPC_FLAT_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'MPC_MAIN_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'FLAT_RADIUS_DP = 0;' "$MPC_STYLE_SOURCE"; then
+  echo "ERROR: MPC Main/shell flat-chrome radius must resolve through the shared zero-radius design token"
   exit 1
 fi
 if ! grep -Fq -- 'private static final int MPC_TOOLBAR_BG' "$MAIN_ACTIVITY_SOURCE"; then

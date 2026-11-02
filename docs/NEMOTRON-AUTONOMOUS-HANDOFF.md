@@ -210,3 +210,14 @@ This section supersedes the stale `ca436485` live-state table above. Always refe
 Do not call #3661 green: its Project State assertion failed and emulator smoke was skipped, even though APK assembly/upload succeeded. Do not weaken tests to obtain a green job. Next action is to inspect exact #3662 Project State step and follow the run through APK + emulator smoke + evidence. Physical MkII validation remains **NOT RUN**. The full current details and commit table are in `docs/SESSION-STATE.md` under “Superseding live continuation state — 2026-11-02”.
 
 After #3662 passes, continue product development at the same efficient feature cadence: coherent feature slices, focused tests, normal commit/push, exact-SHA CI, APK and emulator/evidence checkpoint. No audit-only stopping. No Mozart changes, no `main` changes, no merge of PR #124/#133, no reset/rebase/force-push/history rewrite. Inspect the relevant VIS image before UI changes.
+
+
+## Latest smoke correction — 2026-11-02
+
+- Current product-code checkpoint tested: `dcd17ee33fd2d60c3233e5fd05a14fa9b3ba1f9d`.
+- Build #3662 / run `41423435808`: 52 substantive test steps and APK assembly/upload succeeded. Smoke step 56 stopped in the initial shell-source preflight before real emulator interactions because the test still required a literal `MPC_FLAT_RADIUS_DP = 0` assignment in MainActivity.
+- The implementation is centrally tokenised: MainActivity references `MpcStyle.FLAT_RADIUS_DP` and MpcStyle defines that token as zero. The smoke assertion is updated to enforce both aliases plus the canonical zero value. This preserves the design contract rather than weakening it. The Browser-specific radius check remains unchanged.
+- #3662 APK artifact `13130917211`, 10,771,149 bytes, SHA-256 `1a26277f4737f773ad881dad7484ad5af4d0384561c030ee91227a98e273860c`. APK file and ZIP integrity checks passed. No visual-evidence archive exists for #3662 because the smoke script stopped before the startup screenshot; the upload log reports the missing startup PNG.
+- Build #3663 / run `41423784051` failed only on trailing spaces in four newly appended Markdown metadata lines. These were converted to separate paragraphs without trailing whitespace.
+
+Next: run exact-head CI, verify the smoke reaches actual runtime interaction and inspect its PNG/XML archive. Keep emulator and hardware acceptance claims separate; physical Studio MkII remains NOT RUN. Continue using coherent feature-sized changes and CI checkpoints, not per-keystroke build cycles. Do not modify `main`, merge #124/#133, or rewrite history.
