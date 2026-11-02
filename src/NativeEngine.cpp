@@ -993,6 +993,68 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadPan(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetTrackLevel(
+        JNIEnv* env, jobject /* thiz */, jint track, jfloat level)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (track < 0 || track >= 128) {
+        return toJString(env, "Track level change failed: invalid track");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setTrackLevel(
+                    static_cast<std::uint8_t>(track),
+                    level));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetTrackLevel(
+        JNIEnv* /* env */, jobject /* thiz */, jint track)
+{
+    if (track < 0 || track >= 128) {
+        return 1.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().trackLevel(
+            static_cast<std::uint8_t>(track));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetTrackPan(
+        JNIEnv* env, jobject /* thiz */, jint track, jfloat pan)
+{
+    if (env == nullptr) {
+        return nullptr;
+    }
+
+    if (track < 0 || track >= 128) {
+        return toJString(env, "Track pan change failed: invalid track");
+    }
+
+    return toJString(
+            env,
+            mpc::audio::AudioEngine::instance().setTrackPan(
+                    static_cast<std::uint8_t>(track),
+                    pan));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetTrackPan(
+        JNIEnv* /* env */, jobject /* thiz */, jint track)
+{
+    if (track < 0 || track >= 128) {
+        return 0.0f;
+    }
+
+    return mpc::audio::AudioEngine::instance().trackPan(
+            static_cast<std::uint8_t>(track));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadEnvelope(
         JNIEnv* env,
         jobject /* thiz */,

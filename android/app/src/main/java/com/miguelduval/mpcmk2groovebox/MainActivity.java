@@ -268,6 +268,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private LinearLayout mainTrackSampleEmptyActions;
     private MpcTrackEditView mainTrackEditView;
     private MpcPadMixerView padMixerView;
+    private MpcChannelMixerView channelMixerView;
     private MpcMainMixerStripView mainMixerStripView;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
@@ -466,6 +467,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native float nativeAudioGetPadLevel(int pad);
     private static native String nativeAudioSetPadPan(int pad, float pan);
     private static native float nativeAudioGetPadPan(int pad);
+    private static native String nativeAudioSetTrackLevel(int track, float level);
+    private static native float nativeAudioGetTrackLevel(int track);
+    private static native String nativeAudioSetTrackPan(int track, float pan);
+    private static native float nativeAudioGetTrackPan(int track);
     private static native String nativeAudioSetPadLayerGain(int pad, int layer, float gain);
     private static native float nativeAudioGetPadLayerGain(int pad, int layer);
     private static native String nativeAudioSetPadLayerTuning(int pad, int layer, float semitones);
@@ -1562,6 +1567,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return "MIX PAN";
             case PAD_MIXER_TUNE:
                 return "MIX TUNE";
+            case CHANNEL_MIXER_LEVEL:
+                return "CH MIX LEVEL";
+            case CHANNEL_MIXER_PAN:
+                return "CH MIX PAN";
             case SAMPLE_LAYER:
                 return "LAYER";
             default:
@@ -1647,10 +1656,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showSamplePage();
                 break;
             case CHANNEL_MIXER:
-                showUnavailableModePage(
-                        mode,
-                        "CHANNEL MIXER",
-                        "A real multi-channel mixer requires track level, pan, routing, sends and insert state. Those controls are not available yet.");
+                showChannelMixerPage();
                 break;
             case MUTE:
                 showMutePage();
@@ -11336,6 +11342,112 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateModeRailSelection();
     }
 
+    private void showChannelMixerPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "CHANNEL_MIXER";
+        navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(
+                MpcUiState.DataDialFocus.CHANNEL_MIXER_LEVEL);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("CHANNEL MIXER");
+        content.removeAllViews();
+
+        channelMixerView = new MpcChannelMixerView(
+                this,
+                new MpcChannelMixerView.Listener() {
+                    @Override public int selectedTrack() {
+                        return Math.max(0, nativeSequenceGetSelectedTrack());
+                    }
+
+                    @Override public int trackCount() {
+                        return Math.max(0, nativeSequenceGetTrackCount());
+                    }
+
+                    @Override public String trackLabel(int trackIndex) {
+                        return String.format(
+                                Locale.ROOT, "%02d", trackIndex + 1);
+                    }
+
+                    @Override public String trackType(int trackIndex) {
+                        return nativeSequenceGetTrackType(trackIndex);
+                    }
+
+                    @Override public float trackLevel(int trackIndex) {
+                        return nativeAudioGetTrackLevel(trackIndex);
+                    }
+
+                    @Override public float trackPan(int trackIndex) {
+                        return nativeAudioGetTrackPan(trackIndex);
+                    }
+
+                    @Override public void onTrackSelected(int track) {
+                        final int t = Math.max(0, Math.min(
+                                nativeSequenceGetTrackCount() - 1, track));
+                        setBottomStatus(nativeSequenceSelectTrack(t));
+                        refreshChannelMixerView();
+                        refreshSequenceControls();
+                        refreshMpcCompactContext();
+                    }
+
+                    @Override public void onControlFocus(
+                            int track,
+                            MpcChannelMixerView.ControlFocus focus) {
+                        final int t = Math.max(0, Math.min(
+                                nativeSequenceGetTrackCount() - 1, track));
+                        final MpcUiState.DataDialFocus dialFocus;
+                        switch (focus) {
+                            case PAN:
+                                dialFocus = MpcUiState.DataDialFocus.CHANNEL_MIXER_PAN;
+                                break;
+                            case LEVEL:
+                            default:
+                                dialFocus = MpcUiState.DataDialFocus.CHANNEL_MIXER_LEVEL;
+                                break;
+                        }
+                        navigationController.setDataDialFocus(dialFocus);
+                        setBottomStatus(String.format(
+                                Locale.ROOT,
+                                "CHANNEL MIXER • TRACK %02d • %s • DATA DIAL",
+                                t + 1,
+                                focus == MpcChannelMixerView.ControlFocus.PAN
+                                        ? "PAN" : "LEVEL"));
+                        refreshChannelMixerView();
+                    }
+
+                    @Override public void onTrackLevelSet(int track, float value) {
+                        setBottomStatus(nativeAudioSetTrackLevel(track, value));
+                        refreshChannelMixerView();
+                    }
+
+                    @Override public void onTrackPanDelta(int track, float delta) {
+                        final float current = nativeAudioGetTrackPan(track);
+                        final float next = Math.max(
+                                -1.0f, Math.min(1.0f, current + delta));
+                        setBottomStatus(nativeAudioSetTrackPan(track, next));
+                        refreshChannelMixerView();
+                    }
+                });
+
+        content.addView(channelMixerView,
+                new FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+        refreshChannelMixerView();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+    }
+
+    private void refreshChannelMixerView() {
+        if (channelMixerView == null) {
+            return;
+        }
+        channelMixerView.refresh(Math.max(0, nativeSequenceGetSelectedTrack()));
+    }
+
     private void refreshPadMixerView() {
         if (padMixerView == null) {
             return;
@@ -18258,6 +18370,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     cyclePadMixerDialFocus();
                     return;
                 }
+                if (navigationController.state().mode()
+                        == MpcUiState.Mode.CHANNEL_MIXER
+                        && channelMixerView != null) {
+                    cycleChannelMixerDialFocus();
+                    return;
+                }
                 if (navigationController.state().mode() == MpcUiState.Mode.BROWSER
                         && navigationController.state().dataDialFocus()
                                 == MpcUiState.DataDialFocus.BROWSER_ITEM) {
@@ -18747,6 +18865,37 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         + " • DATA DIAL");
     }
 
+    private void cycleChannelMixerDialFocus() {
+        final MpcUiState.DataDialFocus current =
+                navigationController.state().dataDialFocus();
+        final MpcUiState.DataDialFocus next;
+        switch (current) {
+            case CHANNEL_MIXER_PAN:
+                next = MpcUiState.DataDialFocus.CHANNEL_MIXER_LEVEL;
+                break;
+            case CHANNEL_MIXER_LEVEL:
+            default:
+                next = MpcUiState.DataDialFocus.CHANNEL_MIXER_PAN;
+                break;
+        }
+
+        navigationController.setDataDialFocus(next);
+        navigationController.setSubcontext(
+                MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setActionAvailable(true);
+
+        if (channelMixerView != null) {
+            channelMixerView.setControlFocus(next);
+        }
+
+        setBottomStatus(
+                "CHANNEL MIXER • "
+                        + (next == MpcUiState.DataDialFocus.CHANNEL_MIXER_PAN
+                                ? "PAN"
+                                : "LEVEL")
+                        + " • DATA DIAL");
+    }
+
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
         if (hardwareLocateActive) {
@@ -18806,6 +18955,43 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 }
             }
             refreshPadMixerView();
+            refreshMpcCompactContext();
+            return;
+        }
+        if (navigationController.state().mode()
+                == MpcUiState.Mode.CHANNEL_MIXER
+                && channelMixerView != null) {
+            final MpcUiState.DataDialFocus focus =
+                    navigationController.state().dataDialFocus();
+            final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+            switch (focus) {
+                case CHANNEL_MIXER_PAN: {
+                    final float increment = fine ? 0.01f : 0.05f;
+                    final float next = Math.max(
+                            -1.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetTrackPan(track)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetTrackPan(track, next));
+                    break;
+                }
+                case CHANNEL_MIXER_LEVEL:
+                default: {
+                    final float increment = fine ? 0.001f : 0.01f;
+                    final float next = Math.max(
+                            0.0f,
+                            Math.min(
+                                    1.0f,
+                                    nativeAudioGetTrackLevel(track)
+                                            + delta * increment));
+                    setBottomStatus(
+                            nativeAudioSetTrackLevel(track, next));
+                    break;
+                }
+            }
+            refreshChannelMixerView();
             refreshMpcCompactContext();
             return;
         }

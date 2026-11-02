@@ -162,6 +162,8 @@ struct Track {
     bool muted = false;
     bool soloed = false;
     bool recordArmed = false;
+    float level = 1.0f;
+    float pan = 0.0f;
     std::vector<Pattern> patterns;
     std::vector<PatternPlacement> placements;
 };

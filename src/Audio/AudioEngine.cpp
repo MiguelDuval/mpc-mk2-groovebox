@@ -1700,6 +1700,68 @@ float AudioEngine::padPan(std::uint8_t padIndex) const {
     return projectState_.activeDrumProgram().pad(padIndex).pan;
 }
 
+std::string AudioEngine::setTrackLevel(
+        std::uint8_t trackIndex,
+        float level) {
+    auto& sequence = projectState_.activeSequence();
+    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())
+            || !std::isfinite(level)) {
+        return "Track level change failed: invalid value";
+    }
+
+    const float clamped = std::clamp(level, 0.0f, 1.0f);
+    const auto milli =
+            static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    sequence.tracks[trackIndex].level =
+            static_cast<float>(milli) / 1000.0f;
+
+    return "Track " + std::to_string(static_cast<unsigned>(trackIndex + 1))
+            + " level: " + std::to_string(milli / 10) + "%";
+}
+
+float AudioEngine::trackLevel(std::uint8_t trackIndex) const {
+    const auto& sequence = projectState_.activeSequence();
+    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
+        return 1.0f;
+    }
+
+    return sequence.tracks[trackIndex].level;
+}
+
+std::string AudioEngine::setTrackPan(
+        std::uint8_t trackIndex,
+        float pan) {
+    auto& sequence = projectState_.activeSequence();
+    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())
+            || !std::isfinite(pan)) {
+        return "Track pan change failed: invalid value";
+    }
+
+    const float clamped = std::clamp(pan, -1.0f, 1.0f);
+    const auto milli = static_cast<std::int32_t>(std::lround(clamped * 1000.0f));
+    sequence.tracks[trackIndex].pan = static_cast<float>(milli) / 1000.0f;
+
+    const float applied = static_cast<float>(milli) / 1000.0f;
+    if (applied < 0.0f) {
+        return "Track " + std::to_string(static_cast<unsigned>(trackIndex + 1))
+                + " pan: L" + std::to_string(static_cast<int>(-applied * 100.0f));
+    }
+    if (applied > 0.0f) {
+        return "Track " + std::to_string(static_cast<unsigned>(trackIndex + 1))
+                + " pan: R" + std::to_string(static_cast<int>(applied * 100.0f));
+    }
+    return "Track " + std::to_string(static_cast<unsigned>(trackIndex + 1)) + " pan: C";
+}
+
+float AudioEngine::trackPan(std::uint8_t trackIndex) const {
+    const auto& sequence = projectState_.activeSequence();
+    if (trackIndex >= static_cast<std::uint8_t>(sequence.tracks.size())) {
+        return 0.0f;
+    }
+
+    return sequence.tracks[trackIndex].pan;
+}
+
 void AudioEngine::setPadAftertouch(
         std::uint8_t padIndex,
         std::uint8_t pressure) noexcept {

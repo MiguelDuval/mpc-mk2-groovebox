@@ -76,6 +76,8 @@ final class MpcUiState {
         PAD_MIXER_LEVEL,
         PAD_MIXER_PAN,
         PAD_MIXER_TUNE,
+        CHANNEL_MIXER_LEVEL,
+        CHANNEL_MIXER_PAN,
         SAMPLE_LAYER,
         SAMPLE_START,
         SAMPLE_END,

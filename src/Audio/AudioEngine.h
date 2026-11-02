@@ -109,6 +109,12 @@ public:
     std::string setPadPan(std::uint8_t padIndex, float pan);
     float padPan(std::uint8_t padIndex) const;
 
+    // Track mixer level/pan (Channel Mixer). Thread-safe control-thread access.
+    std::string setTrackLevel(std::uint8_t trackIndex, float level);
+    float trackLevel(std::uint8_t trackIndex) const;
+    std::string setTrackPan(std::uint8_t trackIndex, float pan);
+    float trackPan(std::uint8_t trackIndex) const;
+
     // Realtime expression from the pressure-sensitive MkII pads.
     // Ephemeral only: does not modify project state.
     void setPadAftertouch(
