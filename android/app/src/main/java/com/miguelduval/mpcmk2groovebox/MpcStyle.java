@@ -41,6 +41,15 @@ final class MpcStyle {
     /** Selected fill variant of the selection red. */
     static final int SELECTED = Color.rgb(235, 42, 68);
 
+    /** Cool cyan accent used by active editor controls and selected list strokes. */
+    static final int ACCENT = Color.rgb(78, 180, 204);
+
+    /** Brighter secondary cyan for selected/secondary control emphasis. */
+    static final int ACCENT_2 = Color.rgb(112, 204, 223);
+
+    /** Destructive/error emphasis; matches the MPC red selection token. */
+    static final int DANGER = SELECTION_RED;
+
     /** Active / enabled affirmative (transport green). */
     static final int ACTIVE = Color.rgb(63, 207, 117);
 
@@ -64,8 +73,8 @@ final class MpcStyle {
     static final float TEXT_SIZE_MAIN_FIELD = 13f;
     static final float TEXT_SIZE_MAIN_HEADER = 15f;
 
-    static final int TYPEFACE_NORMAL = Typeface.DEFAULT;
-    static final int TYPEFACE_BOLD = Typeface.DEFAULT_BOLD;
+    static final Typeface TYPEFACE_NORMAL = Typeface.DEFAULT;
+    static final Typeface TYPEFACE_BOLD = Typeface.DEFAULT_BOLD;
 
     // --- Geometry (dp, converted at call sites) ------------------------------
 

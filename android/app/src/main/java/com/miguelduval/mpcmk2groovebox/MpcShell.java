@@ -79,7 +79,7 @@ final class MpcShell {
         mainColumn.setOrientation(LinearLayout.VERTICAL);
 
         workspace = new FrameLayout(context);
-        workspace.setBackgroundColor(BG);
+        workspace.setBackgroundColor(MpcStyle.BG);
 
         channelStripRestoreButton = new Button(context);
         channelStripRestoreButton.setText("");

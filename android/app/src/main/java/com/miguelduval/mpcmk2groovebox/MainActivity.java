@@ -3711,7 +3711,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button arrangementSplit = actionButton("SPLIT", v -> {
             if (!startupComplete) return;
-            final int trackIndex = state().activeTrackIndex();
+            final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
             final long tick = selectedArrangementEventTick;
             if (tick < 0) {
                 setBottomStatus("SPLIT failed: no step selected");
@@ -3726,7 +3726,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button arrangementDelete = actionButton("DELETE", v -> {
             if (!startupComplete) return;
-            final int trackIndex = state().activeTrackIndex();
+            final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
             final long tick = selectedArrangementEventTick;
             if (tick < 0) {
                 setBottomStatus("DELETE failed: no step selected");
@@ -3741,7 +3741,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Button arrangementDuplicate = actionButton("DUPLICATE", v -> {
             if (!startupComplete) return;
-            final int trackIndex = state().activeTrackIndex();
+            final int trackIndex = Math.max(0, nativeSequenceGetSelectedTrack());
             final long sourceTick = selectedArrangementEventTick;
             if (sourceTick < 0) {
                 setBottomStatus("DUPLICATE failed: no step selected");
@@ -5292,6 +5292,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String arrangementData =
                 nativeSequenceGetTrackArrangementData(trackIndex);
         final float zoom = nativeSequenceGetArrangementZoom();
+        final TextView eventSummary = mainTrackArrangementHost == null
+                ? null
+                : findTextByContentDescription(
+                        mainTrackArrangementHost,
+                        "Main Mode arrangement event summary");
         if (eventSummary != null) {
             eventSummary.setText(
                     "TRACK EVENTS • " + arrangementData + " • ZOOM "
