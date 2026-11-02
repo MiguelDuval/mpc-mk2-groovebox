@@ -14,6 +14,7 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <cstring>
 #include <span>
 #include <string>
 #include <vector>

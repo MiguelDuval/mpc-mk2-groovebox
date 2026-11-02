@@ -144,7 +144,8 @@ public:
                             owner_.recordingWaveformPeakMilli_[waveformBin];
                     const auto previousPeak =
                             waveformPeak.load(std::memory_order_relaxed);
-                    if (samplePeakMilli > previousPeak) {
+                    if (samplePeakMilli >
+                            static_cast<std::uint32_t>(previousPeak)) {
                         waveformPeak.store(
                                 static_cast<std::int32_t>(samplePeakMilli),
                                 std::memory_order_relaxed);
