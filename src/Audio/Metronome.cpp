@@ -8,7 +8,7 @@
 
 namespace mpc::audio {
 
-void initializeMetronomeFromSequence(Metronome& metro, const domain::Sequence& seq) noexcept {
+void initializeMetronomeFromSequence(Metronome& metro, const mpc::domain::Sequence& seq) noexcept {
     metro.setTempo(seq.tempoBpm);
     metro.setTimeSignature(seq.numerator, seq.denominator);
 }

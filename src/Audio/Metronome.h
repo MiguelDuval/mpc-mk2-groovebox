@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-namespace domain {
+namespace mpc::domain {
 struct Sequence;
 }
 
@@ -66,6 +66,6 @@ private:
  * Initialize metronome configuration from sequence parameters.
  * Used by both production AudioEngine constructor and host tests.
  */
-void initializeMetronomeFromSequence(Metronome& metro, const domain::Sequence& seq) noexcept;
+void initializeMetronomeFromSequence(Metronome& metro, const mpc::domain::Sequence& seq) noexcept;
 
 } // namespace mpc::audio

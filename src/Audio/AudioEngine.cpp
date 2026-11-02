@@ -965,19 +965,6 @@ AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
                     std::memory_order_relaxed);
         }
     }
-
-    // Snapshot sequence tempo and time signature for the metronome so the
-    // realtime callback can read them atomically without touching project state.
-    metronomeTempoBpm_.store(
-            static_cast<double>(
-                    projectState_.activeSequence().tempoBpm),
-            std::memory_order_relaxed);
-    metronomeTimeSigNumerator_.store(
-            projectState_.activeSequence().numerator,
-            std::memory_order_relaxed);
-    metronomeTimeSigDenominator_.store(
-            projectState_.activeSequence().denominator,
-            std::memory_order_relaxed);
 }
 
 void AudioEngine::syncPadRuntimeProjection(
