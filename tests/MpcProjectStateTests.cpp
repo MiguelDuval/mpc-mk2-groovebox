@@ -113,19 +113,29 @@ int main() {
     assert(state.activeTrackIndex() == 0);
     assert(state.activeProgramIndexForTrack(0) == 0);
 
+    mpc::domain::MidiNoteEvent noteToCopy;
+    noteToCopy.tick = 480;
+    noteToCopy.durationTicks = 240;
+    noteToCopy.note = 42;
+    noteToCopy.velocity = 101;
+    noteToCopy.probability = 93;
+    noteToCopy.ratchet = 2;
+    noteToCopy.nudgeTicks = -3;
+    state.activeSequence().tracks[0].patterns.front().notes.push_back(noteToCopy);
+
     // Duplicate Track 0
     assert(state.duplicateTrack(0));
     assert(state.activeSequence().tracks.size() == 3);
     assert(state.activeTrackIndex() == 2);
-    assert(state.activeSequence().tracks[2].name == "TRACK 1 Copy");
-    assert(state.activeSequence().tracks[2].kind == mpc::domain::TrackKind::Audio);
+    const auto& sourceTrack = state.activeSequence().tracks[0];
+    const auto& duplicateTrack = state.activeSequence().tracks[2];
+    assert(duplicateTrack.name == sourceTrack.name + " Copy");
+    assert(duplicateTrack.kind == sourceTrack.kind);
     assert(state.activeSequence().tracks[2].patterns.size() == 1);
     assert(state.activeSequence().tracks[2].placements.size() == 1);
     assert(state.activeSequence().tracks[2].recordArmed == false);
     assert(state.activeSequence().tracks[2].soloed == false);
     // The duplicated Track, Patterns and Placements have independent IDs.
-    const auto& sourceTrack = state.activeSequence().tracks[0];
-    const auto& duplicateTrack = state.activeSequence().tracks[2];
     assert(duplicateTrack.id != sourceTrack.id);
     assert(duplicateTrack.patterns.front().id != sourceTrack.patterns.front().id);
     assert(duplicateTrack.placements.front().id != sourceTrack.placements.front().id);
@@ -142,6 +152,13 @@ int main() {
             == sourceTrack.placements.front().sourceOffsetTicks);
     assert(duplicateTrack.patterns.front().notes.size()
             == sourceTrack.patterns.front().notes.size());
+    assert(duplicateTrack.patterns.front().notes.front().tick == 480);
+    assert(duplicateTrack.patterns.front().notes.front().durationTicks == 240);
+    assert(duplicateTrack.patterns.front().notes.front().note == 42);
+    assert(duplicateTrack.patterns.front().notes.front().velocity == 101);
+    assert(duplicateTrack.patterns.front().notes.front().probability == 93);
+    assert(duplicateTrack.patterns.front().notes.front().ratchet == 2);
+    assert(duplicateTrack.patterns.front().notes.front().nudgeTicks == -3);
 
     // Duplicate Track 1 (Drum)
     assert(state.addTrack(mpc::domain::TrackKind::Drum));

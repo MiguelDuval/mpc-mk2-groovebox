@@ -724,6 +724,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingWavefor
         JNIEnv* env, jobject /* thiz */, jint points)
 {
     if (env == nullptr) return nullptr;
+    if (points <= 0 || points > 2048) {
+        return env->NewFloatArray(0);
+    }
     const auto peaks =
             mpc::audio::AudioEngine::instance().recordingWaveformPeaks(
                     static_cast<std::size_t>(points));
@@ -1104,43 +1107,6 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleRate(
             mpc::audio::AudioEngine::instance().padSampleRate(
                     static_cast<std::uint8_t>(pad),
                     static_cast<std::uint8_t>(layer)));
-}
-
-extern "C" JNIEXPORT jfloatArray JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingWaveformPeaks(
-        JNIEnv* env, jobject /* thiz */, jint points)
-{
-    if (points <= 0 || points > 2048) {
-        return env == nullptr ? nullptr : env->NewFloatArray(0);
-    }
-
-    const auto peaks =
-            mpc::audio::AudioEngine::instance().recordingWaveformPeaks(
-                    static_cast<std::size_t>(points));
-    return toJFloatArray(env, peaks);
-}
-
-extern "C" JNIEXPORT jint JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingFrameCount(
-        JNIEnv* /* env */, jobject /* thiz */)
-{
-    return static_cast<jint>(
-            mpc::audio::AudioEngine::instance().recordingFrameCount());
-}
-
-extern "C" JNIEXPORT jint JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingSampleRate(
-        JNIEnv* /* env */, jobject /* thiz */)
-{
-    return static_cast<jint>(
-            mpc::audio::AudioEngine::instance().recordingSampleRate());
-}
-
-extern "C" JNIEXPORT jfloat JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetRecordingPeak(
-        JNIEnv* /* env */, jobject /* thiz */)
-{
-    return mpc::audio::AudioEngine::instance().recordingPeak();
 }
 
 extern "C" JNIEXPORT jint JNICALL
@@ -2980,8 +2946,6 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceResetArrangement
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementEvent(
-        JNIEnv* env, jobject /* thiz */, jint trackIndex,
-        jlong sourceTick, jint noteNumber, jlong targetTick)
         JNIEnv* env, jobject /* thiz */, jint trackIndex,
         jlong sourceTick, jint noteNumber, jlong targetTick)
 {
