@@ -4,6 +4,10 @@
 #include <cstdint>
 #include <string>
 
+namespace domain {
+struct Sequence;
+}
+
 namespace mpc::audio {
 
 /**
@@ -45,11 +49,9 @@ public:
     std::atomic<int>& timeSigNumeratorRef() noexcept { return timeSigNumerator_; }
 
     // --- Realtime callback state (owned by callback thread) ---
-    // These are written only by the realtime output callback.
+    // Only resetRequested lives here; frame/phase/beat counters live in
+    // OutputCallback to avoid dual ownership.
     std::atomic<bool> resetRequested{false};
-    std::uint32_t framesRemaining = 0;
-    double phase = 0.0;
-    int beatInBar = 0;
 
 private:
     std::atomic<bool> enabled_{false};
@@ -59,5 +61,11 @@ private:
     std::atomic<int> timeSigNumerator_{4};
     std::atomic<int> timeSigDenominator_{4};
 };
+
+/**
+ * Initialize metronome configuration from sequence parameters.
+ * Used by both production AudioEngine constructor and host tests.
+ */
+void initializeMetronomeFromSequence(Metronome& metro, const domain::Sequence& seq) noexcept;
 
 } // namespace mpc::audio

@@ -4,7 +4,14 @@
 #include <cmath>
 #include <string>
 
+#include "MPC/Domain/MpcDomain.h"
+
 namespace mpc::audio {
+
+void initializeMetronomeFromSequence(Metronome& metro, const domain::Sequence& seq) noexcept {
+    metro.setTempo(seq.tempoBpm);
+    metro.setTimeSignature(seq.numerator, seq.denominator);
+}
 
 std::string Metronome::setEnabled(bool enabled) {
     enabled_.store(enabled, std::memory_order_release);

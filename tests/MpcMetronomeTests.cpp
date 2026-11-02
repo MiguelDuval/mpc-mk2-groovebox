@@ -20,9 +20,8 @@ int main() {
 
     // --- Initial snapshots reflect active sequence values ---
     // Simulate what AudioEngine constructor does: initialize metronome from
-    // active sequence tempo/time-signature.
-    metro.setTempo(sequence.tempoBpm);
-    metro.setTimeSignature(sequence.numerator, sequence.denominator);
+    // active sequence tempo/time-signature via the shared production helper.
+    mpc::audio::initializeMetronomeFromSequence(metro, sequence);
 
     assert(std::abs(metro.tempo() - 96.0) < 0.001);
     assert(metro.timeSigNumerator() == 7);
@@ -120,10 +119,10 @@ int main() {
             mpc::domain::TrackKind::Midi, "Test Track");
     assert(trackId != 0);
 
-    auto& sequence = projectState.activeSequence();
-    assert(sequence.tracks.size() > 0);
+    auto& trackSequence = projectState.activeSequence();
+    assert(trackSequence.tracks.size() > 0);
 
-    auto& track = sequence.tracks.back();
+    auto& track = trackSequence.tracks.back();
     mpc::domain::Pattern pattern;
     pattern.id = "test-pattern-1";
     pattern.name = "Test Pattern";
@@ -136,14 +135,14 @@ int main() {
 
     const std::string notes = mpc::audio::getTrackNotesAsString(
             projectState,
-            static_cast<std::uint8_t>(sequence.tracks.size() - 1));
+            static_cast<std::uint8_t>(trackSequence.tracks.size() - 1));
     // Format: tick,dur,note,vel,prob,rat,nudge;tick,dur,note,vel,prob,rat,nudge
     assert(notes.find("120,180,36,100,88,2,-11") != std::string::npos);
     assert(notes.find("600,90,42,111,123,1,7") != std::string::npos);
     assert(notes.find(";") != std::string::npos); // separator present
 
     // Track 0 (if it exists) may have no notes, but must not crash.
-    if (sequence.tracks.size() > 1) {
+    if (trackSequence.tracks.size() > 1) {
         const std::string notes0 = mpc::audio::getTrackNotesAsString(projectState, 0);
         (void)notes0;
     }

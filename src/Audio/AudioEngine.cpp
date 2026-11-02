@@ -384,24 +384,19 @@ public:
 
             // Metronome click generator. Beat interval in frames depends on
             // sequence tempo; click fires on every beat with beat-1 accent.
-            if (metronomeEnabled_.load(std::memory_order_relaxed)) {
+            if (metronome_.enabled()) {
                 // Consume a control-thread reset request before using
                 // callback-owned metronome state. The callback owns
                 // metronomeFramesRemaining_, metronomePhase_ and
                 // metronomeBeatInBar_; only this thread writes them.
-                if (metronomeResetRequested_.load(
-                        std::memory_order_acquire)) {
+                if (metronome_.resetRequested.exchange(
+                        false, std::memory_order_acq_rel)) {
                     metronomeFramesRemaining_ = 0u;
                     metronomePhase_ = 0.0;
                     metronomeBeatInBar_ = 0;
-                    metronomeResetRequested_.store(
-                            false, std::memory_order_release);
                 }
 
-                const float tempoBpm =
-                        static_cast<float>(
-                                metronomeTempoBpm_.load(
-                                        std::memory_order_relaxed));
+                const float tempoBpm = static_cast<float>(metronome_.tempo());
                 if (tempoBpm > 0.0f && sampleRate > 0) {
                     const double beatFrames =
                             static_cast<double>(sampleRate) * 60.0
@@ -409,16 +404,9 @@ public:
                     if (metronomeFramesRemaining_ == 0u) {
                         metronomeFramesRemaining_ =
                                 static_cast<std::uint32_t>(beatFrames);
-                        const int sound =
-                                metronomeSound_.load(
-                                        std::memory_order_relaxed);
-                        const float volume =
-                                static_cast<float>(
-                                        metronomeVolumeMilli_.load(
-                                                std::memory_order_relaxed))
-                                / 1000.0f;
-                        const bool accent =
-                                metronomeBeatInBar_ == 0;
+                        const int sound = metronome_.sound();
+                        const float volume = metronome_.volume();
+                        const bool accent = metronomeBeatInBar_ == 0;
                         const float clickVol =
                                 volume * (accent ? 1.0f : 0.6f);
                         float clickSample = 0.0f;
@@ -449,10 +437,7 @@ public:
                         }
                         metronomeBeatInBar_ =
                                 (metronomeBeatInBar_ + 1)
-                                % static_cast<int>(
-                                        metronomeTimeSigNumerator_
-                                                .load(
-                                                        std::memory_order_relaxed));
+                                % static_cast<int>(metronome_.timeSigNumerator());
                     } else {
                         --metronomeFramesRemaining_;
                     }
@@ -905,10 +890,7 @@ private:
 AudioEngine::AudioEngine(mpc::MpcProjectState& projectState)
         : projectState_(projectState),
           metronome_(std::make_unique<Metronome>()) {
-    metronome_->setTempo(projectState_.activeSequence().tempoBpm);
-    metronome_->setTimeSignature(
-            projectState_.activeSequence().numerator,
-            projectState_.activeSequence().denominator);
+    initializeMetronomeFromSequence(*metronome_, projectState_.activeSequence());
     outputLastErrorCode_.store(
             static_cast<std::int32_t>(oboe::Result::OK),
             std::memory_order_relaxed);
