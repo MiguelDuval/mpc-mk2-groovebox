@@ -96,7 +96,11 @@ public:
     bool addTrack(
             domain::TrackKind kind,
             std::string name = {}) ;
-    
+
+    bool duplicateTrack(std::size_t trackIndex) noexcept;
+
+    bool deleteTrack(std::size_t trackIndex) noexcept;
+
     std::string sequenceStatus() const;
     std::string trackStatus(std::size_t trackIndex) const;
 

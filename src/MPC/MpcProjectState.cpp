@@ -648,6 +648,53 @@ bool MpcProjectState::addTrack(
     return true;
 }
 
+bool MpcProjectState::duplicateTrack(std::size_t trackIndex) noexcept {
+    auto& sequence = activeSequence();
+    if (trackIndex >= sequence.tracks.size()) return false;
+    if (sequence.tracks.size() >= domain::kMaxSequenceTracks) return false;
+
+    const auto& source = sequence.tracks[trackIndex];
+    domain::Track copy = source;
+    auto number = sequence.tracks.size() + 1;
+    const auto trackIdUsed = [&sequence](std::size_t candidate) {
+        const auto candidateId = "track-" + std::to_string(candidate);
+        return std::any_of(
+                sequence.tracks.begin(), sequence.tracks.end(),
+                [&candidateId](const domain::Track& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (trackIdUsed(number)) {
+        ++number;
+    }
+    copy.id = "track-" + std::to_string(number);
+    copy.name = source.name + " Copy";
+    copy.recordArmed = false;
+    copy.soloed = false;
+
+    sequence.tracks.push_back(std::move(copy));
+    const auto newIndex = sequence.tracks.size() - 1;
+    activeTrackIndex_ = newIndex;
+    selectTrack(activeTrackIndex_);
+    return true;
+}
+
+bool MpcProjectState::deleteTrack(std::size_t trackIndex) noexcept {
+    auto& sequence = activeSequence();
+    if (trackIndex >= sequence.tracks.size()) return false;
+    if (sequence.tracks.size() <= 1) return false;
+
+    sequence.tracks.erase(sequence.tracks.begin() +
+            static_cast<std::ptrdiff_t>(trackIndex));
+
+    const auto lastIndex = sequence.tracks.size() - 1;
+    if (activeTrackIndex_ > lastIndex) {
+        activeTrackIndex_ = lastIndex;
+    }
+    selectTrack(activeTrackIndex_);
+    return true;
+}
+
 std::string MpcProjectState::sequenceStatus() const {
     const auto& sequence = activeSequence();
     const auto bars = sequencer::sequenceBars(sequence);

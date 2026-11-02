@@ -3531,6 +3531,38 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
 }
 
 extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateTrack(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) {
+        return toJString(env, "Track duplicate failed: invalid index");
+    }
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.duplicateTrack(static_cast<std::size_t>(trackIndex))) {
+        return toJString(env, "Track duplicate failed");
+    }
+    return toJString(
+            env,
+            state.trackStatus(state.activeTrackIndex()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDeleteTrack(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    if (trackIndex < 0) {
+        return toJString(env, "Track delete failed: invalid index");
+    }
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (!state.deleteTrack(static_cast<std::size_t>(trackIndex))) {
+        return toJString(env, "Track delete failed");
+    }
+    return toJString(
+            env,
+            state.trackStatus(state.activeTrackIndex()));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTrackStatus(
         JNIEnv* env, jobject /* thiz */, jint trackIndex)
 {

@@ -627,6 +627,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceGetTrackProgram(int trackIndex);
     private static native String nativeSequenceSelectTrack(int trackIndex);
     private static native String nativeSequenceAddTrack(int kind);
+    private static native String nativeSequenceDuplicateTrack(int trackIndex);
+    private static native String nativeSequenceDeleteTrack(int trackIndex);
     private static native String nativeSequenceTrackStatus(int trackIndex);
     private static native boolean nativeSequenceIsSelectedTrackArmed();
     private static native String nativeSequenceSetSelectedTrackArmed(boolean armed);
@@ -10430,6 +10432,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final int selected = nativeSequenceGetSelectedTrack();
         for (int i = 0; i < count; i++) {
             final int track = i;
+            LinearLayout trackRow = row();
+            trackRow.setOrientation(LinearLayout.HORIZONTAL);
+
             Button b = actionButton(
                     String.format(
                             Locale.ROOT,
@@ -10442,12 +10447,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         refreshSequenceControls();
                     });
             b.setTextSize(10);
-            list.addView(b, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+            trackRow.addView(b, new LinearLayout.LayoutParams(
+                    0, dp(48), 1));
             b.setBackground(strokeBackground(
                     i == selected ? Color.rgb(32, 52, 60) : SURFACE_2,
                     i == selected ? ACCENT : LINE,
                     8));
+
+            Button dup = actionButton(
+                    "DUP",
+                    v -> {
+                        duplicateSequenceTrack(track);
+                        refreshSequenceTrackList(list);
+                        refreshSequenceControls();
+                    });
+            dup.setTextSize(9);
+            dup.setContentDescription("Duplicate Track " + (i + 1));
+            trackRow.addView(dup, new LinearLayout.LayoutParams(
+                    dp(56), dp(48)));
+
+            Button del = actionButton(
+                    "DEL",
+                    v -> {
+                        deleteSequenceTrack(track);
+                        refreshSequenceTrackList(list);
+                        refreshSequenceControls();
+                    });
+            del.setTextSize(9);
+            del.setContentDescription("Delete Track " + (i + 1));
+            trackRow.addView(del, new LinearLayout.LayoutParams(
+                    dp(56), dp(48)));
+
+            list.addView(trackRow, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
         }
         if (count == 0) {
             list.addView(label("No tracks", 12, MUTED));
@@ -10457,6 +10489,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void addSequenceTrack(int kind) {
         nativeSequenceStop();
         setBottomStatus(nativeSequenceAddTrack(kind));
+        showSequencePage();
+        scheduleProjectPersistenceViewHierarchyCapture("SEQ");
+    }
+
+    private void duplicateSequenceTrack(int trackIndex) {
+        nativeSequenceStop();
+        setBottomStatus(nativeSequenceDuplicateTrack(trackIndex));
+        showSequencePage();
+        scheduleProjectPersistenceViewHierarchyCapture("SEQ");
+    }
+
+    private void deleteSequenceTrack(int trackIndex) {
+        nativeSequenceStop();
+        final int count = nativeSequenceGetTrackCount();
+        if (count <= 1) {
+            setBottomStatus("Track delete failed: cannot delete last track");
+            return;
+        }
+        setBottomStatus(nativeSequenceDeleteTrack(trackIndex));
         showSequencePage();
         scheduleProjectPersistenceViewHierarchyCapture("SEQ");
     }

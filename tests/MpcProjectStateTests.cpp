@@ -113,6 +113,44 @@ int main() {
     assert(state.activeTrackIndex() == 0);
     assert(state.activeProgramIndexForTrack(0) == 0);
 
+    // Duplicate Track 0
+    assert(state.duplicateTrack(0));
+    assert(state.activeSequence().tracks.size() == 3);
+    assert(state.activeTrackIndex() == 2);
+    assert(state.activeSequence().tracks[2].name == "TRACK 1 Copy");
+    assert(state.activeSequence().tracks[2].kind == mpc::domain::TrackKind::Audio);
+    assert(state.activeSequence().tracks[2].patterns.size() == 1);
+    assert(state.activeSequence().tracks[2].placements.size() == 1);
+    assert(state.activeSequence().tracks[2].recordArmed == false);
+    assert(state.activeSequence().tracks[2].soloed == false);
+    // The duplicated track should not share the same ID
+    assert(state.activeSequence().tracks[2].id != state.activeSequence().tracks[0].id);
+    // Patterns are distinct copies
+    assert(state.activeSequence().tracks[2].patterns.front().id != state.activeSequence().tracks[0].patterns.front().id);
+
+    // Duplicate Track 1 (Drum)
+    assert(state.addTrack(mpc::domain::TrackKind::Drum));
+    assert(state.activeSequence().tracks.size() == 4);
+    assert(state.duplicateTrack(3));
+    assert(state.activeSequence().tracks.size() == 5);
+    assert(state.activeTrackIndex() == 4);
+
+    // Delete Track 4 (the Drum copy we just made)
+    assert(state.deleteTrack(4));
+    assert(state.activeSequence().tracks.size() == 4);
+    assert(state.activeTrackIndex() == 3);
+
+    // Delete all but one track should fail (must keep at least 1)
+    assert(state.deleteTrack(0));
+    assert(state.deleteTrack(0));
+    assert(state.deleteTrack(0));
+    assert(!state.deleteTrack(0)); // Last track cannot be deleted
+    assert(state.activeSequence().tracks.size() == 1);
+
+    // Invalid index
+    assert(!state.duplicateTrack(99));
+    assert(!state.deleteTrack(99));
+
     mpc::domain::DrumProgram secondProgram;
     secondProgram.id = "drum-program-2";
     secondProgram.name = "Drum Program 2";
