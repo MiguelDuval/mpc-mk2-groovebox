@@ -533,3 +533,17 @@ This update supersedes the pending status previously recorded for Build #3662 an
 2. Inspect the resulting PNG/XML evidence archive and confirm artifact IDs and checksums before claiming emulator acceptance.
 3. Keep physical Akai MPC Studio MkII validation **NOT RUN** until actual hardware is available.
 4. Continue feature development only after the current smoke preflight/runtime gate is correctly understood. Do not remove or relax the test; keep the flat-radius design invariant at zero.
+
+
+---
+
+## Build #3664 smoke follow-up — 2026-11-02
+
+- Exact product source / test branch SHA: `e15ac0d1dc36d5142ad5d690d5ad75955d945c6e`.
+- Android Build #3664 / [run 41428163654](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/41428163654): fast preflight SUCCESS; all 52 Android/native test steps SUCCESS; APK assembly/upload SUCCESS; smoke syntax/evidence preflight SUCCESS.
+- Emulator smoke step 56 entered the runner and passed the previous shared-radius contract. It then stopped at `MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38`, another stale literal expectation inside `tests/android_ui_smoke.sh`. The current app code uses `MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = MpcStyle.MAIN_TRACK_TYPE_ICON_WIDTH_DP`, while `MpcStyle.java` correctly owns `MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38`.
+- Review of the remaining smoke geometry checks found the same centralisation mismatch in Toolbar widths/heights, shortcut selection rail width, Main gutters/heights/radius/divider, and shell geometry. The smoke contract now checks MainActivity aliases, MpcShell token consumption, and numeric values in MpcStyle. BrowserView's separate zero-radius token remains explicitly checked. These assertions preserve the same numeric UI invariants.
+- Step 57 ran but no visual evidence archive was created: the upload log warned that `/tmp/mpc-groovebox-startup.png` was missing. The smoke stopped in static source checks before screenshot capture or real UI interactions. Do not claim emulator acceptance for #3664.
+- #3664 APK artifact ID `13133191525`, 10,771,149 bytes, SHA-256 `987826e79994e9b37b6554c3ae591ff89539a5065840c372805c691db3037442`. Downloaded bytes match the GitHub digest; Android APK signature/file identification and ZIP integrity checks passed.
+
+Next: rerun smoke on the corrected geometry-contract commit, then inspect actual screenshots and UiAutomator XML. Keep the test numeric constraints intact; only test their correct source after design-token centralisation.

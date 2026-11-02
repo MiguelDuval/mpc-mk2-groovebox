@@ -221,3 +221,14 @@ After #3662 passes, continue product development at the same efficient feature c
 - Build #3663 / run `41423784051` failed only on trailing spaces in four newly appended Markdown metadata lines. These were converted to separate paragraphs without trailing whitespace.
 
 Next: run exact-head CI, verify the smoke reaches actual runtime interaction and inspect its PNG/XML archive. Keep emulator and hardware acceptance claims separate; physical Studio MkII remains NOT RUN. Continue using coherent feature-sized changes and CI checkpoints, not per-keystroke build cycles. Do not modify `main`, merge #124/#133, or rewrite history.
+
+
+## Build #3664 follow-up — 2026-11-02
+
+- Exact product SHA tested: `e15ac0d1dc36d5142ad5d690d5ad75955d945c6e`; Android Build #3664 / run `41428163654` passed fast preflight, all 52 Android/native tests, APK build/upload and smoke syntax/evidence preflight.
+- Emulator smoke passed the shared flat-radius check but stopped at a stale Track Type width literal. MainActivity now uses the shared `MpcStyle.MAIN_TRACK_TYPE_ICON_WIDTH_DP` alias; the canonical value remains 38dp in MpcStyle.
+- The same smoke script contained several more old local-value expectations for Toolbar/Main/Shell dimensions after MpcStyle centralisation. They are now being converted into strict alias + canonical-token checks; no expected values are being weakened. BrowserView's own local flat-radius assertion remains intact.
+- #3664 APK artifact `13133191525`, 10,771,149 bytes, SHA-256 `987826e79994e9b37b6554c3ae591ff89539a5065840c372805c691db3037442`, downloaded and integrity-checked.
+- No visual archive was produced by #3664 because static source checks stopped before screenshot capture; upload log reports missing `mpc-groovebox-startup.png`. Do not claim UI smoke passed.
+
+Next exact-head run must pass all strict geometry-token checks, then continue into actual emulator interactions and upload inspectable PNG/XML evidence. Physical Studio MkII validation remains NOT RUN. Do not touch `main` or Mozart; no merges or history rewrites.

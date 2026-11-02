@@ -581,8 +581,12 @@ if ! grep -Fq -- 'buildMainTrackTypeIconStrip()' "$MAIN_ACTIVITY_SOURCE" || \
   exit 1
 fi
 echo "Running MPC Main Track Type single-icon fidelity preflight..."
+if ! grep -Fq -- 'MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = MpcStyle.MAIN_TRACK_TYPE_ICON_WIDTH_DP;' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38;' "$MPC_STYLE_SOURCE"; then
+  echo "ERROR: Main Track Type icon width must use the shared 38dp design token"
+  exit 1
+fi
 for required in \
-  'MPC_MAIN_TRACK_TYPE_ICON_WIDTH_DP = 38' \
   'refreshMainTrackTypeVisuals();' \
   'buildMainTrackTypeIconStrip()' \
   'trackTypeIconDrawable(' \
@@ -951,16 +955,38 @@ fi
 
 echo "Running MPC3 Toolbar geometry preflight..."
 for required in \
-  'MPC_TOOLBAR_INSET_DP = 6' \
-  'MPC_TOOLBAR_CONTROL_HEIGHT_DP = 34' \
-  'MPC_TOOLBAR_GAP_DP = 2' \
-  'MPC_TOOLBAR_MENU_WIDTH_DP = 38' \
-  'MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106' \
-  'MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26' \
-  'MPC_TOOLBAR_TIMING_WIDTH_DP = 60' \
-  'MPC_TOOLBAR_METRO_WIDTH_DP = 58' \
-  'MPC_TOOLBAR_AUTO_WIDTH_DP = 48' \
-  'MPC_TOOLBAR_IO_WIDTH_DP = 40' \
+  'MPC_TOOLBAR_INSET_DP = MpcStyle.TOOLBAR_INSET_DP;' \
+  'MPC_TOOLBAR_CONTROL_HEIGHT_DP = MpcStyle.TOOLBAR_CONTROL_HEIGHT_DP;' \
+  'MPC_TOOLBAR_GAP_DP = MpcStyle.TOOLBAR_GAP_DP;' \
+  'MPC_TOOLBAR_MENU_WIDTH_DP = MpcStyle.TOOLBAR_MENU_WIDTH_DP;' \
+  'MPC_TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = MpcStyle.TOOLBAR_PROJECT_IDENTITY_WIDTH_DP;' \
+  'MPC_TOOLBAR_PROJECT_BROWSER_WIDTH_DP = MpcStyle.TOOLBAR_PROJECT_BROWSER_WIDTH_DP;' \
+  'MPC_TOOLBAR_TIMING_WIDTH_DP = MpcStyle.TOOLBAR_TIMING_WIDTH_DP;' \
+  'MPC_TOOLBAR_METRO_WIDTH_DP = MpcStyle.TOOLBAR_METRO_WIDTH_DP;' \
+  'MPC_TOOLBAR_AUTO_WIDTH_DP = MpcStyle.TOOLBAR_AUTO_WIDTH_DP;' \
+  'MPC_TOOLBAR_IO_WIDTH_DP = MpcStyle.TOOLBAR_IO_WIDTH_DP;'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC3 Toolbar geometry alias missing: $required"
+    exit 1
+  fi
+done
+for required in \
+  'TOOLBAR_INSET_DP = 6;' \
+  'TOOLBAR_CONTROL_HEIGHT_DP = 34;' \
+  'TOOLBAR_GAP_DP = 2;' \
+  'TOOLBAR_MENU_WIDTH_DP = 38;' \
+  'TOOLBAR_PROJECT_IDENTITY_WIDTH_DP = 106;' \
+  'TOOLBAR_PROJECT_BROWSER_WIDTH_DP = 26;' \
+  'TOOLBAR_TIMING_WIDTH_DP = 60;' \
+  'TOOLBAR_METRO_WIDTH_DP = 58;' \
+  'TOOLBAR_AUTO_WIDTH_DP = 48;' \
+  'TOOLBAR_IO_WIDTH_DP = 40;'; do
+  if ! grep -Fq -- "$required" "$MPC_STYLE_SOURCE"; then
+    echo "ERROR: shared MPC Toolbar design token missing or changed: $required"
+    exit 1
+  fi
+done
+for required in \
   'bar.setContentDescription("MPC One Main Toolbar")' \
   'BAR  001    BEAT  1    TICK  000' \
   'MPC Toolbar Menu' \
@@ -972,7 +998,7 @@ for required in \
   'hardware-first operation, while the final cells show MIDI In/Out' \
   'view.setText("IN".equals(view.getTag()) ? "IN" : "OUT")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC3 Toolbar geometry/content contract missing: $required"
+    echo "ERROR: MPC3 Toolbar content contract missing: $required"
     exit 1
   fi
 done
@@ -1007,7 +1033,12 @@ if grep -Fq -- 'selected ? MPC_SELECTED : BG' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: shortcut rail must not use a full-width red selected tile"
   exit 1
 fi
-for required in 'MPC_SHORTCUT_SELECTION_WIDTH_DP = 3' 'canvas.drawRect(' 'Color.rgb(224, 30, 61)' 'graphite surface' ; do
+if ! grep -Fq -- 'MPC_SHORTCUT_SELECTION_WIDTH_DP = MpcStyle.SHORTCUT_SELECTION_WIDTH_DP;' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'SHORTCUT_SELECTION_WIDTH_DP = 3;' "$MPC_STYLE_SOURCE"; then
+  echo "ERROR: MPC shortcut selection rail must use the shared 3dp design token"
+  exit 1
+fi
+for required in 'canvas.drawRect(' 'Color.rgb(224, 30, 61)' 'graphite surface'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcShortcutIconDrawable.java" && \
      ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC shortcut selection-rail visual contract missing: $required"
@@ -1017,12 +1048,29 @@ done
 
 echo "Running MPC One Main geometry preflight..."
 for required in \
-  'MPC_MAIN_CONTENT_GUTTER_DP = 4' \
-  'MPC_MAIN_SECTION_GAP_DP = 2' \
-  'MPC_MAIN_FIELD_HEIGHT_DP = 40' \
-  'MPC_MAIN_METRIC_HEIGHT_DP = 36' \
-  'MPC_MAIN_TRACK_STATE_HEIGHT_DP = 40' \
-  'MPC_MAIN_RADIUS_DP = 0' \
+  'MPC_MAIN_CONTENT_GUTTER_DP = MpcStyle.MAIN_CONTENT_GUTTER_DP;' \
+  'MPC_MAIN_SECTION_GAP_DP = MpcStyle.MAIN_SECTION_GAP_DP;' \
+  'MPC_MAIN_FIELD_HEIGHT_DP = MpcStyle.MAIN_FIELD_HEIGHT_DP;' \
+  'MPC_MAIN_METRIC_HEIGHT_DP = MpcStyle.MAIN_METRIC_HEIGHT_DP;' \
+  'MPC_MAIN_TRACK_STATE_HEIGHT_DP = MpcStyle.MAIN_FIELD_HEIGHT_DP;' \
+  'MPC_MAIN_RADIUS_DP = MpcStyle.FLAT_RADIUS_DP;'; do
+  if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
+    echo "ERROR: MPC One Main geometry alias missing: $required"
+    exit 1
+  fi
+done
+for required in \
+  'MAIN_CONTENT_GUTTER_DP = 4;' \
+  'MAIN_SECTION_GAP_DP = 2;' \
+  'MAIN_FIELD_HEIGHT_DP = 40;' \
+  'MAIN_METRIC_HEIGHT_DP = 36;' \
+  'FLAT_RADIUS_DP = 0;'; do
+  if ! grep -Fq -- "$required" "$MPC_STYLE_SOURCE"; then
+    echo "ERROR: shared MPC Main geometry token missing or changed: $required"
+    exit 1
+  fi
+done
+for required in \
   'private Button mainActionButton(' \
   'page.setPadding(dp(MPC_MAIN_CONTENT_GUTTER_DP), dp(2)' \
   'sequenceCard.setPadding(dp(4), dp(4), dp(4), dp(MPC_MAIN_SECTION_GAP_DP));' \
@@ -1034,7 +1082,7 @@ for required in \
   'MPC_MAIN_METRIC_HEIGHT_DP' \
   'MPC_MAIN_TRACK_STATE_HEIGHT_DP'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
-    echo "ERROR: MPC One Main geometry contract missing: $required"
+    echo "ERROR: MPC One Main geometry presentation contract missing: $required"
     exit 1
   fi
 done
@@ -1051,6 +1099,10 @@ if grep -Fq -- 'dp(44)' <<<"$main_header_block"; then
 fi
 
 echo "Running MPC One Main visual hierarchy preflight..."
+if ! grep -Fq -- 'MAIN_TRACK_HEADER_HEIGHT_DP = 36;' "$MPC_STYLE_SOURCE"; then
+  echo "ERROR: MPC Main Track header height must remain the shared 36dp design token"
+  exit 1
+fi
 for required in \
   'mainSectionToggle(' \
   'Main Track Arrangement segmented control' \
@@ -1060,7 +1112,7 @@ for required in \
   'programCreateButton' \
   'Main Track visual hierarchy' \
   'MPC_MAIN_WORKSPACE_WEIGHT' \
-  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = 36' \
+  'MPC_MAIN_TRACK_HEADER_HEIGHT_DP = MpcStyle.MAIN_TRACK_HEADER_HEIGHT_DP;' \
   'new LinearLayout.LayoutParams(0, dp(MPC_MAIN_TRACK_HEADER_HEIGHT_DP), 1.0f)'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC One Main visual hierarchy contract missing: $required"
@@ -1705,8 +1757,9 @@ if grep -Fq -- 'private final Button[] shortcutButtons' "$SHORTCUT_MAIN_SOURCE";
 fi
 
 echo "Running MPC Main section framing fidelity preflight..."
-if ! grep -Fq -- "MPC_MAIN_SECTION_DIVIDER_DP = 2" "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: MPC Main section divider geometry constant missing"
+if ! grep -Fq -- 'MPC_MAIN_SECTION_DIVIDER_DP = MpcStyle.MAIN_SECTION_DIVIDER_DP;' "$MAIN_ACTIVITY_SOURCE" || \
+   ! grep -Fq -- 'MAIN_SECTION_DIVIDER_DP = 2;' "$MPC_STYLE_SOURCE"; then
+  echo "ERROR: MPC Main section divider must use the shared 2dp design token"
   exit 1
 fi
 main_page_start=$(grep -n -m1 'private void showMainPage()' "$MAIN_ACTIVITY_SOURCE" | cut -d: -f1)
@@ -1729,12 +1782,22 @@ fi
 
 echo "Running MPC shell geometry preflight..."
 for required in \
-  "TOOLBAR_HEIGHT_DP = 44" \
-  "SHORTCUT_RAIL_WIDTH_DP = 48" \
-  "CHANNEL_STRIP_WIDTH_DP = 210" \
-  "FUNCTION_BAR_HEIGHT_DP = 40"; do
+  "MpcStyle.TOOLBAR_HEIGHT_DP" \
+  "MpcStyle.SHORTCUT_RAIL_WIDTH_DP" \
+  "MpcStyle.CHANNEL_STRIP_WIDTH_DP" \
+  "MpcStyle.FUNCTION_BAR_HEIGHT_DP"; do
   if ! grep -Fq -- "$required" "$SHELL_SOURCE"; then
-    echo "ERROR: MPC shell geometry contract missing: $required"
+    echo "ERROR: MPC shell must consume shared geometry token: $required"
+    exit 1
+  fi
+done
+for required in \
+  "TOOLBAR_HEIGHT_DP = 44;" \
+  "SHORTCUT_RAIL_WIDTH_DP = 48;" \
+  "CHANNEL_STRIP_WIDTH_DP = 210;" \
+  "FUNCTION_BAR_HEIGHT_DP = 40;"; do
+  if ! grep -Fq -- "$required" "$MPC_STYLE_SOURCE"; then
+    echo "ERROR: shared MPC shell geometry token missing or changed: $required"
     exit 1
   fi
 done
