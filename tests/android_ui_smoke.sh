@@ -14511,7 +14511,7 @@ matches = [node for node in root.iter("node")
     and node.attrib.get("visible-to-user") == "true"]
 if len(matches) != 1:
     raise SystemExit(f"expected one visible Browser results ScrollView, found {len(matches)}")
-match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                      matches[0].attrib.get("bounds", ""))
 if not match:
     raise SystemExit(f"Browser results ScrollView has invalid bounds: {matches[0].attrib}")
