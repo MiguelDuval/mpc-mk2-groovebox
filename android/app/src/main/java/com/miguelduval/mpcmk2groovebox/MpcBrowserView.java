@@ -7,6 +7,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -60,6 +61,7 @@ final class MpcBrowserView extends LinearLayout {
     private final EditText search;
 
     private Listener listener;
+    private Runnable resultsInteractionFinishedListener;
     private String activeSection = "PLACES";
     private String activeLocationItem = "INTERNAL";
     private List<MpcBrowserFile> localFiles = Collections.emptyList();
@@ -214,6 +216,16 @@ final class MpcBrowserView extends LinearLayout {
 
         ScrollView scroll = new ScrollView(context);
         scroll.setContentDescription("MPC Browser results list");
+        scroll.setOnScrollChangeListener((View view, int scrollX, int scrollY,
+                                          int oldScrollX, int oldScrollY) -> {
+            if (scrollY != oldScrollY) notifyResultsInteractionFinished();
+        });
+        scroll.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                notifyResultsInteractionFinished();
+            }
+            return false;
+        });
         results = new LinearLayout(context);
         results.setOrientation(VERTICAL);
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
@@ -230,6 +242,16 @@ final class MpcBrowserView extends LinearLayout {
 
     void setListener(Listener listener) {
         this.listener = listener;
+    }
+
+    void setOnResultsInteractionFinishedListener(Runnable listener) {
+        resultsInteractionFinishedListener = listener;
+    }
+
+    private void notifyResultsInteractionFinished() {
+        if (resultsInteractionFinishedListener != null) {
+            resultsInteractionFinishedListener.run();
+        }
     }
 
     void auditionSelectedFile() {

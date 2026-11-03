@@ -6010,6 +6010,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         content.removeAllViews();
 
         browserView = new MpcBrowserView(this);
+        browserView.setOnResultsInteractionFinishedListener(
+                this::scheduleBrowserSmokeViewHierarchyCapture);
         browserView.setShowFileSize(getSharedPreferences(
                 BROWSER_STORAGE_PREFERENCES, MODE_PRIVATE)
                 .getBoolean(PREF_BROWSER_SHOW_FILE_SIZE, true));

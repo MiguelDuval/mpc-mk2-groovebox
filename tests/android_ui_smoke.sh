@@ -14462,6 +14462,14 @@ tap_browser_action() {
 if [[ "$PROJECT_CURRENT_APP_XML" != "$PROJECT_EXT_V1_XML" || ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
   echo "ERROR: SAMP-007 requires the fresh v1-loaded Main Android View tree"; exit 1
 fi
+# Preserve the real shell Menu -> Main route before opening Browser; these are
+# deliberate user actions in the acceptance path, not redundant hierarchy dumps.
+if ! tap_project_toolbar_menu; then
+  echo "ERROR: could not open Menu before the cursor workflow"; exit 1
+fi
+if ! tap_mpc_menu_tile 0 0; then
+  echo "ERROR: could not return to Main before the cursor workflow"; exit 1
+fi
 snapshot_browser_view_tree_marker_baseline
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Project Browser"; then
   echo "ERROR: could not open Browser from the fresh Main View tree for the cursor WAV"; exit 1
@@ -14490,6 +14498,47 @@ if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
 fi
 if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BROWSER_XML" 20; then
   echo "ERROR: Browser did not publish the filtered cursor WAV results"; exit 1
+fi
+browser_swipe_coordinates="$(python3 - "$PROJECT_CURRENT_APP_XML" <<'PY_BROWSER_RESULTS_SWIPE'
+import re
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+matches = [node for node in root.iter("node")
+    if node.attrib.get("content-desc") == "MPC Browser results list"
+    and node.attrib.get("class", "").endswith(".ScrollView")
+    and node.attrib.get("visible-to-user") == "true"]
+if len(matches) != 1:
+    raise SystemExit(f"expected one visible Browser results ScrollView, found {len(matches)}")
+match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                     matches[0].attrib.get("bounds", ""))
+if not match:
+    raise SystemExit(f"Browser results ScrollView has invalid bounds: {matches[0].attrib}")
+left, top, right, bottom = map(int, match.groups())
+screen_width = int(root.attrib.get("width", "0"))
+screen_height = int(root.attrib.get("height", "0"))
+if screen_width <= 0 or screen_height <= 0 or right - left < 120 or bottom - top < 100:
+    raise SystemExit(f"Browser results ScrollView is not measurable: {matches[0].attrib}")
+x = (left + right) // 2
+margin = max(24, (bottom - top) // 10)
+start_y, end_y = bottom - margin, top + margin
+if not (0 <= x < screen_width and 0 <= start_y < screen_height
+        and 0 <= end_y < screen_height and start_y > end_y):
+    raise SystemExit(f"Browser results swipe is outside the screen: {(x, start_y, end_y)}")
+print(x, start_y, end_y)
+PY_BROWSER_RESULTS_SWIPE
+)"
+if [[ -z "$browser_swipe_coordinates" ]]; then
+  echo "ERROR: could not measure Browser results-list swipe coordinates"; exit 1
+fi
+read -r browser_swipe_x browser_swipe_start_y browser_swipe_end_y <<< "$browser_swipe_coordinates"
+snapshot_browser_view_tree_marker_baseline
+if ! adb_bounded 10 shell input swipe "$browser_swipe_x" "$browser_swipe_start_y" "$browser_swipe_x" "$browser_swipe_end_y" 300; then
+  echo "ERROR: could not perform the real measured Browser results-list swipe"; exit 1
+fi
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BROWSER_XML" 10; then
+  echo "ERROR: Browser did not publish a fresh View tree after the results-list swipe"; exit 1
 fi
 if ! tap_browser_action "MPC Browser file $SAMP_CURSOR_NAME"; then
   echo "ERROR: the indexed cursor WAV is not a visible, actionable Browser result"; exit 1
