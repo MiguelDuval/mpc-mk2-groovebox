@@ -2098,8 +2098,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        if (mode == MpcUiState.Mode.CHANNEL_MIXER
-                || mode == MpcUiState.Mode.SOUNDS
+        if (mode == MpcUiState.Mode.CHANNEL_MIXER) {
+            Button back = addFunction("BACK", true, v -> navigateBackFromShell());
+            back.setContentDescription("MPC Channel Mixer Back");
+            Button menu = addFunction("MENU", true, v -> showMenuPage());
+            menu.setContentDescription("MPC Channel Mixer Menu");
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.SOUNDS
                 || mode == MpcUiState.Mode.XYFX
                 || mode == MpcUiState.Mode.RESERVED) {
             Button back = addFunction("BACK", true, v -> navigateBackFromShell());
@@ -16890,7 +16897,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        // CHANNEL_MIXER is a real workspace, not a reserved placeholder.
+        // CHANNEL_MIXER is a real workspace. Wait for its real Track 1 fader
+        // to be measured before validating geometry or continuing the audit.
         final View channelMixerShortcut = findViewWithContentDescription(
                 getWindow().getDecorView(), "MPC shortcut CHANNEL MIXER");
         if (channelMixerShortcut == null || !channelMixerShortcut.isShown()
@@ -16912,15 +16920,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 || !"CHANNEL_MIXER".equals(currentPage)
                 || !(channelMixerWorkspace instanceof MpcChannelMixerView)
                 || channelMixerWorkspace != channelMixerView
-                || !channelMixerWorkspace.isShown()
                 || channelMixerTrackCount <= 0
                 || channelMixerTrack1Fader == null
-                || !channelMixerTrack1Fader.isShown()
-                || !channelMixerTrack1Fader.isEnabled()
-                || channelMixerTrack1Fader.getWidth() <= 0
-                || channelMixerTrack1Fader.getHeight() <= 0
                 || staleTrackViewAfterChannelMixer != null) {
-            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer did not open its real track workspace"
+            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer did not create its real track workspace"
                     + " | mode=" + navigationController.state().mode()
                     + " | currentPage=" + currentPage
                     + " | workspace=" + describeAuditView(channelMixerWorkspace)
@@ -16930,8 +16933,68 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
+        waitForMeasuredAuditView(
+                channelMixerTrack1Fader,
+                dp(1),
+                "Channel Mixer Track 1 fader",
+                () -> continueChannelMixerAuditAfterLayout(
+                        baseline,
+                        sequenceBefore,
+                        trackBefore,
+                        padBefore,
+                        channelMixerWorkspace,
+                        channelMixerTrack1Fader,
+                        channelMixerTrackCount));
+    }
+
+    private void continueChannelMixerAuditAfterLayout(
+            MpcUiState baseline,
+            int sequenceBefore,
+            int trackBefore,
+            int padBefore,
+            View channelMixerWorkspace,
+            View channelMixerTrack1Fader,
+            int channelMixerTrackCount) {
+        if (destroyed) return;
+
+        final View staleTrackViewAfterChannelMixer = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1");
+        if (navigationController == null
+                || navigationController.state().mode() != MpcUiState.Mode.CHANNEL_MIXER
+                || !"CHANNEL_MIXER".equals(currentPage)
+                || !(channelMixerWorkspace instanceof MpcChannelMixerView)
+                || channelMixerWorkspace != channelMixerView
+                || !channelMixerWorkspace.isShown()
+                || channelMixerWorkspace.getWidth() <= 0
+                || channelMixerWorkspace.getHeight() <= 0
+                || nativeSequenceGetTrackCount() < channelMixerTrackCount
+                || channelMixerTrackCount <= 0
+                || channelMixerTrack1Fader == null
+                || !channelMixerTrack1Fader.isShown()
+                || !channelMixerTrack1Fader.isEnabled()
+                || channelMixerTrack1Fader.getWidth() <= 0
+                || channelMixerTrack1Fader.getHeight() <= 0
+                || staleTrackViewAfterChannelMixer != null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer did not open its measured real track workspace"
+                    + " | mode=" + (navigationController == null
+                            ? "null" : navigationController.state().mode())
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(channelMixerWorkspace)
+                    + " | trackCount=" + nativeSequenceGetTrackCount()
+                    + " | expectedTrackCount=" + channelMixerTrackCount
+                    + " | track1Fader=" + describeAuditView(channelMixerTrack1Fader)
+                    + " | staleTrackView=" + describeAuditView(staleTrackViewAfterChannelMixer));
+            return;
+        }
+
+        Log.i(TAG, "UI_CHANNEL_MIXER_LAYOUT_READY: workspace="
+                + channelMixerWorkspace.getWidth() + "x" + channelMixerWorkspace.getHeight()
+                + " track1Fader=" + channelMixerTrack1Fader.getWidth()
+                + "x" + channelMixerTrack1Fader.getHeight()
+                + " trackCount=" + channelMixerTrackCount);
+
         final View channelMixerBack = findViewWithContentDescription(
-                getWindow().getDecorView(), "MPC unavailable mode Back");
+                getWindow().getDecorView(), "MPC Channel Mixer Back");
         if (channelMixerBack == null || !channelMixerBack.isShown()
                 || !channelMixerBack.isEnabled() || !channelMixerBack.performClick()
                 || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
@@ -16954,9 +17017,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         Log.i(TAG, "UI_CHANNEL_MIXER_ROUTE_COMPLETE: realWorkspace=true "
-                + "track1Fader=true back=true priorWorkspaceRestored=true "
-                + "selectionPreserved=true");
+                + "workspaceMeasured=true track1FaderMeasured=true back=true "
+                + "priorWorkspaceRestored=true selectionPreserved=true");
 
+        verifyReservedPlaceholderShortcutsAndRestoreForAudit(
+                baseline, sequenceBefore, trackBefore, padBefore);
+    }
+
+    private void verifyReservedPlaceholderShortcutsAndRestoreForAudit(
+            MpcUiState baseline,
+            int sequenceBefore,
+            int trackBefore,
+            int padBefore) {
+        if (destroyed) return;
         final MpcUiState.Mode[] reservedModes = {
                 MpcUiState.Mode.SOUNDS,
                 MpcUiState.Mode.XYFX
@@ -17026,7 +17099,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         Log.i(TAG, "UI_RESERVED_SHORTCUT_ROUTE_COMPLETE: "
                 + "padMixerScreen=true padMixerBack=true "
-                + "channelMixerScreen=true soundsScreen=true xyScreen=true "
+                + "channelMixerScreen=true channelMixerBack=true "
+                + "soundsScreen=true xyScreen=true "
                 + "priorWorkspaceNotVisible=true selectionPreserved=true");
         continueUiAuditAfterTrackViewMuteToArrange();
     }
