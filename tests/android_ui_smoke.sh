@@ -2340,13 +2340,16 @@ import sys
 import xml.etree.ElementTree as ET
 
 path, expected = sys.argv[1], sys.argv[2]
-nodes = list(ET.parse(path).getroot().iter("node"))
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
 found = [n for n in nodes
          if n.attrib.get("content-desc", "") == expected
          or n.attrib.get("text", "").strip() == expected]
 if len(found) != 1:
     raise SystemExit(f"expected exactly one accessibility target {expected!r}, got {len(found)}")
 node = found[0]
+if root.attrib.get("source") == "android-view-tree" and node.attrib.get("visible-to-user") != "true":
+    raise SystemExit(f"app-side View target is not visible to the user: {node.attrib}")
 if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
     raise SystemExit(f"accessibility target is not enabled/clickable: {node.attrib}")
 parts = node.attrib.get("bounds", "").replace("][", ",").strip("[]").split(",")
@@ -2422,13 +2425,16 @@ tap_visible_text_early() {
 import sys
 import xml.etree.ElementTree as ET
 path, expected = sys.argv[1], sys.argv[2]
-nodes = list(ET.parse(path).getroot().iter("node"))
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
 found = [n for n in nodes
          if n.attrib.get("text", "") == expected
          and n.attrib.get("class", "").endswith(".Button")]
 if len(found) != 1:
     raise SystemExit(f"expected one button with text {expected!r}, got {len(found)}")
 node = found[0]
+if root.attrib.get("source") == "android-view-tree" and node.attrib.get("visible-to-user") != "true":
+    raise SystemExit(f"app-side View button is not visible to the user: {node.attrib}")
 if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
     raise SystemExit(f"button is not enabled/clickable: {node.attrib}")
 parts = node.attrib.get("bounds", "").replace("][", ",").strip("[]").split(",")
@@ -13310,6 +13316,7 @@ PROJECT_OPEN_PAIR_PNG="/tmp/mpc-groovebox-project-open-picker-fresh-pair.png"
 PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
+PROJECT_BROWSER_TREE_MARKER_BEFORE=0
 PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
 PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
 
@@ -13322,6 +13329,7 @@ project_marker_count() {
 snapshot_project_view_tree_marker_baselines() {
   PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
   PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
   PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
   PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
   PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
@@ -13331,17 +13339,22 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
 }
 
+snapshot_browser_view_tree_marker_baseline() {
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+}
+
 capture_project_persistence_view_tree() {
-  local page="$1" target_xml="$2" marker before remote
+  local page="$1" target_xml="$2" timeout_seconds="${3:-10}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    BROWSE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE"; before="$PROJECT_BROWSER_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
-  if ! wait_for_new_project_marker "$marker" "$before" 10; then
+  if ! wait_for_new_project_marker "$marker" "$before" "$timeout_seconds"; then
     echo "ERROR: no fresh Android View-tree snapshot for app page $page"; return 1
   fi
   if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
@@ -13390,6 +13403,14 @@ elif page == "PROJECT":
         require_target(description)
 elif page == "MAIN":
     require_target("MPC Toolbar Menu")
+elif page == "BROWSE":
+    for description in (
+        "MPC Browser scan local audio files",
+        "MPC Browser search files",
+        "MPC Browser clear search",
+        "MPC Browser filter ALL",
+    ):
+        require_target(description)
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
 PY_PROJECT_APP_VIEW_TREE
   then
@@ -14337,6 +14358,8 @@ SAMP_CURSOR_CANONICAL="/storage/emulated/0/Music/$SAMP_CURSOR_NAME"
 SAMP_CURSOR_SCAN="/tmp/mpc-groovebox-sample-cursor-media-scan.txt"
 SAMP_CURSOR_QUERY="/tmp/mpc-groovebox-sample-cursor-media-query.txt"
 SAMP_CURSOR_REMOTE="/sdcard/mpc-groovebox-sample-playback-cursor.xml"
+SAMP_CURSOR_BROWSER_PNG="/tmp/mpc-groovebox-sample-playback-cursor-browser.png"
+SAMP_CURSOR_BROWSER_XML="/tmp/mpc-groovebox-sample-playback-cursor-browser-view-hierarchy.xml"
 SAMP_CURSOR_BEFORE_PNG="/tmp/mpc-groovebox-sample-playback-cursor-before.png"
 SAMP_CURSOR_BEFORE_XML="/tmp/mpc-groovebox-sample-playback-cursor-before-uiautomator.xml"
 SAMP_CURSOR_REGION_PNG="/tmp/mpc-groovebox-sample-playback-cursor-region-changed.png"
@@ -14417,40 +14440,46 @@ if ! grep -Fq -- "$SAMP_CURSOR_NAME" "$SAMP_CURSOR_QUERY"; then
 fi
 echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTAL frames)."
 
-# The immediately preceding Project v1-load acceptance captured a fresh,
-# provenance-checked Android View tree for the live Main page in PROJECT_EXT_V1_XML.
-# Creating/indexing the disposable WAV fixture does not navigate the Activity.
-# Avoid UiAutomator's global waitForIdle on this unchanged Main shell: exact-head
-# Builds #3631/#3632 both stalled there despite the valid 231-node app-side tree.
-# The measured app-side touch helper preserves a real touch and captures a fresh
-# Menu tree before the next navigation action.
+tap_browser_action() {
+  local description="$1" timeout_seconds="${2:-10}"
+  snapshot_browser_view_tree_marker_baseline
+  if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"; then
+    echo "ERROR: Browser action is not a unique visible, enabled target: $description"
+    return 1
+  fi
+  if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BROWSER_XML" "$timeout_seconds"; then
+    echo "ERROR: Browser did not publish a fresh measured View tree after: $description"
+    return 1
+  fi
+}
+
+# The preceding Project v1-load acceptance left a fresh, provenance-checked
+# Main View tree. SAMP-007 then enters Browser after a long persistence workflow.
+# Build #3633 timed out three UiAutomator global-waitForIdle dumps on the live
+# Browser screen. Use the existing in-app decor snapshot for this page instead:
+# it records fresh View bounds/visibility/clickability, while every action remains
+# a real ADB touch and the exact WAV/Pad/Layer/native cursor assertions stay strict.
 if [[ "$PROJECT_CURRENT_APP_XML" != "$PROJECT_EXT_V1_XML" || ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
   echo "ERROR: SAMP-007 requires the fresh v1-loaded Main Android View tree"; exit 1
 fi
-if ! tap_project_toolbar_menu; then
-  echo "ERROR: could not open Menu before the cursor workflow"; exit 1
-fi
-if ! tap_mpc_menu_tile 0 0; then
-  echo "ERROR: could not return to Main before the cursor workflow"; exit 1
-fi
-# tap_mpc_menu_tile waits for the new MAIN shell marker and captures a fresh
-# app-side View tree, so use its measured Browser toolbar target directly.
+snapshot_browser_view_tree_marker_baseline
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Project Browser"; then
   echo "ERROR: could not open Browser from the fresh Main View tree for the cursor WAV"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser scan local audio files" 20; then
-  echo "ERROR: Browser scan control is unavailable for SAMP-007"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BROWSER_XML" 20; then
+  echo "ERROR: Browser did not publish its measured workspace after navigation"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser scan local audio files"; then
-  echo "ERROR: could not refresh Browser's local MediaStore catalog"; exit 1
+if ! tap_browser_action "MPC Browser scan local audio files" 30; then
+  echo "ERROR: Browser local MediaStore scan did not complete with a fresh View tree"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser clear search"; then
+if ! tap_browser_action "MPC Browser clear search"; then
   echo "ERROR: could not clear inherited Browser search state"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser filter ALL"; then
+if ! tap_browser_action "MPC Browser filter ALL"; then
   echo "ERROR: could not reset Browser's file filter"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser search files"; then
+snapshot_browser_view_tree_marker_baseline
+if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Browser search files"; then
   echo "ERROR: Browser Search is unavailable for the cursor WAV"; exit 1
 fi
 if ! adb_bounded 10 shell input text "Browser-Smoke-Cursor"; then
@@ -14459,46 +14488,52 @@ fi
 if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
   echo "ERROR: could not dismiss the Search keyboard"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser file $SAMP_CURSOR_NAME" 20; then
-  echo "ERROR: the indexed cursor WAV is not visible in Browser"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BROWSER_XML" 20; then
+  echo "ERROR: Browser did not publish the filtered cursor WAV results"; exit 1
 fi
-if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
-  echo "ERROR: could not scroll the Browser cursor fixture into the touch area"; exit 1
+if ! tap_browser_action "MPC Browser file $SAMP_CURSOR_NAME"; then
+  echo "ERROR: the indexed cursor WAV is not a visible, actionable Browser result"; exit 1
 fi
-sleep 1
-if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_BEFORE_XML"; then
-  echo "ERROR: could not capture Browser's cursor WAV result row"; exit 1
+if ! tap_browser_action "MPC Browser assign selected local WAV to target Pad/Layer" 30; then
+  echo "ERROR: Browser Pad/Layer assignment did not complete"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser file $SAMP_CURSOR_NAME"; then
-  echo "ERROR: could not select the cursor WAV in Browser"; exit 1
+if ! python3 - "$PROJECT_CURRENT_APP_XML" "$SAMP_CURSOR_NAME" <<'PY_SAMP_CURSOR_BROWSER_ASSIGNMENT'
+import sys
+import xml.etree.ElementTree as ET
+
+path, filename = sys.argv[1:3]
+nodes = list(ET.parse(path).getroot().iter("node"))
+expected = {
+    "MPC Browser current sample": f"CURRENT SAMPLE • {filename}",
+    "MPC Browser target Pad and Layer": "TARGET • PAD 01 / LAYER 01",
+    "MPC Browser provider status": f"ASSIGNED • {filename} → PAD 01 / LAYER 01",
+}
+for description, text in expected.items():
+    matches = [node for node in nodes
+        if node.attrib.get("content-desc") == description
+        and node.attrib.get("text") == text
+        and node.attrib.get("visible-to-user") == "true"]
+    if len(matches) != 1:
+        raise SystemExit(
+            f"expected one visible Browser node {description!r}={text!r}, found {len(matches)}"
+        )
+print(f"Verified Browser sample assignment: {filename} → Pad 01 / Layer 01")
+PY_SAMP_CURSOR_BROWSER_ASSIGNMENT
+then
+  echo "ERROR: Browser assignment did not preserve the exact current sample and target Pad/Layer"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser assign selected local WAV to target Pad/Layer" 20; then
-  echo "ERROR: selecting the cursor WAV did not enable SAMPLE ASSIGN"; exit 1
-fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser assign selected local WAV to target Pad/Layer"; then
-  echo "ERROR: Browser Pad/Layer assignment is unavailable for the cursor WAV"; exit 1
-fi
-if ! wait_for_ui_node_text_desc "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "CURRENT SAMPLE • $SAMP_CURSOR_NAME" "MPC Browser current sample" 20; then
-  echo "ERROR: assigning the cursor WAV did not preserve the current sample selection"; exit 1
-fi
-if ! wait_for_ui_text_pair "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "ASSIGNED" "PAD 01 / LAYER 01" 20; then
-  echo "ERROR: cursor WAV was not assigned to Pad 01 / Layer 01"; exit 1
+if ! capture_ui_screenshot "$SAMP_CURSOR_BROWSER_PNG" 10; then
+  echo "ERROR: could not capture the unique SAMP-007 Browser assignment milestone"; exit 1
 fi
 
 # Return to Main through the existing shell Menu, then open its Sample Edit action.
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML"; then
-  echo "ERROR: could not capture the shell after Browser assignment"; exit 1
-fi
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu after Browser assignment"; exit 1
 fi
 if ! tap_mpc_menu_tile 0 0; then
   echo "ERROR: could not return to Main after Browser assignment"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-  echo "ERROR: could not capture Main before Sample Edit"; exit 1
-fi
-if ! tap_ui_text "$DUMP" "SAMPLE"; then
+if ! tap_visible_text_early "$PROJECT_CURRENT_APP_XML" "SAMPLE"; then
   echo "ERROR: Main's Sample Edit action was not actionable after assignment"; exit 1
 fi
 if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
@@ -14627,6 +14662,7 @@ if ! capture_ui_screenshot "$SAMP_CURSOR_STOPPED_PNG" 10; then echo "ERROR: coul
 echo "SAMP-007 playback ended and cursor returned to idle without changing the edited region."
 
 for evidence in \
+  "$SAMP_CURSOR_BROWSER_PNG" "$SAMP_CURSOR_BROWSER_XML" \
   "$SAMP_CURSOR_BEFORE_PNG" "$SAMP_CURSOR_BEFORE_XML" \
   "$SAMP_CURSOR_REGION_PNG" "$SAMP_CURSOR_REGION_XML" \
   "$SAMP_CURSOR_DURING_PNG" "$SAMP_CURSOR_DURING_XML" \
@@ -14634,6 +14670,7 @@ for evidence in \
   "$SAMP_CURSOR_STOPPED_PNG" "$SAMP_CURSOR_STOPPED_XML"; do
   if [[ ! -s "$evidence" ]]; then echo "ERROR: SAMP-007 evidence file missing: $evidence"; exit 1; fi
 done
+if ! test -s /tmp/mpc-groovebox-sample-playback-cursor-browser.png; then echo "ERROR: missing SAMP-007 Browser assignment screenshot"; exit 1; fi
 if ! test -s /tmp/mpc-groovebox-sample-playback-cursor-before.png; then echo "ERROR: missing SAMP-007 baseline screenshot"; exit 1; fi
 if ! test -s /tmp/mpc-groovebox-sample-playback-cursor-region-changed.png; then echo "ERROR: missing SAMP-007 edited-region screenshot"; exit 1; fi
 if ! test -s /tmp/mpc-groovebox-sample-playback-cursor-during.png; then echo "ERROR: missing SAMP-007 active-cursor screenshot"; exit 1; fi

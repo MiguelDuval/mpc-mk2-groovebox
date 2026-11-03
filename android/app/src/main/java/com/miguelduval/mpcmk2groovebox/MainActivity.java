@@ -447,6 +447,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private boolean projectPersistenceSmokeMode;
+    private final Runnable browserSmokeViewHierarchyCaptureRunnable =
+            () -> captureProjectPersistenceViewHierarchyForSmoke("BROWSE");
     private boolean projectRecoveryExportSmokeMode;
     private boolean projectPersistenceFixtureMode;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
@@ -6024,6 +6026,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
                 setBottomStatus("BROWSER • " + section);
                 refreshMpcFunctionBar();
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
 
             @Override
@@ -6060,6 +6063,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
                 }
                 refreshMpcFunctionBar();
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
 
             @Override
@@ -6085,6 +6089,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 browserView.setLocation(parent);
                 setBottomStatus("BROWSER • UP • " + parent);
                 refreshMpcFunctionBar();
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
 
             @Override
@@ -6094,6 +6099,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         filter,
                         browserView.searchQuery());
                 setBottomStatus("FILTER • " + filter);
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
 
             @Override
@@ -6124,6 +6130,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             file.displayName(), selectedPad + 1, selectedLayer + 1));
                 }
                 refreshMpcFunctionBar();
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
 
             @Override
@@ -6139,6 +6146,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         query);
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
+                scheduleBrowserSmokeViewHierarchyCapture();
             }
             @Override
             public void onOptionsRequested() {
@@ -6184,6 +6192,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT));
         refreshMpcFunctionBar();
         updateModeRailSelection();
+        scheduleBrowserSmokeViewHierarchyCapture();
     }
 
     private int favoriteSlotForLocationKey(String locationKey) {
@@ -6547,6 +6556,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (browserView != null) {
             browserView.setScanState(
                     "LOCAL AUDIO • PERMISSION REQUIRED • OPEN STORAGE STILL WORKS");
+            scheduleBrowserSmokeViewHierarchyCapture();
         }
         requestPermissions(new String[]{permission}, REQUEST_SCAN_LOCAL_AUDIO);
     }
@@ -6565,6 +6575,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         browserView.setScanState(
                                 "LOCAL AUDIO SCAN FAILED • " + e.getClass().getSimpleName());
                         setBottomStatus("Local WAV scan failed: " + e.getClass().getSimpleName());
+                        scheduleBrowserSmokeViewHierarchyCapture();
                     });
                     return;
                 }
@@ -6576,11 +6587,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
                     setBottomStatus(String.format(Locale.ROOT,
                             "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                    scheduleBrowserSmokeViewHierarchyCapture();
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
             browserView.setScanState("LOCAL AUDIO SCAN UNAVAILABLE • TRY AGAIN");
             setBottomStatus("Local WAV scan unavailable: worker executor is closed");
+            scheduleBrowserSmokeViewHierarchyCapture();
         }
     }
 
@@ -6618,6 +6631,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             if (browserView != null) {
                                 browserView.setProviderStatus(failure);
                             }
+                            scheduleBrowserSmokeViewHierarchyCapture();
                         }
                     });
                     return;
@@ -6657,6 +6671,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     refreshAllInspectorState();
                     refreshSampleWaveform();
                     refreshMpcFunctionBar();
+                    scheduleBrowserSmokeViewHierarchyCapture();
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
@@ -6664,6 +6679,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (browserView != null) {
                 browserView.setProviderStatus("LOCAL WAV LOAD UNAVAILABLE • TRY AGAIN");
             }
+            scheduleBrowserSmokeViewHierarchyCapture();
         }
     }
 
@@ -11275,6 +11291,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
     private void captureProjectMenuViewHierarchyForSmoke() {
         captureProjectPersistenceViewHierarchyForSmoke("MENU");
+    }
+
+    private void scheduleBrowserSmokeViewHierarchyCapture() {
+        if (!projectPersistenceSmokeMode || destroyed || content == null
+                || !"BROWSE".equals(currentPage)) return;
+        // Search TextWatcher callbacks can arrive once per character. Debounce
+        // them so the smoke publishes one complete measured View tree after the
+        // Browser has settled instead of serializing the decor for every key.
+        content.removeCallbacks(browserSmokeViewHierarchyCaptureRunnable);
+        content.postDelayed(browserSmokeViewHierarchyCaptureRunnable, 150L);
     }
 
     private void scheduleProjectPersistenceViewHierarchyCapture(String expectedPage) {
@@ -19056,6 +19082,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if (samplePlaybackCursorUpdater != null) {
             waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        }
+        if (content != null) {
+            content.removeCallbacks(browserSmokeViewHierarchyCaptureRunnable);
         }
         startupExecutor.shutdownNow();
         projectIoExecutor.shutdownNow();
