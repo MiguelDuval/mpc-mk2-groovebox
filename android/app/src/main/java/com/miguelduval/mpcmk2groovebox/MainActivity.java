@@ -16890,22 +16890,86 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        final MpcUiState.Mode[] modes = {
-                MpcUiState.Mode.CHANNEL_MIXER,
+        // CHANNEL_MIXER is a real workspace, not a reserved placeholder.
+        final View channelMixerShortcut = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC shortcut CHANNEL MIXER");
+        if (channelMixerShortcut == null || !channelMixerShortcut.isShown()
+                || !channelMixerShortcut.isEnabled()
+                || !channelMixerShortcut.performClick()) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Shortcut is not actionable"
+                    + " | shortcut=" + describeAuditView(channelMixerShortcut));
+            return;
+        }
+
+        final View channelMixerWorkspace = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC Channel Mixer");
+        final View channelMixerTrack1Fader = findViewWithContentDescription(
+                getWindow().getDecorView(), "TRACK 1 vertical fader");
+        final View staleTrackViewAfterChannelMixer = findViewWithContentDescription(
+                getWindow().getDecorView(), "Track View track 1");
+        final int channelMixerTrackCount = nativeSequenceGetTrackCount();
+        if (navigationController.state().mode() != MpcUiState.Mode.CHANNEL_MIXER
+                || !"CHANNEL_MIXER".equals(currentPage)
+                || !(channelMixerWorkspace instanceof MpcChannelMixerView)
+                || channelMixerWorkspace != channelMixerView
+                || !channelMixerWorkspace.isShown()
+                || channelMixerTrackCount <= 0
+                || channelMixerTrack1Fader == null
+                || !channelMixerTrack1Fader.isShown()
+                || !channelMixerTrack1Fader.isEnabled()
+                || channelMixerTrack1Fader.getWidth() <= 0
+                || channelMixerTrack1Fader.getHeight() <= 0
+                || staleTrackViewAfterChannelMixer != null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer did not open its real track workspace"
+                    + " | mode=" + navigationController.state().mode()
+                    + " | currentPage=" + currentPage
+                    + " | workspace=" + describeAuditView(channelMixerWorkspace)
+                    + " | trackCount=" + channelMixerTrackCount
+                    + " | track1Fader=" + describeAuditView(channelMixerTrack1Fader)
+                    + " | staleTrackView=" + describeAuditView(staleTrackViewAfterChannelMixer));
+            return;
+        }
+
+        final View channelMixerBack = findViewWithContentDescription(
+                getWindow().getDecorView(), "MPC unavailable mode Back");
+        if (channelMixerBack == null || !channelMixerBack.isShown()
+                || !channelMixerBack.isEnabled() || !channelMixerBack.performClick()
+                || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                || !"TRACK_VIEW".equals(currentPage)
+                || nativeSequenceGetIndex() != sequenceBefore
+                || nativeSequenceGetSelectedTrack() != trackBefore
+                || selectedPadIndexForUi() != padBefore
+                || navigationController.state().selectedSequence() != baseline.selectedSequence()
+                || navigationController.state().selectedTrack() != baseline.selectedTrack()
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "Track View track 1") == null
+                || findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Channel Mixer") != null) {
+            Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Back did not restore Track View context"
+                    + " | currentPage=" + currentPage
+                    + " | sequence=" + nativeSequenceGetIndex()
+                    + " | track=" + nativeSequenceGetSelectedTrack()
+                    + " | pad=" + selectedPadIndexForUi()
+                    + " | back=" + describeAuditView(channelMixerBack));
+            return;
+        }
+        Log.i(TAG, "UI_CHANNEL_MIXER_ROUTE_COMPLETE: realWorkspace=true "
+                + "track1Fader=true back=true priorWorkspaceRestored=true "
+                + "selectionPreserved=true");
+
+        final MpcUiState.Mode[] reservedModes = {
                 MpcUiState.Mode.SOUNDS,
                 MpcUiState.Mode.XYFX
         };
-        final String[] shortcutDescriptions = {
-                "MPC shortcut CHANNEL MIXER",
+        final String[] reservedShortcutDescriptions = {
                 "MPC shortcut SOUNDS",
                 "MPC shortcut XY"
         };
-
-        for (int i = 0; i < modes.length; i++) {
-            final MpcUiState.Mode expectedMode = modes[i];
+        for (int i = 0; i < reservedModes.length; i++) {
+            final MpcUiState.Mode expectedMode = reservedModes[i];
             final String title = expectedMode.label();
             View shortcut = findViewWithContentDescription(
-                    getWindow().getDecorView(), shortcutDescriptions[i]);
+                    getWindow().getDecorView(), reservedShortcutDescriptions[i]);
             if (shortcut == null || !shortcut.isShown() || !shortcut.isEnabled()
                     || !shortcut.performClick()) {
                 Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut is not actionable"
