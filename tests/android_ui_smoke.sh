@@ -13387,7 +13387,7 @@ PROJECT_OPEN_PAIR_PNG="/tmp/mpc-groovebox-project-open-picker-fresh-pair.png"
 PROJECT_REOPENED_XML="/tmp/mpc-groovebox-project-reopened-view-hierarchy.xml"
 PROJECT_REOPENED_PNG="/tmp/mpc-groovebox-project-reopened.png"
 PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJECT_TREE_MARKER_BEFORE=0
-PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
+PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_BROWSER_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
 PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
 
 project_marker_count() {
@@ -13402,6 +13402,7 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
   PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
   PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
   PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
   PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
   PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
@@ -13416,6 +13417,7 @@ capture_project_persistence_view_tree() {
     PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    BROWSE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE"; before="$PROJECT_BROWSER_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
   if ! wait_for_new_project_marker "$marker" "$before" 10; then
@@ -13467,6 +13469,18 @@ elif page == "PROJECT":
         require_target(description)
 elif page == "MAIN":
     require_target("MPC Toolbar Menu")
+elif page == "BROWSE":
+    for description in (
+        "MPC Browser search files",
+        "MPC Browser clear search",
+        "MPC Browser filter ALL",
+    ):
+        require_target(description)
+    results = [node for node in nodes
+        if node.attrib.get("content-desc") == "MPC Browser results list"
+        and node.attrib.get("visible-to-user") == "true"]
+    if len(results) != 1:
+        raise SystemExit(f"expected one visible Browser results viewport, found {len(results)}")
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
 PY_PROJECT_APP_VIEW_TREE
   then
@@ -14495,12 +14509,10 @@ fi
 echo "Long cursor fixture indexed: $SAMP_CURSOR_NAME ($SAMP_CURSOR_EXPECTED_TOTAL frames)."
 
 # The immediately preceding Project v1-load acceptance captured a fresh,
-# provenance-checked Android View tree for the live Main page in PROJECT_EXT_V1_XML.
-# Creating/indexing the disposable WAV fixture does not navigate the Activity.
-# Avoid UiAutomator's global waitForIdle on this unchanged Main shell: exact-head
-# Builds #3631/#3632 both stalled there despite the valid 231-node app-side tree.
-# The measured app-side touch helper preserves a real touch and captures a fresh
-# Menu tree before the next navigation action.
+# provenance-checked Android View tree for the live Main page. Browser re-entry
+# uses the app-owned View hierarchy too: UiAutomator's global waitForIdle has
+# stalled on this route in prior exact-head runs, while this same View-tree
+# export is captured after Android pre-draw and retains real screen bounds.
 if [[ "$PROJECT_CURRENT_APP_XML" != "$PROJECT_EXT_V1_XML" || ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
   echo "ERROR: SAMP-007 requires the fresh v1-loaded Main Android View tree"; exit 1
 fi
@@ -14510,24 +14522,60 @@ fi
 if ! tap_mpc_menu_tile 0 0; then
   echo "ERROR: could not return to Main before the cursor workflow"; exit 1
 fi
-# tap_mpc_menu_tile waits for the new MAIN shell marker and captures a fresh
-# app-side View tree, so use its measured Browser toolbar target directly.
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Project Browser"; then
   echo "ERROR: could not open Browser from the fresh Main View tree for the cursor WAV"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser scan local audio files" 20; then
-  echo "ERROR: Browser scan control is unavailable for SAMP-007"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: Browser did not publish a fresh measured Android View tree for SAMP-007"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser scan local audio files"; then
-  echo "ERROR: could not refresh Browser's local MediaStore catalog"; exit 1
+
+SAMP_CURSOR_SCAN_COMPLETE_BEFORE="$(project_marker_count "BROWSER_LOCAL_SCAN_COMPLETE")"
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser scan local audio files"; then
+  echo "ERROR: Browser's real Scan local audio action is unavailable for SAMP-007"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser clear search"; then
-  echo "ERROR: could not clear inherited Browser search state"; exit 1
+if ! wait_for_new_project_marker "BROWSER_LOCAL_SCAN_COMPLETE" "$SAMP_CURSOR_SCAN_COMPLETE_BEFORE" 30; then
+  echo "ERROR: Browser's local MediaStore WAV scan did not complete"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser filter ALL"; then
-  echo "ERROR: could not reset Browser's file filter"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: Browser did not publish its post-scan View tree"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser search files"; then
+if ! grep -Fq -- "$SAMP_CURSOR_NAME" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: the scanned Browser View tree does not include the cursor WAV"; exit 1
+fi
+
+browser_search_query="$(python3 - "$SAMP_CURSOR_BEFORE_XML" <<'PY_BROWSER_SEARCH'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+matches = [node for node in root.iter("node")
+           if node.attrib.get("content-desc") == "MPC Browser search files"]
+if len(matches) != 1:
+    raise SystemExit("Browser Search field is missing or duplicated")
+print(matches[0].attrib.get("text", ""))
+PY_BROWSER_SEARCH
+)" || { echo "ERROR: could not inspect the live Browser search field"; exit 1; }
+if [[ -n "$browser_search_query" ]]; then
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser clear search"; then
+    echo "ERROR: Browser CLEAR did not expose an actionable control"; exit 1
+  fi
+  if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+    echo "ERROR: Browser did not publish a fresh View tree after clearing Search"; exit 1
+  fi
+fi
+
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser filter ALL"; then
+  echo "ERROR: Browser ALL filter is unavailable for the cursor WAV"; exit 1
+fi
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: Browser did not publish a fresh View tree after selecting ALL"; exit 1
+fi
+
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser search files"; then
   echo "ERROR: Browser Search is unavailable for the cursor WAV"; exit 1
 fi
 if ! adb_bounded 10 shell input text "Browser-Smoke-Cursor"; then
@@ -14536,46 +14584,86 @@ fi
 if ! adb_bounded 10 shell input keyevent KEYCODE_BACK; then
   echo "ERROR: could not dismiss the Search keyboard"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser file $SAMP_CURSOR_NAME" 20; then
-  echo "ERROR: the indexed cursor WAV is not visible in Browser"; exit 1
+
+samp_cursor_browser_query_ready=0
+for attempt in {1..20}; do
+  if capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+    if python3 - "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_NAME" <<'PY_BROWSER_QUERY'
+import sys
+import xml.etree.ElementTree as ET
+path, filename = sys.argv[1], sys.argv[2]
+root = ET.parse(path).getroot()
+nodes = list(root.iter("node"))
+search = [node for node in nodes
+          if node.attrib.get("content-desc") == "MPC Browser search files"]
+if len(search) != 1 or search[0].attrib.get("text", "") != "Browser-Smoke-Cursor":
+    raise SystemExit("Browser Search field has not reached the complete cursor-fixture query")
+target = [node for node in nodes
+          if node.attrib.get("content-desc") == "MPC Browser file " + filename
+          and node.attrib.get("clickable") == "true"
+          and node.attrib.get("enabled") == "true"
+          and node.attrib.get("visible-to-user") == "true"]
+if len(target) != 1:
+    raise SystemExit(f"expected one visible filtered cursor WAV result, found {len(target)}")
+print("Verified the exact Search query and current enabled Browser result row.")
+PY_BROWSER_QUERY
+    then
+      samp_cursor_browser_query_ready=1
+      break
+    fi
+  fi
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  sleep 0.2
+done
+if [[ "$samp_cursor_browser_query_ready" != "1" ]]; then
+  echo "ERROR: Browser did not publish a fresh matching cursor-WAV result hierarchy"; exit 1
 fi
-if ! adb_bounded 10 shell input swipe 1400 930 1400 760 300; then
-  echo "ERROR: could not scroll the Browser cursor fixture into the touch area"; exit 1
-fi
-sleep 1
-if ! dump_device_ui "$SAMP_CURSOR_REMOTE" "$SAMP_CURSOR_BEFORE_XML"; then
-  echo "ERROR: could not capture Browser's cursor WAV result row"; exit 1
-fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser file $SAMP_CURSOR_NAME"; then
+
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser file $SAMP_CURSOR_NAME"; then
   echo "ERROR: could not select the cursor WAV in Browser"; exit 1
 fi
-if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "MPC Browser assign selected local WAV to target Pad/Layer" 20; then
-  echo "ERROR: selecting the cursor WAV did not enable SAMPLE ASSIGN"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: Browser did not publish its selected-file View tree"; exit 1
 fi
-if ! tap_ui_description "$SAMP_CURSOR_BEFORE_XML" "MPC Browser assign selected local WAV to target Pad/Layer"; then
+
+SAMP_CURSOR_ASSIGN_COMPLETE_BEFORE="$(project_marker_count "BROWSER_SAMPLE_ASSIGN_COMPLETE")"
+PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+if ! tap_visible_description_early "$SAMP_CURSOR_BEFORE_XML" "MPC Browser assign selected local WAV to target Pad/Layer"; then
   echo "ERROR: Browser Pad/Layer assignment is unavailable for the cursor WAV"; exit 1
 fi
-if ! wait_for_ui_node_text_desc "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "CURRENT SAMPLE • $SAMP_CURSOR_NAME" "MPC Browser current sample" 20; then
-  echo "ERROR: assigning the cursor WAV did not preserve the current sample selection"; exit 1
+if ! wait_for_new_project_marker "BROWSER_SAMPLE_ASSIGN_COMPLETE" "$SAMP_CURSOR_ASSIGN_COMPLETE_BEFORE" 30; then
+  echo "ERROR: assigning the cursor WAV did not complete native Pad/Layer loading"; exit 1
 fi
-if ! wait_for_ui_text_pair "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "ASSIGNED" "PAD 01 / LAYER 01" 20; then
-  echo "ERROR: cursor WAV was not assigned to Pad 01 / Layer 01"; exit 1
+if ! capture_project_persistence_view_tree "BROWSE" "$SAMP_CURSOR_BEFORE_XML"; then
+  echo "ERROR: Browser did not publish its post-assignment View tree"; exit 1
+fi
+if ! python3 - "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_NAME" <<'PY_BROWSER_ASSIGNED'
+import sys
+import xml.etree.ElementTree as ET
+root = ET.parse(sys.argv[1]).getroot()
+nodes = list(root.iter("node"))
+sample = [node for node in nodes
+          if node.attrib.get("content-desc") == "MPC Browser current sample"]
+if len(sample) != 1 or ("CURRENT SAMPLE • " + sys.argv[2]) not in sample[0].attrib.get("text", ""):
+    raise SystemExit("Browser current-sample context does not identify the assigned cursor WAV")
+all_text = "\n".join(node.attrib.get("text", "") for node in nodes)
+if "ASSIGNED" not in all_text or "PAD 01 / LAYER 01" not in all_text:
+    raise SystemExit("Browser assignment status does not confirm Pad 01 / Layer 01")
+print("Verified the assigned WAV identity and Pad 01 / Layer 01 from the live Android View tree.")
+PY_BROWSER_ASSIGNED
+then
+  echo "ERROR: Browser assignment state does not match the cursor WAV target"; exit 1
 fi
 
 # Return to Main through the existing shell Menu, then open its Sample Edit action.
-if ! dump_device_ui "$DEVICE_DUMP" "$PROJECT_MAIN_READY_XML"; then
-  echo "ERROR: could not capture the shell after Browser assignment"; exit 1
-fi
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu after Browser assignment"; exit 1
 fi
 if ! tap_mpc_menu_tile 0 0; then
   echo "ERROR: could not return to Main after Browser assignment"; exit 1
 fi
-if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-  echo "ERROR: could not capture Main before Sample Edit"; exit 1
-fi
-if ! tap_ui_text "$DUMP" "SAMPLE"; then
+if ! tap_ui_text "$PROJECT_CURRENT_APP_XML" "SAMPLE"; then
   echo "ERROR: Main's Sample Edit action was not actionable after assignment"; exit 1
 fi
 if ! wait_for_ui_description "$SAMP_CURSOR_BEFORE_XML" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
