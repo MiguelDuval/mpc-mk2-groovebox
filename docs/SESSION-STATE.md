@@ -1,7 +1,7 @@
-# Live checkpoint — 2026-10-30
+# Live checkpoint — 2026-11-04
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Latest confirmed parent before this state update:** `a94ab477acf6476ab8f27f3ded4c0417bd9b7f0d` (the subsequent state-file commit becomes the branch HEAD; refetch the branch live in the next session).  
+**Branch HEAD:** `c4726efb3409e6328f475a8d7c00ab361a341406` (pushed to origin, confirmed via GitHub API).  
 **Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
 **Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
 
@@ -28,6 +28,14 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 - PR #127 Browser XML assertion repair remains held; Build #3516 failed. Inspect the exact failing step and current checkpoint assertions before importing.
 - PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
 - Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
+
+## Current session fixes (2026-11-04)
+
+- **fix(ui): add SAMPLE action to Main/Track View Function Bar after Browser sample assignment** (commit `1968a182`). After Browser assigns a WAV to the selected Pad/Layer there was no available SAMPLE action in the Main (and Track View) Function Bar, blocking the Browser → Sample Edit continuation. Added a `SAMPLE` function, enabled when `startupComplete && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0`, that opens Sample Edit via `showSamplePage()`. Metronome stays RESERVED.
+- **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
+
+**CI status (PR #133, head `c4726efb`):**
+- Build #3697 / run 41922886590: steps 1-54 all SUCCESS (native/JUnit tests, Assemble debug APK #52, Upload #53, smoke syntax #54). Step 55 emulator smoke test FAILED — detailed logs require GitHub sign-in and were not accessible; the single check annotation reports shell exit code 1 without scenario detail. Pre-existing regression: prior checkpoint builds #3693/#3694 also failed at step 55. Root cause not yet isolated; may be in an earlier smoke-test scenario, not necessarily the Main → Sample Edit path addressed by the fix above.
 
 ## Mandatory visual-reference rule
 
