@@ -6686,6 +6686,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         filter,
                         browserView.searchQuery());
                 setBottomStatus("FILTER • " + filter);
+                scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
             }
 
             @Override
@@ -6716,6 +6717,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             file.displayName(), selectedPad + 1, selectedLayer + 1));
                 }
                 refreshMpcFunctionBar();
+                scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
             }
 
             @Override
@@ -6731,6 +6733,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         query);
                 navigationController.setDataDialFocus(
                         MpcUiState.DataDialFocus.BROWSER_ITEM);
+                scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
             }
             @Override
             public void onOptionsRequested() {
@@ -6776,6 +6779,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT));
         refreshMpcFunctionBar();
         updateModeRailSelection();
+        scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
     }
 
     private int favoriteSlotForLocationKey(String locationKey) {
@@ -7157,6 +7161,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         browserView.setScanState(
                                 "LOCAL AUDIO SCAN FAILED • " + e.getClass().getSimpleName());
                         setBottomStatus("Local WAV scan failed: " + e.getClass().getSimpleName());
+                        scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
+                        Log.e(TAG, "BROWSER_LOCAL_SCAN_FAILED "
+                                + e.getClass().getSimpleName(), e);
                     });
                     return;
                 }
@@ -7168,11 +7175,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
                     setBottomStatus(String.format(Locale.ROOT,
                             "LOCAL AUDIO • %d WAV FILES INDEXED", files.size()));
+                    scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
+                    Log.i(TAG, "BROWSER_LOCAL_SCAN_COMPLETE files=" + files.size());
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
             browserView.setScanState("LOCAL AUDIO SCAN UNAVAILABLE • TRY AGAIN");
             setBottomStatus("Local WAV scan unavailable: worker executor is closed");
+            scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
+            Log.e(TAG, "BROWSER_LOCAL_SCAN_FAILED worker executor is closed", e);
         }
     }
 
@@ -7249,6 +7260,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     refreshAllInspectorState();
                     refreshSampleWaveform();
                     refreshMpcFunctionBar();
+                    scheduleProjectPersistenceViewHierarchyCapture("BROWSE");
+                    if (loadSucceeded) {
+                        Log.i(TAG, "BROWSER_SAMPLE_ASSIGN_COMPLETE name="
+                                + file.displayName()
+                                + " pad=" + (targetPad + 1)
+                                + " layer=" + (targetLayer + 1));
+                    }
                 });
             });
         } catch (java.util.concurrent.RejectedExecutionException e) {
