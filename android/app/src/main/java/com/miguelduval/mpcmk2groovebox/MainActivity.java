@@ -3860,6 +3860,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshMainTrackQuickSample();
         refreshMainDataDialFocusVisuals();
         updateModeRailSelection();
+        refreshMpcFunctionBar();
         scheduleProjectPersistenceViewHierarchyCapture("MAIN");
     }
 
