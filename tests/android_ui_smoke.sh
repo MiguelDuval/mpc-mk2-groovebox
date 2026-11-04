@@ -14523,7 +14523,7 @@ display_nodes = [node for node in root.iter("node")
     and node.attrib.get("visible-to-user") == "true"]
 if len(display_nodes) != 1:
     raise SystemExit(f"expected one visible Android DecorView, found {len(display_nodes)}")
-display_match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+display_match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
                              display_nodes[0].attrib.get("bounds", ""))
 if not display_match:
     raise SystemExit(f"Android DecorView has invalid display bounds: {display_nodes[0].attrib}")
