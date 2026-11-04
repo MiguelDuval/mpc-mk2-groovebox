@@ -14516,10 +14516,28 @@ match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",
 if not match:
     raise SystemExit(f"Browser results ScrollView has invalid bounds: {matches[0].attrib}")
 left, top, right, bottom = map(int, match.groups())
-screen_width = int(root.attrib.get("width", "0"))
-screen_height = int(root.attrib.get("height", "0"))
-if screen_width <= 0 or screen_height <= 0 or right - left < 120 or bottom - top < 100:
+# The app-side hierarchy stores rotated display geometry on DecorView;
+# the <hierarchy> element itself intentionally has no width/height attributes.
+display_nodes = [node for node in root.iter("node")
+    if node.attrib.get("class") == "com.android.internal.policy.DecorView"
+    and node.attrib.get("visible-to-user") == "true"]
+if len(display_nodes) != 1:
+    raise SystemExit(f"expected one visible Android DecorView, found {len(display_nodes)}")
+display_match = re.fullmatch(r"\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]",
+                             display_nodes[0].attrib.get("bounds", ""))
+if not display_match:
+    raise SystemExit(f"Android DecorView has invalid display bounds: {display_nodes[0].attrib}")
+display_left, display_top, display_right, display_bottom = map(int, display_match.groups())
+if display_left != 0 or display_top != 0 or display_right <= 0 or display_bottom <= 0:
+    raise SystemExit(f"Android DecorView has invalid screen bounds: {display_nodes[0].attrib}")
+screen_width, screen_height = display_right, display_bottom
+if right - left < 120 or bottom - top < 100:
     raise SystemExit(f"Browser results ScrollView is not measurable: {matches[0].attrib}")
+if left < display_left or top < display_top or right > display_right or bottom > display_bottom:
+    raise SystemExit(
+        f"Browser results ScrollView exceeds measured display: {matches[0].attrib}; "
+        f"display={display_nodes[0].attrib}"
+    )
 x = (left + right) // 2
 margin = max(24, (bottom - top) // 10)
 start_y, end_y = bottom - margin, top + margin
