@@ -35,7 +35,9 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 - **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
 
 **CI status (PR #133, head `c4726efb`):**
-- Build #3697 / run 41922886590: steps 1-54 all SUCCESS (native/JUnit tests, Assemble debug APK #52, Upload #53, smoke syntax #54). Step 55 emulator smoke test FAILED — detailed logs require GitHub sign-in and were not accessible; the single check annotation reports shell exit code 1 without scenario detail. Pre-existing regression: prior checkpoint builds #3693/#3694 also failed at step 55. Root cause not yet isolated; may be in an earlier smoke-test scenario, not necessarily the Main → Sample Edit path addressed by the fix above.
+- Build #3697 / run 41922886590: steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
+- Build #3698 / run 41930588812 (head `31bfd617`): steps 1-54 all SUCCESS (native/JUnit tests, Assemble debug APK #52, Upload #53, smoke syntax #54). Step 55 emulator smoke test FAILED again.
+- **3 consecutive emulator smoke test failures** on head `c4726efb`/`31bfd617`. Detailed job logs require GitHub sign-in (403 via public API); the single check annotation reports shell exit code 1 without scenario detail. Root cause not isolated — may be in an earlier smoke-test scenario, not necessarily the Main → Sample Edit path addressed by the fix above. **Blocker: cannot diagnose step 55 failure without CI job log access.**
 
 ## Mandatory visual-reference rule
 
