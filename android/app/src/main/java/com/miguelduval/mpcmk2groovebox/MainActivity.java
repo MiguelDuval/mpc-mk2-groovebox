@@ -2028,6 +2028,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
             addTrackSoloFunction(trackCount > 0);
+            final boolean sampleReady = startupComplete
+                    && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0;
+            Button sampleEdit = addFunction(
+                    "SAMPLE",
+                    sampleReady,
+                    sampleReady ? v -> showSamplePage() : null);
+            sampleEdit.setContentDescription(sampleReady
+                    ? "MPC Main Sample Edit action for assigned Pad/Layer sample"
+                    : "MPC Main Sample Edit unavailable: no sample assigned to selected Pad/Layer");
             return;
         }
 
@@ -2047,6 +2056,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             muteWorkspace.setContentDescription(
                     "MPC Function Bar Open Mute workspace");
             addTrackSoloFunction(trackCount > 0);
+            final boolean trackViewSampleReady = startupComplete
+                    && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0;
+            Button trackViewSampleEdit = addFunction(
+                    "SAMPLE",
+                    trackViewSampleReady,
+                    trackViewSampleReady ? v -> showSamplePage() : null);
+            trackViewSampleEdit.setContentDescription(trackViewSampleReady
+                    ? "MPC Track View Sample Edit action for assigned Pad/Layer sample"
+                    : "MPC Track View Sample Edit unavailable: no sample assigned to selected Pad/Layer");
             return;
         }
 
