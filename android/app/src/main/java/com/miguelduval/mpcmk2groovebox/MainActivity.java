@@ -266,6 +266,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private Runnable recordingWaveformUpdater;
     private Runnable samplePlaybackCursorUpdater;
     private int samplePlaybackCursorAccessibilityBucket = -1;
+    /** Bounded startup grace: remaining retries while waiting for the playback cursor to appear after a trigger. */
+    private int samplePlaybackCursorGraceAttempts = 0;
     private WaveformView sampleWaveform;
     private TextView sampleWaveformViewportInfo;
     private WaveformView mainTrackWaveform;
@@ -5394,6 +5396,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         refreshRegionInfo();
         refreshSampleWaveform();
         startSamplePlaybackCursorUpdates();
+        Log.i(TAG, "SAMPLE_PAGE_ENTERED: page=" + currentPage
+                + " pad=" + (selectedPad + 1)
+                + " layer=" + (selectedLayer + 1)
+                + " sampleFrames=" + nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer));
     }
 
     private void showSampleEditPanel(LinearLayout page) {
@@ -12268,6 +12274,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
             nativeAudioTriggerPad(pad, velocity);
+            samplePlaybackCursorGraceAttempts = 10;
+            startSamplePlaybackCursorUpdates();
+            Log.i(TAG, "SAMPLE_PLAY_TRIGGERED: pad=" + pad
+                    + " velocity=" + velocity
+                    + " page=" + currentPage
+                    + " graceAttempts=" + samplePlaybackCursorGraceAttempts);
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
                     + " | " + nativeAudioStatus());
@@ -12473,6 +12485,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         start, end, totalFrames, cursorFrame));
                             }
                         }
+                        samplePlaybackCursorGraceAttempts = 0;
                         waveformUiHandler.postDelayed(this, 33L);
                     } else {
                         sampleWaveform.setPlayhead(-1f);
@@ -12480,7 +12493,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             samplePlaybackCursorAccessibilityBucket = -1;
                             refreshRegionInfo();
                         }
-                        return;
+                        // Bounded startup grace: after a trigger, the cursor may be
+                        // briefly unavailable while audio initializes. Retry a limited
+                        // number of times; stop once grace is exhausted (playback ended
+                        // or never started).
+                        if (totalFrames > 0 && samplePlaybackCursorGraceAttempts > 0) {
+                            samplePlaybackCursorGraceAttempts--;
+                            waveformUiHandler.postDelayed(this, 33L);
+                        } else {
+                            samplePlaybackCursorGraceAttempts = 0;
+                            return;
+                        }
                     }
                 }
             };
@@ -12493,6 +12516,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void stopSamplePlaybackCursorUpdates() {
         waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
         samplePlaybackCursorAccessibilityBucket = -1;
+        samplePlaybackCursorGraceAttempts = 0;
         if (sampleWaveform != null) {
             sampleWaveform.setPlayhead(-1f);
         }
