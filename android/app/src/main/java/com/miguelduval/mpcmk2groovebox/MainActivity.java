@@ -5392,6 +5392,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         showSampleEditPanel(page);
         content.addView(page);
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
         refreshSampleInfo();
         refreshRegionInfo();
         refreshSampleWaveform();
@@ -12443,6 +12446,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             samplePlaybackCursorUpdater = new Runnable() {
                 @Override
                 public void run() {
+                    Log.i(TAG, "SAMPLE_CURSOR_UPDATER_STARTED: page=" + currentPage
+                            + " pad=" + (selectedPad + 1)
+                            + " layer=" + (selectedLayer + 1));
                     if (destroyed
                             || !"SAMPLE".equals(currentPage)
                             || sampleWaveform == null) {
@@ -12465,11 +12471,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && cursorFrame < totalFrames) {
                         sampleWaveform.setPlayhead(
                                 cursorFrame / (float) totalFrames);
-                        Log.i(TAG, "SAMPLE_CURSOR_ACTIVE: pad=" + selectedPad
-                                + " layer=" + selectedLayer
-                                + " cursorFrame=" + cursorFrame
-                                + " totalFrames=" + totalFrames
-                                + " playhead=" + String.format(Locale.ROOT, "%.3f", cursorFrame / (float) totalFrames));
                         final int bucket = (int) Math.min(
                                 31L, (cursorFrame * 32L) / totalFrames);
                         final CharSequence displayed =
@@ -12480,6 +12481,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         if (bucket != samplePlaybackCursorAccessibilityBucket
                                 || playheadTextMissing) {
                             samplePlaybackCursorAccessibilityBucket = bucket;
+                            Log.i(TAG, "SAMPLE_CURSOR_ACTIVE: pad=" + selectedPad
+                                    + " layer=" + selectedLayer
+                                    + " cursorFrame=" + cursorFrame
+                                    + " totalFrames=" + totalFrames
+                                    + " playhead=" + String.format(Locale.ROOT, "%.3f", cursorFrame / (float) totalFrames));
+                            if (regionInfo != null) {
                             if (regionInfo != null) {
                                 final long start = nativeAudioGetPadSampleRegionStart(
                                         selectedPad, selectedLayer);
