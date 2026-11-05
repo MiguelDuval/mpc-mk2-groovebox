@@ -10,18 +10,18 @@ if data.startswith(bytes.fromhex("efbbbf")):
     raise SystemExit("ERROR: Android UI smoke must be UTF-8 without a BOM")
 text = data.decode("utf-8")
 mojibake_fragments = (
-    "\\u0432\\u0402",  # UTF-8 punctuation decoded as Windows-1251
-    "\\u0432\\u2020",  # arrows
-    "\\u0432\\u20ac",  # mathematical minus
-    "\\u0412\\u00b1",  # plus/minus
-    "\\u0413\\u2014",  # multiplication sign
-    "\\u0432\\u040a",  # technical glyph set
-    "\\u0432\\u2013",  # en-dash/range labels
-    "\\u0432\\u045a",
-    "\\u0432\\u2030",
-    "\\u0432\\u2122",
-    "\\u0432\\u2022",
-    "\\u0432\\u0098",
+    "\u0432\u0402",  # UTF-8 punctuation decoded as Windows-1251
+    "\u0432\u2020",  # arrows
+    "\u0432\u20ac",  # mathematical minus
+    "\u0412\u00b1",  # plus/minus
+    "\u0413\u2014",  # multiplication sign
+    "\u0432\u040a",  # technical glyph set
+    "\u0432\u2013",  # en-dash/range labels
+    "\u0432\u045a",
+    "\u0432\u2030",
+    "\u0432\u2122",
+    "\u0432\u2022",
+    "\u0432\u0098",
 )
 if any(fragment in text for fragment in mojibake_fragments):
     raise SystemExit("ERROR: Android UI smoke contains mojibake in user-visible or source-contract strings")
