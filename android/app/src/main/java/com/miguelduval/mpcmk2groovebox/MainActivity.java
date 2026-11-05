@@ -5439,6 +5439,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         row2.addView(chop16, weight());
         Button sampleEditPlay = actionButton("PLAY", v -> {
             selectAndTriggerPad(selectedPad, 112);
+            Log.i(TAG, "SAMPLE_EDIT_PLAY_TRIGGERED: pad=" + selectedPad
+                    + " layer=" + selectedLayer
+                    + " page=" + currentPage);
             if (sampleWaveform != null) {
                 refreshSampleWaveformViewportInfo(
                         sampleWaveform.viewportStartNormalized(),
@@ -12276,10 +12279,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             nativeAudioTriggerPad(pad, velocity);
             samplePlaybackCursorGraceAttempts = 10;
             startSamplePlaybackCursorUpdates();
-            Log.i(TAG, "SAMPLE_PLAY_TRIGGERED: pad=" + pad
-                    + " velocity=" + velocity
-                    + " page=" + currentPage
-                    + " graceAttempts=" + samplePlaybackCursorGraceAttempts);
+
             setBottomStatus("AUDITION • Pad " + (pad + 1)
                     + " • velocity " + velocity
                     + " | " + nativeAudioStatus());
@@ -12451,6 +12451,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         }
                         waveformUiHandler.removeCallbacks(this);
                         samplePlaybackCursorAccessibilityBucket = -1;
+                        Log.i(TAG, "SAMPLE_CURSOR_STOPPED: reason=" + (destroyed ? "destroyed" : ("SAMPLE".equals(currentPage) ? "waveform-null" : "page-exit")));
                         return;
                     }
 
@@ -12464,6 +12465,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             && cursorFrame < totalFrames) {
                         sampleWaveform.setPlayhead(
                                 cursorFrame / (float) totalFrames);
+                        Log.i(TAG, "SAMPLE_CURSOR_ACTIVE: pad=" + selectedPad
+                                + " layer=" + selectedLayer
+                                + " cursorFrame=" + cursorFrame
+                                + " totalFrames=" + totalFrames
+                                + " playhead=" + String.format(Locale.ROOT, "%.3f", cursorFrame / (float) totalFrames));
                         final int bucket = (int) Math.min(
                                 31L, (cursorFrame * 32L) / totalFrames);
                         final CharSequence displayed =
@@ -12502,6 +12508,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             waveformUiHandler.postDelayed(this, 33L);
                         } else {
                             samplePlaybackCursorGraceAttempts = 0;
+                            Log.i(TAG, "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted");
                             return;
                         }
                     }
@@ -12520,6 +12527,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (sampleWaveform != null) {
             sampleWaveform.setPlayhead(-1f);
         }
+        Log.i(TAG, "SAMPLE_CURSOR_STOPPED: reason=navigation-exit");
     }
 
     private void startRecordingWaveformUpdates() {
