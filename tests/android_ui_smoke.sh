@@ -13354,7 +13354,6 @@ capture_project_persistence_view_tree() {
     SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SAMPLE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE"; before="$PROJECT_SAMPLE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SAMPLE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE"; before="$PROJECT_SAMPLE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
   if ! wait_for_new_project_marker "$marker" "$before" "$timeout_seconds"; then
@@ -13420,6 +13419,16 @@ PY_PROJECT_APP_VIEW_TREE
     echo "ERROR: app View tree for $page is malformed, stale or lacks required enabled controls"; return 1
   fi
   PROJECT_CURRENT_APP_XML="$target_xml"
+  # Refresh baseline so subsequent captures require fresh snapshots
+  case "$page" in
+    MENU) PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")" ;;
+    MAIN) PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")" ;;
+    BROWSE) PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")" ;;
+    PROJECT) PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")" ;;
+    SHORTCUTS) PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")" ;;
+    SEQ) PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")" ;;
+    SAMPLE) PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")" ;;
+  esac
   return 0
 }
 
