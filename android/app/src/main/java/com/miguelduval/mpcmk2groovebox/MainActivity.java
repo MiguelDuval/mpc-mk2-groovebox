@@ -5445,6 +5445,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             Log.i(TAG, "SAMPLE_EDIT_PLAY_TRIGGERED: pad=" + selectedPad
                     + " layer=" + selectedLayer
                     + " page=" + currentPage);
+            scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
             if (sampleWaveform != null) {
                 refreshSampleWaveformViewportInfo(
                         sampleWaveform.viewportStartNormalized(),
@@ -12486,6 +12487,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     + " cursorFrame=" + cursorFrame
                                     + " totalFrames=" + totalFrames
                                     + " playhead=" + String.format(Locale.ROOT, "%.3f", cursorFrame / (float) totalFrames));
+                            scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
                             if (regionInfo != null) {
                                 final long start = nativeAudioGetPadSampleRegionStart(
                                         selectedPad, selectedLayer);
@@ -12515,6 +12517,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         } else {
                             samplePlaybackCursorGraceAttempts = 0;
                             Log.i(TAG, "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted");
+                            scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
                             return;
                         }
                     }
@@ -12608,6 +12611,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedPad, selectedLayer, next, end));
         refreshRegionInfo();
         refreshSampleWaveform();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void nudgeRegionEnd(long delta) {
@@ -12623,6 +12627,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedPad, selectedLayer, start, next));
         refreshRegionInfo();
         refreshSampleWaveform();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void resetRegion() {
@@ -12635,12 +12640,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedPad, selectedLayer, 0, total));
         refreshRegionInfo();
         refreshSampleWaveform();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void cropRegion() {
         setBottomStatus(nativeAudioCropPadSampleRegion(selectedPad, selectedLayer));
         refreshAllInspectorState();
         refreshSampleWaveform();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void chop(int count) {
