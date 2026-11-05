@@ -34,10 +34,17 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 - **fix(ui): add SAMPLE action to Main/Track View Function Bar after Browser sample assignment** (commit `1968a182`). After Browser assigns a WAV to the selected Pad/Layer there was no available SAMPLE action in the Main (and Track View) Function Bar, blocking the Browser → Sample Edit continuation. Added a `SAMPLE` function, enabled when `startupComplete && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0`, that opens Sample Edit via `showSamplePage()`. Metronome stays RESERVED.
 - **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
 
-**CI status (PR #133, head `c4726efb`):**
-- Build #3697 / run 41922886590: steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
-- Build #3698 / run 41930588812 (head `31bfd617`): steps 1-54 all SUCCESS (native/JUnit tests, Assemble debug APK #52, Upload #53, smoke syntax #54). Step 55 emulator smoke test FAILED again.
-- **3 consecutive emulator smoke test failures** on head `c4726efb`/`31bfd617`. Detailed job logs require GitHub sign-in (403 via public API); the single check annotation reports shell exit code 1 without scenario detail. Root cause not isolated — may be in an earlier smoke-test scenario, not necessarily the Main → Sample Edit path addressed by the fix above. **Blocker: cannot diagnose step 55 failure without CI job log access.**
+## Current session root-cause fix (2026-11-04)
+
+- **fix(ui): stop sample playback cursor updater when playback inactive** (commit `cfb834e6`). `startSamplePlaybackCursorUpdates()` scheduled `waveformUiHandler.postDelayed(this, 33L)` **unconditionally** at the end of every callback — even when no playback cursor exists (`totalFrames == 0` or `cursorFrame < 0`). This continuous ~30fps main-thread activity prevents Android UiAutomator's global idle detection from completing, causing subsequent `dump_device_ui`/`wait_for_ui_description` calls (after tapping SAMPLE to open Sample Edit) to time out.
+  - Fix: moved `postDelayed(this, 33L)` inside the `if (totalFrames > 0 && cursorFrame >= 0 && cursorFrame < totalFrames)` block so it only reschedules when genuine playback is active. Added `return;` in the `else` block to stop scheduling when playback is not active.
+  - Added `stopSamplePlaybackCursorUpdates()` method that removes callbacks and resets playhead when navigating away from Sample page.
+  - Added `stopSamplePlaybackCursorUpdates()` calls to `showMainPage()`, `showBrowserPage()`, `showSequencePage()`, `showRecordPage()`, `showMutePage()` and `showMixPage()`.
+
+**CI status (PR #133):**
+- Build #3697 / run 41922886590 (head `c4726efb`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
+- Build #3698 / run 41930588812 (head `31bfd617`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED again.
+- **Root cause identified and fixed:** continuous 33ms waveform cursor updater on main thread blocked UiAutomator idle detection. Fix committed as `cfb834e6` but **not yet pushed to origin** (git push hangs — likely auth/network). **Next: push `cfb834e6` to origin/checkpoint/mpc-ui-reference-and-product-20261030 and re-run Android Build to verify step 55 passes.**
 
 ## Mandatory visual-reference rule
 
