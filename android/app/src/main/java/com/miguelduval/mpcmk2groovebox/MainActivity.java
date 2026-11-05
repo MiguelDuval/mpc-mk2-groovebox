@@ -3235,6 +3235,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 == View.VISIBLE;
 
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         if (NATIVE_LIBRARY_LOADED) {
             nativeSequenceSetStepEditContext(false, 0);
             nativeSequenceSetLauncherContext(false, 0);
@@ -5567,6 +5568,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showRecordPage() {
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "REC";
@@ -6019,6 +6021,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showBrowserPage() {
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "BROWSE";
@@ -8322,6 +8325,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showSequencePage() {
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "SEQ";
@@ -10592,6 +10596,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMutePage() {
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "MUTE";
@@ -11061,6 +11066,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMixPage() {
         clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
         currentPage = "PAD_MIXER";
@@ -12467,20 +12473,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         start, end, totalFrames, cursorFrame));
                             }
                         }
+                        waveformUiHandler.postDelayed(this, 33L);
                     } else {
                         sampleWaveform.setPlayhead(-1f);
                         if (samplePlaybackCursorAccessibilityBucket != -1) {
                             samplePlaybackCursorAccessibilityBucket = -1;
                             refreshRegionInfo();
                         }
+                        return;
                     }
-                    waveformUiHandler.postDelayed(this, 33L);
                 }
             };
         }
         waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
         samplePlaybackCursorAccessibilityBucket = -1;
         waveformUiHandler.post(samplePlaybackCursorUpdater);
+    }
+
+    private void stopSamplePlaybackCursorUpdates() {
+        waveformUiHandler.removeCallbacks(samplePlaybackCursorUpdater);
+        samplePlaybackCursorAccessibilityBucket = -1;
+        if (sampleWaveform != null) {
+            sampleWaveform.setPlayhead(-1f);
+        }
     }
 
     private void startRecordingWaveformUpdates() {
