@@ -12442,13 +12442,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void startSamplePlaybackCursorUpdates() {
+        Log.i(TAG, "SAMPLE_CURSOR_UPDATER_STARTED: page=" + currentPage
+                + " pad=" + (selectedPad + 1)
+                + " layer=" + (selectedLayer + 1));
         if (samplePlaybackCursorUpdater == null) {
             samplePlaybackCursorUpdater = new Runnable() {
                 @Override
                 public void run() {
-                    Log.i(TAG, "SAMPLE_CURSOR_UPDATER_STARTED: page=" + currentPage
-                            + " pad=" + (selectedPad + 1)
-                            + " layer=" + (selectedLayer + 1));
                     if (destroyed
                             || !"SAMPLE".equals(currentPage)
                             || sampleWaveform == null) {
@@ -12486,7 +12486,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     + " cursorFrame=" + cursorFrame
                                     + " totalFrames=" + totalFrames
                                     + " playhead=" + String.format(Locale.ROOT, "%.3f", cursorFrame / (float) totalFrames));
-                            if (regionInfo != null) {
                             if (regionInfo != null) {
                                 final long start = nativeAudioGetPadSampleRegionStart(
                                         selectedPad, selectedLayer);
