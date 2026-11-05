@@ -1,5 +1,31 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 set -euo pipefail
+
+python3 - "$0" <<'PY_ENCODING_GUARD'
+from pathlib import Path
+import sys
+
+data = Path(sys.argv[1]).read_bytes()
+if data.startswith(bytes.fromhex("efbbbf")):
+    raise SystemExit("ERROR: Android UI smoke must be UTF-8 without a BOM")
+text = data.decode("utf-8")
+mojibake_fragments = (
+    "\\u0432\\u0402",  # UTF-8 punctuation decoded as Windows-1251
+    "\\u0432\\u2020",  # arrows
+    "\\u0432\\u20ac",  # mathematical minus
+    "\\u0412\\u00b1",  # plus/minus
+    "\\u0413\\u2014",  # multiplication sign
+    "\\u0432\\u040a",  # technical glyph set
+    "\\u0432\\u2013",  # en-dash/range labels
+    "\\u0432\\u045a",
+    "\\u0432\\u2030",
+    "\\u0432\\u2122",
+    "\\u0432\\u2022",
+    "\\u0432\\u0098",
+)
+if any(fragment in text for fragment in mojibake_fragments):
+    raise SystemExit("ERROR: Android UI smoke contains mojibake in user-visible or source-contract strings")
+PY_ENCODING_GUARD
 
 APK="android/app/build/outputs/apk/debug/app-debug.apk"
 PACKAGE="com.miguelduval.mpcmk2groovebox.debug"
@@ -92,8 +118,8 @@ for required in \
   'MpcProjectDocumentWriteTransaction.write(' \
   'previousDocumentPreserved=' \
   'readBackVerified=true' \
-  'rollback unverified вЂў recovery copy retained' \
-  'destination unchanged вЂў'; do
+  'rollback unverified • recovery copy retained' \
+  'destination unchanged •'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: transactional Project-write integration missing: $required"; exit 1
   fi
@@ -300,7 +326,7 @@ for required in \
     exit 1
   fi
 done
-if grep -Eq -- 'case (BROWSER|CHANNEL_MIXER|PAD_MIXER|SOUNDS|XYFX): return "[^"]*[вЊ‚в·вЊ•в–¦в–ҐвњЋв€їв—Џв‰Ўв–¤вњЈв™«в–¶в•¬в°]"' "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Eq -- 'case (BROWSER|CHANNEL_MIXER|PAD_MIXER|SOUNDS|XYFX): return "[^"]*[⌂☷⌕▦▥✎∿●≡▤✣♫▶╬☰]"' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: canonical MPC Shortcut Rail must not use Unicode glyphs as visible labels"
   exit 1
 fi
@@ -374,10 +400,10 @@ for required in \
   "Main Track View length mode" \
   "Main Track View velocity state" \
   "Main Sequence transpose state" \
-  'TRANSPOSE\nвЂ”' \
+  'TRANSPOSE\n—' \
   "Main Track View selected layer" \
-  "Main Mode sequence tempo source вЂў SEQ вЂў Global unavailable" \
-  "Main Track visual hierarchy вЂў Track / Program / workspace header" \
+  "Main Mode sequence tempo source • SEQ • Global unavailable" \
+  "Main Track visual hierarchy • Track / Program / workspace header" \
   "Main Mode selected track" \
   "MPC Toolbar Menu" \
   "MPC Project Browser" \
@@ -394,11 +420,11 @@ for required in \
   'TRACK_TYPE_CHANGE_RESERVED_STATUS' \
   "buildMpcMenuTile" \
   "styleMpcMenuFooterButton" \
-  "MPC Main BPM field вЂў double-tap for numeric entry" \
-  "MPC Main BARS field вЂў double-tap for numeric entry" \
-  "MPC Main LOOP START field вЂў double-tap for numeric entry" \
-  "MPC Main LOOP END field вЂў double-tap for numeric entry" \
-  "Main Time Signature field вЂў tap for editor" \
+  "MPC Main BPM field • double-tap for numeric entry" \
+  "MPC Main BARS field • double-tap for numeric entry" \
+  "MPC Main LOOP START field • double-tap for numeric entry" \
+  "MPC Main LOOP END field • double-tap for numeric entry" \
+  "Main Time Signature field • tap for editor" \
   "MPC_TIME_SIGNATURE_HIGHLIGHT" \
   "Timing Correct" \
   "Time Signature value" \
@@ -408,7 +434,7 @@ for required in \
   "Main Arrangement View header" \
   "Main Track View record sample" \
   "Main Track View browse samples" \
-  "Main Track View quick sample editor вЂў controller-first selected Pad" \
+  "Main Track View quick sample editor • controller-first selected Pad" \
   'mainTrackSampleEmptyActions = row();' \
   'mainTrackSampleAuditionButton = mainActionButton(' \
   'FrameLayout sampleSurface = new FrameLayout(this);' \
@@ -595,12 +621,12 @@ if ! grep -Fq -- 'buildTrackStrip(' <<<"$pad_mode_block"; then
   echo "ERROR: Main Pad-mode XL strip must pair the selected Pad with its selected Track"
   exit 1
 fi
-if ! grep -Fq -- 'PAD вЂў SELECTED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+if ! grep -Fq -- 'PAD • SELECTED' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
   echo "ERROR: Main Pad-mode XL strip selected-Pad presentation contract is missing"
   exit 1
 fi
 if grep -Fq -- 'focusLabel' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java" || \
-   grep -Fq -- 'DIAL вЂў' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
+   grep -Fq -- 'DIAL •' "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
   echo "ERROR: XL Mixer Strip must not reintroduce the obsolete standalone Data Dial row"
   exit 1
 fi
@@ -772,14 +798,14 @@ for required in \
   'private int focusSequenceGridAtTick(long tick)' \
   'MpcSequenceZoomPolicy.stepIndexForTick(' \
   'MpcSequenceZoomPolicy.gridStartForStep(' \
-  'ARRANGE EVENT вЂў GRID FOCUSED вЂў STEP'; do
+  'ARRANGE EVENT • GRID FOCUSED • STEP'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Arrangement event must open Grid at its corresponding tick/step: $required"
     exit 1
   fi
 done
 
-echo "Running Arrangement event в†’ Grid gesture integration preflight..."
+echo "Running Arrangement event → Grid gesture integration preflight..."
 for required in \
   'verifyArrangeLoopDragAndRestoreForAudit()' \
   'dispatchArrangementLoopDragForAudit(' \
@@ -850,7 +876,7 @@ if ! grep -Fq -- 'compactContextField(' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq
 fi
 
 if ! grep -Fq -- 'transpose.setText("TRANSPOSE' "$MAIN_ACTIVITY_SOURCE" || \
-   ! grep -Fq -- 'TRANSPOSE вЂў unavailable in current Sequence backend' "$MAIN_ACTIVITY_SOURCE"; then
+   ! grep -Fq -- 'TRANSPOSE • unavailable in current Sequence backend' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main TRANSPOSE unavailable state contract is missing"
   exit 1
 fi
@@ -876,7 +902,7 @@ if ! grep -Fq -- 'TextView layerDetail = mainMetric("LAYER");' "$MAIN_ACTIVITY_S
   echo "ERROR: Main LAYER must remain a single focused field, not a duplicated +/- control group"
   exit 1
 fi
-if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER вЂў DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'MpcUiState.DataDialFocus.SAMPLE_LAYER' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'LAYER • DATA DIAL / +/-' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Main LAYER field must retain semantic Data Dial focus entry"
   exit 1
 fi
@@ -1169,13 +1195,13 @@ for obsolete in 'actionButton("PREV"' 'actionButton("NEXT"' 'v -> showArrangePag
     exit 1
   fi
 done
-if grep -Fq -- 'SELECTED TRACK вЂў shell Function Bar' <<<"$track_view_block"; then
+if grep -Fq -- 'SELECTED TRACK • shell Function Bar' <<<"$track_view_block"; then
   echo "ERROR: Track View must not render a duplicate instructional footer"
   exit 1
 fi
 
-if ! grep -Fq -- 'Track в€’/+ is a high-frequency Main action' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'MpcUiState.DataDialFocus.TRACK' "$MAIN_ACTIVITY_SOURCE"; then
-  echo "ERROR: Main Track в€’/+ must preserve local view context and restore Track Data Dial focus"
+if ! grep -Fq -- 'Track −/+ is a high-frequency Main action' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'mainTrackArrangementHost.getChildAt(1).getVisibility()' "$MAIN_ACTIVITY_SOURCE" || ! grep -Fq -- 'MpcUiState.DataDialFocus.TRACK' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Main Track −/+ must preserve local view context and restore Track Data Dial focus"
   exit 1
 fi
 
@@ -1190,7 +1216,7 @@ if ! grep -Fq -- 'Track identity is intentionally compact' "$MAIN_ACTIVITY_SOURC
 fi
 
 echo "Running Main Track-state row fidelity preflight..."
-for required in   'trackDetailRow.addView(monitorDetail, weight());'   'trackDetailRow.addView(lengthDetail, weight());'   'trackDetailRow.addView(velocityDetail, weight());'   'layerDetail,'   'selectedLayer + 1'   'setBottomStatus("LAYER вЂў DATA DIAL / +/-")'; do
+for required in   'trackDetailRow.addView(monitorDetail, weight());'   'trackDetailRow.addView(lengthDetail, weight());'   'trackDetailRow.addView(velocityDetail, weight());'   'layerDetail,'   'selectedLayer + 1'   'setBottomStatus("LAYER • DATA DIAL / +/-")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: MPC Main Track-state row field contract missing: $required"
     exit 1
@@ -1311,7 +1337,7 @@ if ! grep -Fq -- 'nativeSequenceSetTrackProgram(' <<<"$program_select_block" || 
   exit 1
 fi
 
-if ! grep -Fq -- 'PROGRAM SELECT вЂў DRUM TRACK REQUIRED' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'programSelectPageVisible' "$MAIN_ACTIVITY_SOURCE"; then
+if ! grep -Fq -- 'PROGRAM SELECT • DRUM TRACK REQUIRED' "$MAIN_ACTIVITY_SOURCE" ||    ! grep -Fq -- 'programSelectPageVisible' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Program Data Dial routing contract is missing"
   exit 1
 fi
@@ -1352,7 +1378,7 @@ echo "Running Main section framing preflight..."
 for required in \
   'sequenceCard.setBackground(strokeBackground(' \
   'trackProgramSection.setBackground(strokeBackground(' \
-  'Main Track visual hierarchy вЂў Track / Program / workspace section' \
+  'Main Track visual hierarchy • Track / Program / workspace section' \
   'Main Sequence Loop button'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Main section framing contract missing: $required"
@@ -1435,12 +1461,12 @@ if ! grep -Fq -- 'sampleEditBrowser.setContentDescription("Sample Edit open Brow
 fi
 echo "Running MPC Browser flat-chrome preflight..."
 echo "Running MPC Browser information-architecture preflight..."
-if grep -Fq -- 'PROVIDER вЂў ANDROID DOCUMENTS вЂў OPEN PICKER BELOW' "$BROWSER_SOURCE" \
-    || grep -Fq -- 'PROVIDER вЂў ANDROID DOCUMENTS вЂў OPEN PICKER BELOW' "$MAIN_ACTIVITY_SOURCE"; then
+if grep -Fq -- 'PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW' "$BROWSER_SOURCE" \
+    || grep -Fq -- 'PROVIDER • ANDROID DOCUMENTS • OPEN PICKER BELOW' "$MAIN_ACTIVITY_SOURCE"; then
   echo "ERROR: Browser still presents Document Picker as its primary provider"
   exit 1
 fi
-for required in 'providerState = info(context,' 'LOCAL AUDIO вЂў NOT SCANNED'; do
+for required in 'providerState = info(context,' 'LOCAL AUDIO • NOT SCANNED'; do
   if ! grep -Fq -- "$required" "$BROWSER_SOURCE"; then
     echo "ERROR: Browser initial local-provider state missing: $required"
     exit 1
@@ -1455,7 +1481,7 @@ for required in 'REQUEST_SCAN_LOCAL_AUDIO' 'REQUEST_OPEN_DOCUMENT_TREE' 'ACTION_
   fi
 done
 echo "Running MPC Browser workspace composition preflight..."
-for required in   'body.addView(center, new LayoutParams(0, -1, 1))'   'center.addView(scroll, new LayoutParams('   'ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)'   'scroll.setContentDescription("MPC Browser results list")'   'TARGET вЂў PAD'   'Browser target context вЂў state only'; do
+for required in   'body.addView(center, new LayoutParams(0, -1, 1))'   'center.addView(scroll, new LayoutParams('   'ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)'   'scroll.setContentDescription("MPC Browser results list")'   'TARGET • PAD'   'Browser target context • state only'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser workspace composition contract missing: $required"
     exit 1
@@ -1475,7 +1501,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIOвЂ¦'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGEвЂ¦'   'CHOOSE FOLDERвЂ¦'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for " + activeLocationItem'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for " + activeLocationItem'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -1528,7 +1554,7 @@ done
 echo "Running MPC Pad Mixer presentation preflight..."
 echo "Running MPC Pad Mixer Function Bar preflight..."
 echo "Running MPC Main XL Mixer Strip preflight..."
-for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'MPC XL'   'TRACK вЂў SELECTED'   'PAD вЂў SELECTED'   'OUTPUT 1/2'   'MpcVerticalMeter'   'MpcPanSlider'   'addIdentityHeader('   'addProgramBand('   'MPC XL level meter and white-line fader'   'MPC XL selected track pan slider reserved'   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
+for required in   'MpcMainMixerStripView'   'MPC Main XL Mixer Strips'   'MPC XL'   'TRACK • SELECTED'   'PAD • SELECTED'   'OUTPUT 1/2'   'MpcVerticalMeter'   'MpcPanSlider'   'addIdentityHeader('   'addProgramBand('   'MPC XL level meter and white-line fader'   'MPC XL selected track pan slider reserved'   'mixerStripVisible()'   'onMixerStripVisibilityChanged'   'MPC Main mixer strips show or hide'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE" &&      ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"; then
     echo "ERROR: Main XL Mixer Strip architecture contract missing: $required"
     exit 1
@@ -1606,7 +1632,7 @@ if [[ -z "$pad_mixer_function_end" || "$pad_mixer_function_end" -le "$pad_mixer_
   exit 1
 fi
 pad_mixer_function_block=$(sed -n "${pad_mixer_function_start},$((pad_mixer_function_end - 1))p" "$MAIN_ACTIVITY_SOURCE")
-for required in   'PAD в€’'   'PAD +'   'TRACK EDIT'   'MAIN'   'BROWSER'   'navigationController.setSelectedPad(selectedPad)'; do
+for required in   'PAD −'   'PAD +'   'TRACK EDIT'   'MAIN'   'BROWSER'   'navigationController.setSelectedPad(selectedPad)'; do
   if ! grep -Fq -- "$required" <<<"$pad_mixer_function_block"; then
     echo "ERROR: Pad Mixer Function Bar contract missing: $required"
     exit 1
@@ -1744,7 +1770,7 @@ for required in \
   'MpcMainIconDrawable.Mode.PREVIOUS' \
   'MpcMainIconDrawable.Mode.NEXT' \
   'private Button iconButton(' \
-  'Swipe up to close вЂў next page'; do
+  'Swipe up to close • next page'; do
   if ! grep -Fq -- "$required" "$pull_down_source"; then
     echo "ERROR: MPC Pull-Down deterministic iconography contract missing: $required"
     exit 1
@@ -1756,7 +1782,7 @@ for required in 'CLOSE' 'PREVIOUS' 'NEXT' 'drawClose(' 'drawChevron(' ; do
     exit 1
   fi
 done
-if grep -Eq '[Г—вЂ№вЂє]' "$pull_down_source"; then
+if grep -Eq '[×‹›]' "$pull_down_source"; then
   echo "ERROR: MPC Pull-Down must not use Unicode close/chevron glyphs in visible chrome"
   exit 1
 fi
@@ -1795,7 +1821,7 @@ if grep -Fq -- '"MPC XL Channel Strip restore"' "$SHELL_SOURCE"; then
   exit 1
 fi
 
-if grep -Fq -- 'channelStripRestoreButton.setText("вЂє")' "$SHELL_SOURCE"; then
+if grep -Fq -- 'channelStripRestoreButton.setText("›")' "$SHELL_SOURCE"; then
   echo "ERROR: collapsed XL Channel Strip must not use a visible Unicode chevron restore glyph"
   exit 1
 fi
@@ -2024,11 +2050,11 @@ done
 echo "Running MPC Browser visual/runtime contract preflight..."
 require_source_contains "$BROWSER_SOURCE" 'MpcBrowserFilterIconDrawable'
 require_source_contains "$BROWSER_SOURCE" 'button.setContentDescription("MPC Browser filter " + filter)'
-require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE вЂў INTERNAL'
+require_source_contains "$BROWSER_SOURCE" 'MPC Browser current location: PLACE • INTERNAL'
 require_source_contains "$BROWSER_SOURCE" 'row.setOnClickListener(v -> {'
 require_source_contains "$BROWSER_SOURCE" 'listener.onOpenStorage();'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser open Android storage picker'
-require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER вЂў DIRECT WAV LOAD'
+require_source_contains "$BROWSER_SOURCE" 'ANDROID DOCUMENT PICKER • DIRECT WAV LOAD'
 require_source_contains "$BROWSER_SOURCE" 'listener.onChooseFolder();'
 require_source_contains "$BROWSER_SOURCE" 'MPC Browser choose a local folder for " + activeLocationItem'
 require_source_contains "$BROWSER_SOURCE" 'PERSIST A LOCAL FOLDER FOR BROWSING'
@@ -2144,10 +2170,10 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceAddArrangementPat
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceMoveArrangementPatternPlacement'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceDeleteArrangementPatternPlacement'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceDuplicateArrangementPatternPlacement'
-require_source_contains "$0" 'Arrangement CLIP DUP в†’ UNDO в†’ REDO в†’ UNDO restored exact source placement state'
+require_source_contains "$0" 'Arrangement CLIP DUP → UNDO → REDO → UNDO restored exact source placement state'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at empty target tick'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
-require_source_contains "$0" 'Pattern placement real-touch PLACE в†’ MOVE В± GRID'
+require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE ± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
@@ -2186,7 +2212,7 @@ for forbidden in   'shortcut.setContentDescription("MPC shortcut " + mode.label(
     exit 1
   fi
 done
-for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy вЂў Track / Program / workspace section'   'Main Mode selected sequence вЂў MPC selected field'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'verifyMainMuteRouteForAudit('   'UI_MAIN_MUTE_ROUTE_COMPLETE:'   'verifyTrackSoloToggleAndRestoreForAudit('   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:'   'MPC Function Bar Track Solo '    'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
+for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolbar'   'MPC shortcut CHANNEL MIXER'   'MPC shortcut SOUNDS'   'MPC shortcut XY'   'MPC Main XL Mixer Strips'   'Main Track visual hierarchy • Track / Program / workspace section'   'Main Mode selected sequence • MPC selected field'   'MAIN_SEQUENCE_CONTEXT_VERIFIED selectedSequence='   'MAIN_TRACK_CONTEXT_VERIFIED selectedTrack='   'MAIN_PROGRAM_CONTEXT_VERIFIED selectedTrack='   'verifyMainMuteRouteForAudit('   'UI_MAIN_MUTE_ROUTE_COMPLETE:'   'verifyTrackSoloToggleAndRestoreForAudit('   'UI_TRACK_SOLO_ROUNDTRIP_COMPLETE:'   'MPC Function Bar Track Solo '    'clickMpcToolbarMenuForAudit()'   'captureProjectMenuViewHierarchyForSmoke()'   'MPC_MENU_VIEW_HIERARCHY_READY'   'mpc-project-menu-view-hierarchy.xml'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: current MPC Main UI audit contract missing: $required"
     exit 1
@@ -2873,7 +2899,7 @@ while (( SECONDS < audit_deadline )); do
     # ARR-003: real Function Bar zoom touches must change the visible timeline
     # scale only. Compare the current Arrangement viewport against live UI tree
     # metadata and compare the exact native Track event projection across the
-    # reset в†’ zoom-in в†’ zoom-out round trip.
+    # reset → zoom-in → zoom-out round trip.
     ARRANGE_ZOOM_BASELINE_PNG="/tmp/mpc-groovebox-arrange-zoom-baseline.png"
     ARRANGE_ZOOM_BASELINE_XML="/tmp/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
     ARRANGE_ZOOM_BASELINE_REMOTE="/sdcard/mpc-groovebox-arrange-zoom-baseline-uiautomator.xml"
@@ -2945,7 +2971,7 @@ PY_ARRANGE_ZOOM_LOG
       return 1
     }
 
-    echo "Running ARR-003 real-touch Arrangement RESET в†’ ZOOM+ в†’ ZOOMв€’ viewport round trip..."
+    echo "Running ARR-003 real-touch Arrangement RESET → ZOOM+ → ZOOM− viewport round trip..."
     if ! dump_device_ui_retry "$ARRANGE_ZOOM_BASELINE_REMOTE" "$ARRANGE_ZOOM_BASELINE_XML" 8 4; then
       echo "ERROR: could not capture fresh Arrangement hierarchy before RESET"; exit 1
     fi
@@ -3133,7 +3159,7 @@ PY_ARRANGE_PAN_TOUCH_POINTS
         || ! -s "$ARRANGE_PAN_RESTORED_XML" ]]; then
       echo "ERROR: required Arrangement pan accessibility XML is missing"; exit 1
     fi
-    # Reset and recapture after panning so the separate ZOOM + / ZOOM в€’
+    # Reset and recapture after panning so the separate ZOOM + / ZOOM −
     # round-trip starts from a fresh, canonical viewport.
     if ! tap_visible_description_early "$ARRANGE_PAN_RESTORED_XML" "RESET"; then
       echo "ERROR: Arrangement RESET did not recover the viewport after panning"; exit 1
@@ -3180,8 +3206,8 @@ PY_ARRANGE_PAN_TOUCH_POINTS
       printf 'BASELINE: %s\nZOOM IN: %s\n' "$arrange_zoom_baseline_data" "$arrange_zoom_in_data"; exit 1
     fi
 
-    if ! tap_visible_description_early "$ARRANGE_ZOOM_IN_XML" "ZOOM в€’"; then
-      echo "ERROR: Arrangement ZOOM в€’ action was not clickable"; exit 1
+    if ! tap_visible_description_early "$ARRANGE_ZOOM_IN_XML" "ZOOM −"; then
+      echo "ERROR: Arrangement ZOOM − action was not clickable"; exit 1
     fi
     sleep 0.3
     if ! dump_device_ui_retry "$ARRANGE_ZOOM_RESTORED_REMOTE" "$ARRANGE_ZOOM_RESTORED_XML" 8 4; then
@@ -3198,7 +3224,7 @@ PY_ARRANGE_PAN_TOUCH_POINTS
     arrange_zoom_out_data="$(arrange_zoom_data_from_log "$arrange_zoom_out_line")" || exit 1
     if [[ "$arrange_zoom_restored_bars" != "$arrange_zoom_baseline_bars" \
         || "$arrange_zoom_restored_start" != "$arrange_zoom_baseline_start" ]]; then
-      echo "ERROR: ZOOM в€’ did not restore original Arrangement viewport: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start restored=$arrange_zoom_restored_bars/$arrange_zoom_restored_start"; exit 1
+      echo "ERROR: ZOOM − did not restore original Arrangement viewport: baseline=$arrange_zoom_baseline_bars/$arrange_zoom_baseline_start restored=$arrange_zoom_restored_bars/$arrange_zoom_restored_start"; exit 1
     fi
     if [[ "$arrange_zoom_in_data" != "$arrange_zoom_out_data" \
         || "$arrange_zoom_baseline_data" != "$arrange_zoom_out_data" ]]; then
@@ -3214,7 +3240,7 @@ PY_ARRANGE_PAN_TOUCH_POINTS
         echo "ERROR: Arrangement zoom evidence is missing: $arrange_zoom_artifact"; exit 1
       fi
     done
-    echo "ARR-003 passed: visible bars narrowed on ZOOM +, ZOOM в€’ restored viewport, and native Track event data remained byte-for-byte unchanged."
+    echo "ARR-003 passed: visible bars narrowed on ZOOM +, ZOOM − restored viewport, and native Track event data remained byte-for-byte unchanged."
     if ! adb_bounded 10 shell "run-as $PACKAGE sh -c 'echo $arrange_zoom_baseline_bars $arrange_zoom_baseline_start > cache/mpc-arrange-zoom-touch-result'"; then
       echo "ERROR: could not write Arrangement zoom acceptance result"; exit 1
     fi
@@ -3310,7 +3336,7 @@ import sys, xml.etree.ElementTree as ET
 path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-expected=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {tick} вЂў NOTE {note:03d}"
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
 if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"selected event mismatch: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
 for desc in ("Arrangement move selected event one grid earlier","Arrangement move selected event one grid later"):
  found=[n for n in nodes if n.attrib.get("content-desc")==desc]
@@ -3338,7 +3364,7 @@ import sys, xml.etree.ElementTree as ET
 path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-expected=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {tick} вЂў NOTE {note:03d}"
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
 if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"native event did not move: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
 print(f"Arrangement MOVE + GRID verified at tick {tick}, note {note}.")
 PY
@@ -3346,7 +3372,7 @@ PY
       echo "ERROR: MOVE + GRID did not change native event"; cat "$ARRANGE_EVENT_MOVED_XML"; exit 1
     fi
     if ! tap_visible_description_early "$ARRANGE_EVENT_MOVED_XML" "Arrangement move selected event one grid earlier"; then
-      echo "ERROR: EVENT в€’ control not actionable"; exit 1
+      echo "ERROR: EVENT − control not actionable"; exit 1
     fi
     sleep 0.35
     ARRANGE_EVENT_RESTORED_PNG="/tmp/mpc-groovebox-arrange-event-restored.png"
@@ -3363,14 +3389,14 @@ import sys, xml.etree.ElementTree as ET
 path,track_s,tick_s,note_s=sys.argv[1:]; track,tick,note=map(int,(track_s,tick_s,note_s))
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-expected=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {tick} вЂў NOTE {note:03d}"
+expected=f"EVENT • TRACK {track+1:02d} • TICK {tick} • NOTE {note:03d}"
 if len(info)!=1 or info[0].attrib.get("text")!=expected: raise AssertionError(f"native event not restored: {[n.attrib.get('text') for n in info]!r}, expected={expected!r}")
-print(f"Arrangement MOVE + GRID в†’ MOVE в€’ GRID restored tick {tick}, note {note}.")
+print(f"Arrangement MOVE + GRID → MOVE − GRID restored tick {tick}, note {note}.")
 PY
     then
       echo "ERROR: original native event position was not restored"; cat "$ARRANGE_EVENT_RESTORED_XML"; exit 1
     fi
-    echo "Arrangement single-event MOVE В± GRID в†’ native-position restoration passed."
+    echo "Arrangement single-event MOVE ± GRID → native-position restoration passed."
 
     # Duplicate the selected event through a real UI touch; validate the native Pattern
     # projection on every step and restore the original fixture using the real Undo action.
@@ -3394,7 +3420,7 @@ PY
     arrange_event_target_tick=$((arrange_event_tick + arrange_event_grid))
     arrange_event_baseline_line="$(arrangement_event_state_line MOVE)"
     if [[ -z "$arrange_event_baseline_line" ]]; then
-      echo "ERROR: no native Arrangement snapshot was logged after restoring MOVE В± GRID"; exit 1
+      echo "ERROR: no native Arrangement snapshot was logged after restoring MOVE ± GRID"; exit 1
     fi
     arrange_event_baseline_data="$(python3 - "$arrange_event_baseline_line" \
       "$arrange_event_track" "$arrange_event_tick" "$arrange_event_note" \
@@ -3445,7 +3471,7 @@ if action == "UNDO":
     if data != baseline: raise AssertionError("Undo did not restore exact native Pattern serialization")
 else:
     if len(events) != len(base_events)+1:
-        raise AssertionError(f"{action} should add exactly one event: {len(base_events)}в†’{len(events)}")
+        raise AssertionError(f"{action} should add exactly one event: {len(base_events)}→{len(events)}")
     source_events=[e for e in events if e[0]==source and e[2]==note]
     clones=[e for e in events if e[0]==target and e[2]==note]
     if len(source_events)!=1 or len(clones)!=1:
@@ -3456,7 +3482,7 @@ else:
         raise AssertionError(f"{action} changed other native Pattern events")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-expected=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {selected} вЂў NOTE {note:03d}"
+expected=f"EVENT • TRACK {track+1:02d} • TICK {selected} • NOTE {note:03d}"
 if len(info)!=1 or info[0].attrib.get("text") != expected:
     raise AssertionError(f"{action} accessibility selection mismatch: expected {expected!r}")
 print(f"Arrangement {action}: authoritative Pattern and selected UI event verified.")
@@ -3551,7 +3577,7 @@ PY
     fi
     validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_DUP_RESTORED_XML" \
       "$arrangement_event_final_undo_line" "$arrange_event_tick" || exit 1
-    echo "Arrangement duplicate touch в†’ native Pattern в†’ UNDO в†’ REDO в†’ exact restoration passed."
+    echo "Arrangement duplicate touch → native Pattern → UNDO → REDO → exact restoration passed."
 
     # Copy and paste the selected event into the next grid cell through real UI actions.
     # The native clipboard owns the full event value; copy itself must not mutate the Pattern.
@@ -3676,7 +3702,7 @@ PY
     fi
     validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_PASTE_RESTORED_XML" \
       "$arrangement_event_paste_final_undo_line" "$arrange_event_tick" || exit 1
-    echo "Arrangement COPY в†’ PASTE в†’ UNDO в†’ REDO в†’ exact restoration passed."
+    echo "Arrangement COPY → PASTE → UNDO → REDO → exact restoration passed."
 
     # CUT must remove only the selected native Pattern event, then Undo/Redo must be reversible.
     validate_arrangement_cut_state() {
@@ -3700,7 +3726,7 @@ if len(removed)!=1 or current_len!=base_len or current!=expected:
     raise AssertionError(f"{action} must remove only the unique source: {base!r} -> {current!r}")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-if len(info)!=1 or info[0].attrib.get("text")!="Select event вЂў tap empty timeline to set PASTE target":
+if len(info)!=1 or info[0].attrib.get("text")!="Select event • tap empty timeline to set PASTE target":
     raise AssertionError(f"{action} should clear selection of the deleted event")
 for desc in ("Arrangement cut selected event","Arrangement copy selected event",
              "Arrangement duplicate selected event one grid later"):
@@ -3796,7 +3822,7 @@ PY
     fi
     validate_arrangement_duplicate_state UNDO "$ARRANGE_EVENT_CUT_RESTORED_XML" \
       "$arrangement_event_cut_final_undo_line" "$arrange_event_tick" || exit 1
-    echo "Arrangement CUT в†’ UNDO в†’ REDO в†’ UNDO restored exact native Pattern state."
+    echo "Arrangement CUT → UNDO → REDO → UNDO restored exact native Pattern state."
 
     # Repeat CUT, choose a genuine empty timeline point, and PASTE exactly at that
     # snapped cursor. Undo/Redo must return to the cut Pattern/cursor and then restore
@@ -3921,7 +3947,7 @@ if current_len!=base_len or current!=expected:
     raise AssertionError("setting insertion cursor mutated native Pattern state")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {target}"]
-if len(info)!=1 or info[0].attrib.get("text")!=f"PASTE TARGET вЂў TRACK {track+1:02d} вЂў TICK {target}":
+if len(info)!=1 or info[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {target}":
     raise AssertionError("cursor target is not exposed with a truthful accessible target label")
 paste=[n for n in nodes if n.attrib.get("content-desc")==f"Arrangement paste copied event at target tick {target}"]
 if len(paste)!=1 or paste[0].attrib.get("enabled")!="true" or paste[0].attrib.get("clickable")!="true":
@@ -4114,12 +4140,12 @@ pat=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|UNDO) track=(\d+) ti
 base=pat.search(target_line); restored=pat.search(restored_line)
 if not base or not restored or base.group(4)!=restored.group(4) or base.group(5)!=restored.group(5):
     raise AssertionError("final UNDO did not restore exact original Arrangement placement state")
-print("Arrangement clip split в†’ UNDO в†’ REDO в†’ UNDO restored exact native placement state.")
+print("Arrangement clip split → UNDO → REDO → UNDO restored exact native placement state.")
 PY
     then
       echo "ERROR: final placement state differs from its original baseline"; exit 1
     fi
-    echo "Arrangement clip SPLIT в†’ UNDO в†’ REDO в†’ UNDO passed."
+    echo "Arrangement clip SPLIT → UNDO → REDO → UNDO passed."
 
     # Exercise a complete placement lifecycle using the real Function Bar. The split
     # creates two source ranges; delete the right range to make a gap, place a short
@@ -4262,7 +4288,7 @@ if len(moved_clips)!=1 or moved_clips[0]!=(new_clip[0],new_clip[1],tick+grid,exp
 split_nodes=list(ET.parse(split_xml).getroot().iter("node"))
 cursor=[n for n in split_nodes
         if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {tick}"]
-if len(cursor)!=1 or cursor[0].attrib.get("text")!=f"PASTE TARGET вЂў TRACK {track+1:02d} вЂў TICK {tick}":
+if len(cursor)!=1 or cursor[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {tick}":
     raise AssertionError("SPLIT state lost its accessible insertion target")
 split_actions=[n for n in split_nodes
                if (n.attrib.get("content-desc") or "").startswith("Arrangement split Pattern placement at target tick")]
@@ -4277,7 +4303,7 @@ if len(undo)!=1 or undo[0].attrib.get("enabled")!="true":
 delete_nodes=list(ET.parse(delete_xml).getroot().iter("node"))
 delete_cursor=[n for n in delete_nodes
                if n.attrib.get("content-desc")==f"Arrangement paste target Track {track+1:02d} tick {tick}"]
-if len(delete_cursor)!=1 or delete_cursor[0].attrib.get("text")!=f"PASTE TARGET вЂў TRACK {track+1:02d} вЂў TICK {tick}":
+if len(delete_cursor)!=1 or delete_cursor[0].attrib.get("text")!=f"PASTE TARGET • TRACK {track+1:02d} • TICK {tick}":
     raise AssertionError("DELETE state lost its accessible insertion target")
 delete_action=[n for n in delete_nodes
                if n.attrib.get("content-desc")=="Arrangement delete Pattern placement at target"]
@@ -4293,7 +4319,7 @@ for path,description in [
     nodes=list(ET.parse(path).getroot().iter("node"))
     matching=[n for n in nodes if (n.attrib.get("content-desc") or "").startswith(description)]
     if not matching: raise AssertionError(f"{description} state lacks its accessible action/target")
-print("Arrangement Pattern clip SPLIT в†’ DELETE в†’ PLACE в†’ MOVE changed only placement state; Pattern events remained identical.")
+print("Arrangement Pattern clip SPLIT → DELETE → PLACE → MOVE changed only placement state; Pattern events remained identical.")
 PY
     then
       echo "ERROR: Pattern placement create/move native state or accessibility validation failed"; exit 1
@@ -4484,7 +4510,7 @@ pattern=re.compile(r"UI_ARRANGE_PLACEMENT_STATE: action=(MOVE|UNDO) track=(\d+) 
 a=pattern.search(first); b=pattern.search(undo)
 if not a or not b or a.group(4)!=b.group(4) or a.group(5)!=b.group(5):
     raise AssertionError("final CLIP DUP Undo did not restore exact pre-duplicate state")
-print("Arrangement CLIP DUP в†’ UNDO в†’ REDO в†’ UNDO restored exact source placement state.")
+print("Arrangement CLIP DUP → UNDO → REDO → UNDO restored exact source placement state.")
 PY
     then
       echo "ERROR: final CLIP DUP cleanup did not restore exact state"; exit 1
@@ -4680,12 +4706,12 @@ if not base or not final or base.group(4)!=final.group(4) or base.group(5)!=fina
     raise AssertionError("final Undo did not restore exact original Pattern placement serialization")
 if (int(final.group(2)),int(final.group(3)))!=(int(track_s),int(tick_s)):
     raise AssertionError("final Undo did not restore the source insertion cursor")
-print("Arrangement Pattern placement SPLIT в†’ DELETE в†’ PLACE в†’ MOVE в†’ UNDO/REDO в†’ cleanup restored exact state.")
+print("Arrangement Pattern placement SPLIT → DELETE → PLACE → MOVE → UNDO/REDO → cleanup restored exact state.")
 PY
     then
       echo "ERROR: Pattern placement lifecycle cleanup did not restore the baseline"; exit 1
     fi
-    echo "Arrangement Pattern placement real-touch PLACE в†’ MOVE В± GRID в†’ UNDO в†’ REDO в†’ UNDO plus full fixture cleanup passed."
+    echo "Arrangement Pattern placement real-touch PLACE → MOVE ± GRID → UNDO → REDO → UNDO plus full fixture cleanup passed."
 
     if ! tap_visible_description_early "$ARRANGE_PLACEMENT_FLOW_FINAL_XML" \
       "Arrangement paste copied event at target tick $arrange_cursor_tick"; then
@@ -4729,7 +4755,7 @@ if actual_len!=base_len or actual!=expected:
     raise AssertionError(f"cursor PASTE must add a full-fidelity clone at the cursor: {expected!r} != {actual!r}")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {target} вЂў NOTE {note:03d}":
+if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT • TRACK {track+1:02d} • TICK {target} • NOTE {note:03d}":
     raise AssertionError("PASTE should select the inserted event, not leave stale cursor selection")
 print("Explicit-target PASTE preserved duration, pitch, velocity, probability, ratchet and nudge.")
 PY
@@ -4823,7 +4849,7 @@ expected=sorted([e for e in base if not(e[0]==source and e[2]==note)]+[tuple(pas
 if actual_len!=base_len or actual!=expected: raise AssertionError("cursor REDO did not reproduce PASTE state")
 nodes=list(ET.parse(path).getroot().iter("node"))
 info=[n for n in nodes if n.attrib.get("content-desc")=="Arrangement editing guidance"]
-if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT вЂў TRACK {track+1:02d} вЂў TICK {target} вЂў NOTE {note:03d}":
+if len(info)!=1 or info[0].attrib.get("text")!=f"EVENT • TRACK {track+1:02d} • TICK {target} • NOTE {note:03d}":
     raise AssertionError("Redo did not select the recreated event")
 print("Cursor PASTE REDO reproduced the exact event and selected it.")
 PY
@@ -4893,7 +4919,7 @@ PY
     fi
     validate_arrangement_duplicate_state UNDO "$ARRANGE_CURSOR_FINAL_XML" \
       "$arrangement_cursor_final_cut_undo_line" "$arrange_event_tick" || exit 1
-    echo "Arrangement CUT в†’ empty target в†’ PASTE в†’ UNDO в†’ REDO в†’ UNDO в†’ undo CUT restored exact native Pattern."
+    echo "Arrangement CUT → empty target → PASTE → UNDO → REDO → UNDO → undo CUT restored exact native Pattern."
 
     arrange_loop_drag_points="$(python3 - \
       "$ARRANGE_LOOP_BEFORE_XML" "$arrange_density" \
@@ -5067,7 +5093,7 @@ PY
       echo "ERROR: could not release Arrange loop app-side acceptance checkpoint"; exit 1
     fi
     arrangement_loop_touch_capture_done=1
-    echo "Arrange loop-brace real-touch в†’ native commit в†’ real-touch restore round-trip passed."
+    echo "Arrange loop-brace real-touch → native commit → real-touch restore round-trip passed."
   fi
 
   if grep -Fq -- "UI_STEP_TOUCH_ACCEPTANCE_COMPLETE:" <<<"$log_snapshot"; then
@@ -5111,14 +5137,14 @@ if (tx2 - tx1) < (wx2 - wx1) * 0.15:
     raise AssertionError(
         f"Step track context occupies only {(tx2-tx1)/(wx2-wx1):.3f} of workspace width")
 context_text = track_context[0].attrib.get("text", "")
-if context_text != "TRACK 01 вЂў DRUM":
-    raise AssertionError(f"Step track context should be fully visible as 'TRACK 01 вЂў DRUM': {context_text!r}")
+if context_text != "TRACK 01 • DRUM":
+    raise AssertionError(f"Step track context should be fully visible as 'TRACK 01 • DRUM': {context_text!r}")
 pad_info = [n for n in nodes
             if n.attrib.get("class", "").endswith(".TextView")
             and n.attrib.get("text", "") == "PAD 01"]
 pad_minus = [n for n in nodes
              if n.attrib.get("class", "").endswith(".Button")
-             and n.attrib.get("text", "") == "PAD в€’"]
+             and n.attrib.get("text", "") == "PAD −"]
 pad_plus = [n for n in nodes
             if n.attrib.get("class", "").endswith(".Button")
             and n.attrib.get("text", "") == "PAD +"]
@@ -5127,7 +5153,7 @@ incorrect_pad_buttons = [n for n in nodes
                          and n.attrib.get("text", "") == "PAD 01"]
 if len(pad_info) != 1 or len(pad_minus) != 1 or len(pad_plus) != 1         or incorrect_pad_buttons:
     raise AssertionError(
-        "Step header must expose one PAD status label plus distinct PAD в€’ / PAD + buttons")
+        "Step header must expose one PAD status label plus distinct PAD − / PAD + buttons")
 if len([n for n in nodes if n.attrib.get("content-desc") == "Pad 1 step 1 off"]) != 1:
     raise AssertionError("Step touch fixture requires Pad 01 / Step 01 to begin empty")
 print("Step Sequencer header geometry and PAD controls verified from live bounds.")
@@ -5252,10 +5278,10 @@ PY
     read -r step_touch_velocity_value_before step_touch_velocity_probability_before step_touch_velocity_ratchet_before step_touch_velocity_nudge_before step_touch_velocity_duration_before <<< "$step_touch_velocity_fields_before"
     if (( step_touch_velocity_value_before < 127 )); then
       step_touch_velocity_direction="+"
-      step_touch_velocity_inverse_direction="в€’"
+      step_touch_velocity_inverse_direction="−"
       step_touch_velocity_expected=$((step_touch_velocity_value_before + 1))
     else
-      step_touch_velocity_direction="в€’"
+      step_touch_velocity_direction="−"
       step_touch_velocity_inverse_direction="+"
       step_touch_velocity_expected=$((step_touch_velocity_value_before - 1))
     fi
@@ -5338,7 +5364,7 @@ PY
     then
       echo "ERROR: Step Edit Velocity inverse edit failed to restore the full native event"; cat "$STEP_TOUCH_VELOCITY_RESTORED_XML"; exit 1
     fi
-    echo "Step Edit VELOCITY real-touch edit в†’ exact inverse restore passed."
+    echo "Step Edit VELOCITY real-touch edit → exact inverse restore passed."
 
     # Start probability acceptance from the restored VEL baseline.
     if ! tap_visible_text_early "$STEP_TOUCH_VELOCITY_RESTORED_XML" "PARAM"; then
@@ -5378,12 +5404,12 @@ PY
       echo "ERROR: Step Edit probability baseline differs from the created note"; exit 1
     fi
     if (( step_touch_probability_before > 0 )); then
-      step_touch_probability_direction="в€’"
+      step_touch_probability_direction="−"
       step_touch_probability_inverse_direction="+"
       step_touch_probability_expected=$((step_touch_probability_before - 1))
     else
       step_touch_probability_direction="+"
-      step_touch_probability_inverse_direction="в€’"
+      step_touch_probability_inverse_direction="−"
       step_touch_probability_expected=1
     fi
     if ! tap_visible_text_early "$STEP_TOUCH_PARAM_XML" "$step_touch_probability_direction"; then
@@ -5475,9 +5501,9 @@ PY
     then
       echo "ERROR: Step Edit probability inverse edit failed to restore the full native event"; cat "$STEP_TOUCH_PROBABILITY_RESTORED_XML"; exit 1
     fi
-    echo "Step Edit PROB real-touch edit в†’ exact inverse restore passed."
+    echo "Step Edit PROB real-touch edit → exact inverse restore passed."
 
-    # Continue from PROB through RAT в†’ NUDGE в†’ DUR using the same visible
+    # Continue from PROB through RAT → NUDGE → DUR using the same visible
     # Step PARAM/+ controls. Validate the complete native projection after each edit.
     STEP_TOUCH_RATCHET_XML="/tmp/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
     STEP_TOUCH_RATCHET_REMOTE="/sdcard/mpc-groovebox-step-touch-ratchet-focus-uiautomator.xml"
@@ -5529,10 +5555,10 @@ PY
     read -r step_touch_ratchet_velocity_before step_touch_ratchet_probability_before step_touch_ratchet_before step_touch_ratchet_nudge_before step_touch_ratchet_duration_before <<< "$step_touch_ratchet_timing_before"
     if (( step_touch_ratchet_before < 8 )); then
       step_touch_ratchet_direction="+"
-      step_touch_ratchet_inverse_direction="в€’"
+      step_touch_ratchet_inverse_direction="−"
       step_touch_ratchet_expected=$((step_touch_ratchet_before + 1))
     else
-      step_touch_ratchet_direction="в€’"
+      step_touch_ratchet_direction="−"
       step_touch_ratchet_inverse_direction="+"
       step_touch_ratchet_expected=$((step_touch_ratchet_before - 1))
     fi
@@ -5619,7 +5645,7 @@ PY
 
     STEP_TOUCH_NUDGE_FOCUS_XML="/tmp/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
     STEP_TOUCH_NUDGE_FOCUS_REMOTE="/sdcard/mpc-groovebox-step-touch-nudge-focus-uiautomator.xml"
-    echo "Step Edit RAT real-touch edit в†’ exact inverse restore passed."
+    echo "Step Edit RAT real-touch edit → exact inverse restore passed."
     if ! tap_visible_text_early "$STEP_TOUCH_RATCHET_RESTORED_XML" "PARAM"; then
       echo "ERROR: Step Edit PARAM could not select Nudge after Ratchet restore"; exit 1
     fi
@@ -5702,7 +5728,7 @@ PY
       echo "ERROR: Step Edit Nudge + did not make the exact native field-only change"; cat "$STEP_TOUCH_NUDGE_CHANGED_XML"; exit 1
     fi
 
-    # Advance NUDGE в†’ DUR and assert a quantize-relative duration delta.
+    # Advance NUDGE → DUR and assert a quantize-relative duration delta.
     STEP_TOUCH_DURATION_FOCUS_XML="/tmp/mpc-groovebox-step-touch-duration-focus-uiautomator.xml"
     STEP_TOUCH_DURATION_FOCUS_REMOTE="/sdcard/mpc-groovebox-step-touch-duration-focus-uiautomator.xml"
     if ! tap_visible_text_early "$STEP_TOUCH_NUDGE_CHANGED_XML" "PARAM"; then
@@ -5844,7 +5870,7 @@ else:
 previous = [n for n in nodes if n.attrib.get("content-desc") == "MPC Step Sequencer previous 16-step page"]
 if len(previous) != 1 or previous[0].attrib.get("enabled") != "true" or previous[0].attrib.get("visible-to-user") == "false":
     raise AssertionError("Page 2 does not expose an actionable previous-page control")
-print(f"Real-touch Step page 1 в†’ page 2 preserved cursor at absolute step {absolute_step}; targetActive={cell_is_active}.")
+print(f"Real-touch Step page 1 → page 2 preserved cursor at absolute step {absolute_step}; targetActive={cell_is_active}.")
 PY
     then
       echo "ERROR: real-touch Step page forward navigation failed state assertions"; cat "$STEP_TOUCH_PAGE2_XML"; exit 1
@@ -5882,7 +5908,7 @@ for description in (f"Pad 1 step {target} off", "Pad 1 step 1 off"):
 next_page = [n for n in nodes if n.attrib.get("content-desc") == "MPC Step Sequencer next 16-step page"]
 if len(next_page) != 1 or next_page[0].attrib.get("enabled") != "true" or next_page[0].attrib.get("visible-to-user") == "false":
     raise AssertionError("Returned page 1 does not expose an actionable next-page control")
-print(f"Real-touch Step page 2 в†’ page 1 restored selected empty step {target}; event fixture unchanged.")
+print(f"Real-touch Step page 2 → page 1 restored selected empty step {target}; event fixture unchanged.")
 PY
     then
       echo "ERROR: real-touch Step page return failed state assertions"; cat "$STEP_TOUCH_PAGE1_RESTORED_XML"; exit 1
@@ -5940,8 +5966,8 @@ PY
     STEP_TOUCH_PAD1_RESTORED_PNG="/tmp/mpc-groovebox-step-touch-pad1-restored.png"
     STEP_TOUCH_PAD1_RESTORED_XML="/tmp/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml"
     STEP_TOUCH_PAD1_RESTORED_REMOTE="/sdcard/mpc-groovebox-step-touch-pad1-restored-uiautomator.xml"
-    if ! tap_visible_text_early "$STEP_TOUCH_PAD2_XML" "PAD в€’"; then
-      echo "ERROR: real touchscreen PAD в€’ control was not actionable"; exit 1
+    if ! tap_visible_text_early "$STEP_TOUCH_PAD2_XML" "PAD −"; then
+      echo "ERROR: real touchscreen PAD − control was not actionable"; exit 1
     fi
     sleep 0.25
     if ! dump_device_ui "$STEP_TOUCH_PAD1_RESTORED_REMOTE" "$STEP_TOUCH_PAD1_RESTORED_XML"; then
@@ -5959,7 +5985,7 @@ target = int(target_s)
 nodes = list(ET.parse(path).getroot().iter("node"))
 pad = [n for n in nodes if n.attrib.get("text", "").strip() == "PAD 01"]
 if len(pad) != 1:
-    raise AssertionError("PAD в€’ did not restore Pad 1")
+    raise AssertionError("PAD − did not restore Pad 1")
 for description in (f"Pad 1 step {target} off", "Pad 1 step 1 off"):
     if len([n for n in nodes if n.attrib.get("content-desc") == description]) != 1:
         raise AssertionError(f"Pad 1 state not restored or an event was modified: {description!r}")
@@ -5969,7 +5995,7 @@ if len(info) != 1:
 text = info[0].attrib.get("text", "")
 if re.search(rf"\bSTEP\s+0*{target}\b", text) is None or "EMPTY" not in text:
     raise AssertionError(f"Pad 1 selected-step state was not restored: {text!r}")
-print(f"Real-touch PAD в€’ restored Pad 1, selected empty step {target}, and the Step 01 fixture unchanged.")
+print(f"Real-touch PAD − restored Pad 1, selected empty step {target}, and the Step 01 fixture unchanged.")
 PY
     then
       echo "ERROR: real-touch Pad 1 restore failed state assertions"; cat "$STEP_TOUCH_PAD1_RESTORED_XML"; exit 1
@@ -5982,7 +6008,7 @@ PY
       echo "ERROR: could not release Step Sequencer touch-acceptance checkpoint"; exit 1
     fi
     step_touch_capture_done=1
-    echo "Step Sequencer real-touch в†’ native add в†’ probability edit в†’ native remove round-trip passed."
+    echo "Step Sequencer real-touch → native add → probability edit → native remove round-trip passed."
   fi
 
   if [ "$main_runtime_capture_done" -eq 0 ] \
@@ -6501,7 +6527,7 @@ if not accessible_first <= target <= accessible_last <= accessible_total:
 ranges = []
 for node in nodes:
     text = node.attrib.get("text", "")
-    match = re.fullmatch(r"0*(\d+)[вЂ“-]0*(\d+)\s*/\s*0*(\d+)", text)
+    match = re.fullmatch(r"0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)", text)
     if match:
         ranges.append(tuple(map(int, match.groups())))
 if len(ranges) != 1:
@@ -6513,14 +6539,14 @@ if not shown_first <= target <= shown_last <= total:
     raise AssertionError(f"focused step {target} is outside visible Grid window {ranges[0]}")
 if (accessible_first, accessible_last, accessible_total) != (first, last, total):
     raise AssertionError("Grid text and semantic accessibility range disagree")
-print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}вЂ“{last} of {total}")
+print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}–{last} of {total}")
 PY
     then
       echo "ERROR: Arrangement-to-Grid focus screenshot/accessibility hierarchy failed semantic checks"
       cat /tmp/mpc-groovebox-arrange-grid-focus-uiautomator.xml
       exit 1
     fi
-    echo "Running real Grid DRAW в†’ native note state в†’ ERASE в†’ empty-state round-trip..."
+    echo "Running real Grid DRAW → native note state → ERASE → empty-state round-trip..."
     grid_density_info="$(adb_bounded 10 shell wm density)" || {
       echo "ERROR: could not read Android density for Grid cell hit testing"; exit 1;
     }
@@ -6906,7 +6932,7 @@ PY
     if ! tap_visible_description_early "$GRID_EDIT_ERASE_XML" "Grid Draw tool"; then
       echo "ERROR: Grid DRAW tool state could not be restored after round-trip"; exit 1
     fi
-    echo "Grid DRAW в†’ native note state в†’ ERASE в†’ empty-state round-trip passed."
+    echo "Grid DRAW → native note state → ERASE → empty-state round-trip passed."
 
     # Exercise both real Function Bar zoom actions using measured accessibility
     # targets. They may change only the visible viewport, never native note data.
@@ -6963,7 +6989,7 @@ if m is None:
     raise AssertionError("malformed Grid visible step range")
 first, last, total = map(int, m.groups())
 if last - first + 1 != 16 or not first <= step <= last <= total:
-    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}вЂ“{last}/{total}")
+    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}–{last}/{total}")
 counts = [int(m.group(1)) for n in nodes
           for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
 if counts != [1]:
@@ -7019,7 +7045,7 @@ if m is None:
     raise AssertionError("malformed Grid step range")
 first, last, total = map(int, m.groups())
 if last-first+1 != 16 or not first <= step <= last <= total:
-    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}вЂ“{last}/{total}")
+    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}–{last}/{total}")
 prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
 states = [n.attrib.get("content-desc", "") for n in nodes
           if n.attrib.get("content-desc", "").startswith(prefix)]
@@ -7124,7 +7150,7 @@ if after_range[2] != before_range[2] or after_range[1]-after_range[0]+1 >= befor
     raise AssertionError(f"ZOOM H must shrink only visible steps: {before_range!r} -> {after_range!r}")
 if not after_range[0] <= step <= after_range[1]:
     raise AssertionError(f"ZOOM H lost selected event step {step} from viewport {after_range!r}")
-print(f"Grid ZOOM H changed visible steps {before_range[0]}вЂ“{before_range[1]} -> {after_range[0]}вЂ“{after_range[1]}; event fields/timing unchanged.")
+print(f"Grid ZOOM H changed visible steps {before_range[0]}–{before_range[1]} -> {after_range[0]}–{after_range[1]}; event fields/timing unchanged.")
 PY_GRID_ZOOM_H
     then
       echo "ERROR: Grid ZOOM H changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
@@ -7226,8 +7252,8 @@ if after_pad_count >= before_pad_count:
     raise AssertionError(f"ZOOM V must reduce visible Pad count: {before_pads!r} -> {after_pads!r}")
 if not min(after_pads) <= 1 <= max(after_pads):
     raise AssertionError(f"ZOOM V lost selected PAD 01 from viewport: {after_pads!r}")
-print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}вЂ“{before_pads[1]} -> "
-      f"{after_pads[0]}вЂ“{after_pads[1]}; event identity/timing/fields unchanged.")
+print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}–{before_pads[1]} -> "
+      f"{after_pads[0]}–{after_pads[1]}; event identity/timing/fields unchanged.")
 PY_GRID_ZOOM_V
     then
       echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
@@ -7308,11 +7334,11 @@ def desc(value, prefix=False):
  if x2<=x1 or y2<=y1 or n.attrib.get("visible-to-user")=="false": raise AssertionError(f"not visible: {value!r}")
 desc("MPC Grid View workspace"); desc("MPC Grid View drum event grid", prefix=True)
 if any(n.attrib.get("content-desc")=="MPC linear arrangement editor" for n in nodes): raise AssertionError("Arrangement remains visible")
-prefix=f"TRACK {track+1:02d} вЂў"
+prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
 ranges=[]
 for n in nodes:
- m=re.fullmatch(r"(?:STEPS\s*)?0*(\d+)[вЂ“-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
+ m=re.fullmatch(r"(?:STEPS\s*)?0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
  if m: ranges.append(tuple(map(int,m.groups())))
 if len(ranges)!=1: raise AssertionError(f"expected one Grid range, got {ranges}")
 shown=ranges[0]
@@ -7322,7 +7348,7 @@ semantic=[n for n in nodes if n.attrib.get("content-desc","").startswith("Grid v
 if len(semantic)!=1: raise AssertionError(f"expected one semantic Grid range, got {len(semantic)}")
 m=re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",semantic[0].attrib.get("content-desc",""))
 if m is None or tuple(map(int,m.groups()))!=shown: raise AssertionError("Grid range text and description disagree")
-print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}вЂ“{last} of {total}.")
+print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}–{last} of {total}.")
 PY
     then echo "ERROR: Grid re-entry hierarchy failed"; cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; exit 1; fi
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-grid-reentry-capture-release; then echo "ERROR: release Grid re-entry capture failed"; exit 1; fi
@@ -7544,7 +7570,7 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
-for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGEвЂ¦"' 'contentDescription="MPC Browser current sample"'; do
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'contentDescription="MPC Browser current sample"'; do
   if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
     echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
     cat /tmp/mpc-groovebox-browser-hierarchy.txt
@@ -7570,7 +7596,7 @@ if ! adb_bounded 10 exec-out cat "$DEVICE_DUMP" >"$DUMP"; then
 fi
 
 
-echo "Running Browser local MediaStore в†’ audition в†’ Pad/Layer assignment runtime test..."
+echo "Running Browser local MediaStore → audition → Pad/Layer assignment runtime test..."
 LOCAL_SAMPLE_SOURCE="android/app/src/main/assets/samples/pad01.wav.b64"
 LOCAL_SAMPLE_NAME="Browser-Smoke-Local.wav"
 LOCAL_SAMPLE_DEVICE="/sdcard/Music/$LOCAL_SAMPLE_NAME"
@@ -8646,7 +8672,7 @@ wait_for_successful_audition() {
 import sys, xml.etree.ElementTree as ET
 path, expected_name = sys.argv[1], sys.argv[2]
 texts = [n.attrib.get("text", "").strip() for n in ET.parse(path).getroot().iter("node")]
-raise SystemExit(0 if any(v == "AUDITION вЂў " + expected_name or v == "AUDITION COMPLETE вЂў " + expected_name for v in texts) else 1)
+raise SystemExit(0 if any(v == "AUDITION • " + expected_name or v == "AUDITION COMPLETE • " + expected_name for v in texts) else 1)
 PY
     then return 0; fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
@@ -9348,7 +9374,7 @@ PY
   return 1
 }
 
-echo "Running Track Edit sample-layer tuning в†’ leave/re-enter в†’ restore runtime test..."
+echo "Running Track Edit sample-layer tuning → leave/re-enter → restore runtime test..."
 TRACK_EDIT_XML="/tmp/mpc-groovebox-track-edit-tuning-uiautomator.xml"
 TRACK_EDIT_REMOTE="/sdcard/mpc-groovebox-track-edit-tuning-uiautomator.xml"
 TRACK_EDIT_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-tuning-before.png"
@@ -9528,7 +9554,7 @@ import sys
 before, after = map(float, sys.argv[1:])
 if abs((after - before) - 1.0) > 0.06:
     raise SystemExit(f"one TUNE+ tap should add one semitone: before={before}, after={after}")
-print(f"Track Edit layer tuning increment verified: {before:+.2f} st в†’ {after:+.2f} st")
+print(f"Track Edit layer tuning increment verified: {before:+.2f} st → {after:+.2f} st")
 PY
 then
   echo "ERROR: Track Edit layer tuning increment was not one semitone"; exit 1
@@ -9611,7 +9637,7 @@ if ! capture_ui_screenshot "$TRACK_EDIT_RESTORED_PNG" 10; then
 fi
 # EDIT-004: mutate only sample-layer gain through the real Track Edit touch controls,
 # confirm TUNE/PAN remain unchanged, then inverse-touch and restore the original value.
-echo "Running Track Edit sample-layer gain field-isolation в†’ inverse restore runtime test..."
+echo "Running Track Edit sample-layer gain field-isolation → inverse restore runtime test..."
 TRACK_EDIT_GAIN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-gain-changed.png"
 TRACK_EDIT_GAIN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
 TRACK_EDIT_GAIN_REMOTE="/sdcard/mpc-groovebox-track-edit-gain-changed-uiautomator.xml"
@@ -9664,7 +9690,7 @@ found = [n for n in nodes
 if len(found) != 1:
     raise SystemExit(f"expected one Track Edit region field, found {len(found)}")
 text = re.sub(r"\s+", " ", found[0].attrib.get("text", "")).strip()
-match = re.search(r"\bS\s+(\d+)\s*вЂў\s*E\s+(\d+)\s*вЂў\s*(\d+)\s+frames\b", text)
+match = re.search(r"\bS\s+(\d+)\s*•\s*E\s+(\d+)\s*•\s*(\d+)\s+frames\b", text)
 if match is None:
     raise SystemExit(f"could not parse sample region start/end/total from {text!r}")
 start, end, total = map(int, match.groups())
@@ -9768,7 +9794,7 @@ echo "Track Edit layer GAIN real-touch field isolation passed: $track_edit_gain_
 
 # EDIT-005: set a real sample-layer pan value, then restore the fixture's original
 # centered pan while proving that GAIN and TUNE remain untouched.
-echo "Running Track Edit sample-layer PAN field-isolation в†’ center restore runtime test..."
+echo "Running Track Edit sample-layer PAN field-isolation → center restore runtime test..."
 TRACK_EDIT_PAN_CHANGED_PNG="/tmp/mpc-groovebox-track-edit-pan-changed.png"
 TRACK_EDIT_PAN_CHANGED_XML="/tmp/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
 TRACK_EDIT_PAN_REMOTE="/sdcard/mpc-groovebox-track-edit-pan-changed-uiautomator.xml"
@@ -9865,11 +9891,11 @@ if [[ "$track_edit_pan_final" != "$track_edit_pan_before" \
   echo "ERROR: PAN inverse edit failed to restore original PAN/GAIN/TUNE state"
   echo "PAN: $track_edit_pan_before -> $track_edit_pan_final; GAIN: $track_edit_pan_gain_before -> $track_edit_pan_gain_final; TUNE: $track_edit_pan_tuning_before -> $track_edit_pan_tuning_final"; exit 1
 fi
-echo "Track Edit layer PAN real-touch field isolation passed: PAN C в†’ PAN L100 в†’ PAN C; GAIN/TUNE preserved."
+echo "Track Edit layer PAN real-touch field isolation passed: PAN C → PAN L100 → PAN C; GAIN/TUNE preserved."
 
 # EDIT-008: mutate sample-layer region start/end through their real 1K controls,
 # prove one boundary changes at a time and restore the exact native region.
-echo "Running Track Edit sample-region Start/End field-isolation в†’ exact restore runtime test..."
+echo "Running Track Edit sample-region Start/End field-isolation → exact restore runtime test..."
 TRACK_EDIT_REGION_BEFORE_PNG="/tmp/mpc-groovebox-track-edit-region-before.png"
 TRACK_EDIT_REGION_BEFORE_XML="/tmp/mpc-groovebox-track-edit-region-before-uiautomator.xml"
 TRACK_EDIT_REGION_BEFORE_REMOTE="/sdcard/mpc-groovebox-track-edit-region-before-uiautomator.xml"
@@ -9911,7 +9937,7 @@ track_edit_region_pan_before="$(read_track_edit_pan_value "$TRACK_EDIT_REGION_BE
   echo "ERROR: PAN baseline missing before sample-region acceptance"; exit 1;
 }
 
-# Choose a safe В±1000-frame move for Start without changing End.
+# Choose a safe ±1000-frame move for Start without changing End.
 if (( track_edit_region_end_before - track_edit_region_start_before > 1000 )); then
   track_edit_region_start_direction="increase"
   track_edit_region_start_inverse="decrease"
@@ -9942,7 +9968,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_region_start_changed" != "1" ]]; then
   echo "ERROR: Start touch did not change only the start frame by exactly 1000"
-  echo "Before=$track_edit_region_before expected=$track_edit_region_start_expected вЂ” $track_edit_region_end_before actual=$track_edit_region_current"; exit 1
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_expected — $track_edit_region_end_before actual=$track_edit_region_current"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_START_CHANGED_REMOTE" "$TRACK_EDIT_REGION_START_CHANGED_XML"; then
   echo "ERROR: changed region Start hierarchy capture failed"; exit 1
@@ -9980,7 +10006,7 @@ if ! capture_ui_screenshot "$TRACK_EDIT_REGION_START_RESTORED_PNG" 10; then
   echo "ERROR: restored region Start screenshot capture failed"; exit 1
 fi
 
-# Choose a safe В±1000-frame End move without changing Start.
+# Choose a safe ±1000-frame End move without changing Start.
 if (( track_edit_region_end_before - track_edit_region_start_before > 1000 )); then
   track_edit_region_end_direction="decrease"
   track_edit_region_end_inverse="increase"
@@ -10011,7 +10037,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_region_end_changed" != "1" ]]; then
   echo "ERROR: End touch did not change only the end frame by exactly 1000"
-  echo "Before=$track_edit_region_before expected=$track_edit_region_start_before вЂ” $track_edit_region_end_expected actual=$track_edit_region_current"; exit 1
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_before — $track_edit_region_end_expected actual=$track_edit_region_current"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_END_CHANGED_REMOTE" "$TRACK_EDIT_REGION_END_CHANGED_XML"; then
   echo "ERROR: changed region End hierarchy capture failed"; exit 1
@@ -10058,7 +10084,7 @@ echo "Track Edit sample region Start/End real-touch isolation and exact restorat
 
 # EDIT-007: verify both sample-layer velocity-range bounds are native-backed,
 # field-isolated, and inverse-restorable through real on-screen touch controls.
-echo "Running Track Edit sample-layer velocity MIN/MAX field-isolation в†’ restore runtime test..."
+echo "Running Track Edit sample-layer velocity MIN/MAX field-isolation → restore runtime test..."
 TRACK_EDIT_VELOCITY_BASELINE_PNG="/tmp/mpc-groovebox-track-edit-velocity-range-before.png"
 TRACK_EDIT_VELOCITY_BASELINE_XML="/tmp/mpc-groovebox-track-edit-velocity-range-before-uiautomator.xml"
 TRACK_EDIT_VELOCITY_REMOTE="/sdcard/mpc-groovebox-track-edit-velocity-range-uiautomator.xml"
@@ -10092,12 +10118,12 @@ found = [n for n in root.iter("node")
 if len(found) != 1:
     raise SystemExit(f"expected one Track Edit velocity range field, found {len(found)}")
 text = found[0].attrib.get("text", "")
-match = re.search(r"VELOCITY\s+(\d+)\s*[вЂ”вЂ“-]\s*(\d+)", text)
+match = re.search(r"VELOCITY\s+(\d+)\s*[—–-]\s*(\d+)", text)
 if match is None:
     raise SystemExit(f"could not parse layer velocity range from {text!r}")
 minimum, maximum = map(int, match.groups())
 if not 0 <= minimum <= maximum <= 127:
-    raise SystemExit(f"layer velocity range outside contract: {minimum} вЂ” {maximum}")
+    raise SystemExit(f"layer velocity range outside contract: {minimum} — {maximum}")
 print(minimum, maximum)
 PY
 }
@@ -10121,12 +10147,12 @@ if (( track_edit_velocity_max_before > track_edit_velocity_min_before )); then
   track_edit_velocity_max_expected=$((track_edit_velocity_max_before - 1))
 elif (( track_edit_velocity_max_before < 127 )); then
   track_edit_velocity_max_direction="increase"
-  track_edit_velocity_max_inverse="MAX в€’"
+  track_edit_velocity_max_inverse="MAX −"
   track_edit_velocity_max_expected=$((track_edit_velocity_max_before + 1))
 else
   echo "ERROR: velocity MAX fixture has no safe adjacent value to exercise"; exit 1
 fi
-if ! tap_ui_text "$TRACK_EDIT_VELOCITY_BASELINE_XML" "MAX $([[ "$track_edit_velocity_max_direction" == "decrease" ]] && printf 'в€’' || printf '+')"; then
+if ! tap_ui_text "$TRACK_EDIT_VELOCITY_BASELINE_XML" "MAX $([[ "$track_edit_velocity_max_direction" == "decrease" ]] && printf '−' || printf '+')"; then
   echo "ERROR: Track Edit velocity MAX control was not actionable"; exit 1
 fi
 track_edit_velocity_max_changed=0
@@ -10145,7 +10171,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_velocity_max_changed" != "1" ]]; then
   echo "ERROR: velocity MAX touch did not change only the upper bound by one"
-  echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before вЂ” $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
+  echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before — $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
 fi
 if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MAX changed screenshot capture failed"; exit 1
@@ -10183,11 +10209,11 @@ read -r track_edit_velocity_min_before_min track_edit_velocity_max_before_min <<
 if (( track_edit_velocity_min_before_min < track_edit_velocity_max_before_min )); then
   track_edit_velocity_min_direction="increase"
   track_edit_velocity_min_action="MIN +"
-  track_edit_velocity_min_inverse="MIN в€’"
+  track_edit_velocity_min_inverse="MIN −"
   track_edit_velocity_min_expected=$((track_edit_velocity_min_before_min + 1))
 elif (( track_edit_velocity_min_before_min > 0 )); then
   track_edit_velocity_min_direction="decrease"
-  track_edit_velocity_min_action="MIN в€’"
+  track_edit_velocity_min_action="MIN −"
   track_edit_velocity_min_inverse="MIN +"
   track_edit_velocity_min_expected=$((track_edit_velocity_min_before_min - 1))
 else
@@ -10212,7 +10238,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_velocity_min_changed" != "1" ]]; then
   echo "ERROR: velocity MIN touch did not change only the lower bound by one"
-  echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected вЂ” $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
+  echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected — $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
 fi
 if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MIN changed screenshot capture failed"; exit 1
@@ -10828,7 +10854,7 @@ descriptions = {node.attrib.get("content-desc", "")
 specs = {
     "PLACES": {
         "required": {
-            "MPC Browser current location: PLACE вЂў INTERNAL",
+            "MPC Browser current location: PLACE • INTERNAL",
             "MPC Browser navigation PLACES INTERNAL",
             "MPC Browser navigation PLACES USER FOLDER",
         },
@@ -10840,7 +10866,7 @@ specs = {
     },
     "CONTENT": {
         "required": {
-            "MPC Browser current location: CONTENT вЂў SAMPLES",
+            "MPC Browser current location: CONTENT • SAMPLES",
             "MPC Browser navigation CONTENT SAMPLES",
             "MPC Browser navigation CONTENT MY FILES",
         },
@@ -10852,7 +10878,7 @@ specs = {
     },
     "EXPANSIONS": {
         "required": {
-            "MPC Browser current location: EXPANSIONS вЂў EXPANSIONS",
+            "MPC Browser current location: EXPANSIONS • EXPANSIONS",
             "MPC Browser navigation EXPANSIONS EXPANSIONS",
             "MPC Browser navigation EXPANSIONS USER CONTENT",
             "MPC Browser status LOCAL EXPANSIONS NOT INDEXED",
@@ -10926,7 +10952,7 @@ fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-places-section.png 10; then
   echo "ERROR: could not capture Browser PLACES section screenshot"; exit 1
 fi
-echo "BROW-001 real-touch Places в†’ Content в†’ Expansions в†’ Places navigation isolation passed."
+echo "BROW-001 real-touch Places → Content → Expansions → Places navigation isolation passed."
 
 # BROW-001 finishes on PLACES. Refresh that real state before using coordinates,
 # then explicitly return to CONTENT; never replay taps from a hierarchy captured
@@ -11042,7 +11068,7 @@ root = ET.parse(path).getroot()
 nodes = list(root.iter("node"))
 descriptions = {node.attrib.get("content-desc", "") for node in nodes}
 texts = [node.attrib.get("text", "") for node in nodes]
-if f"MPC Browser current location: CONTENT вЂў {category}" not in descriptions:
+if f"MPC Browser current location: CONTENT • {category}" not in descriptions:
     raise SystemExit(f"Content location did not resolve to {category}")
 
 def file_rows(name):
@@ -11094,7 +11120,7 @@ scroll_browser_results_until_names() {
       echo "ERROR: could not refresh CONTENT/$category results viewport on scan $attempt"
       return 1
     fi
-    if ! grep -Fq -- "MPC Browser current location: CONTENT вЂў $category" "$hierarchy"; then
+    if ! grep -Fq -- "MPC Browser current location: CONTENT • $category" "$hierarchy"; then
       echo "ERROR: fresh Browser hierarchy left CONTENT/$category while scanning rows"
       return 1
     fi
@@ -11347,7 +11373,7 @@ for category in SAMPLES "MY FILES"; do
   # visible ScrollView after category navigation. Wait on the stable location
   # marker, then verify each exact indexed row across fresh, viewport-aware dumps.
   if ! wait_for_ui_description "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-      "MPC Browser current location: CONTENT вЂў $category" 12; then
+      "MPC Browser current location: CONTENT • $category" 12; then
     echo "ERROR: Browser did not enter supported CONTENT/$category"; exit 1
   fi
   if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "$category" \
@@ -11429,7 +11455,7 @@ fi
 if ! scroll_browser_results_until_names "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" "MY FILES" \
     "$LOCAL_SAMPLE_NAME" "$BROWSER_DRUMS_NAME" "$BROWSER_DEMOS_NAME"; then exit 1; fi
 
-echo "Running BROW-013 real modified-date option в†’ metadata в†’ restore acceptance..."
+echo "Running BROW-013 real modified-date option → metadata → restore acceptance..."
 if ! dump_device_ui_retry "$BROWSER_LOCAL_REMOTE" "$BROWSER_LOCAL_XML" 8 3; then
   echo "ERROR: could not refresh Browser before modified-date option acceptance"; exit 1
 fi
@@ -11560,7 +11586,7 @@ if len(nodes) != 1:
     raise SystemExit(
         f"expected one Browser provider-status node, found {len(nodes)}")
 expected = (
-    f"ASSIGNED вЂў {sample_name} в†’ PAD {int(pad):02d} / LAYER {int(layer):02d}")
+    f"ASSIGNED • {sample_name} → PAD {int(pad):02d} / LAYER {int(layer):02d}")
 actual = nodes[0].attrib.get("text", "")
 if actual != expected:
     raise SystemExit(
@@ -11597,7 +11623,7 @@ echo "BROW-008 real WAV audition preserved the existing Pad/Layer assignment."
 if ! tap_ui_description "$BROWSER_LOCAL_XML" \
     "MPC Browser assign selected local WAV to target Pad/Layer"; then exit 1; fi
 if ! wait_for_ui_node_text_desc "$BROWSER_LOCAL_XML" "$BROWSER_LOCAL_REMOTE" \
-    "CURRENT SAMPLE вЂў $LOCAL_SAMPLE_NAME" "MPC Browser current sample" 20; then
+    "CURRENT SAMPLE • $LOCAL_SAMPLE_NAME" "MPC Browser current sample" 20; then
   echo "ERROR: WAV assignment did not update the Browser current Pad/Layer sample"
   exit 1
 fi
@@ -11616,7 +11642,7 @@ if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-local-results.png 10; then
 fi
 echo "Browser local WAV scan, selection, audition and Pad/Layer assignment passed."
 
-# End-to-end SAF selection в†’ Activity result в†’ sampler assignment.
+# End-to-end SAF selection → Activity result → sampler assignment.
 # Use a distinct WAV in Downloads so the test proves that the picker-selected
 # document, not the previous MediaStore selection, becomes the Pad/Layer sample.
 echo "Running Android Document Picker selection-return-target-preservation test..."
@@ -11755,7 +11781,7 @@ if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
   exit 1
 fi
 # Android 16 DocumentsUI grid cards may expose the filename only as
-# "Preview the file вЂ¦" on a thumbnail control, not as node text. Switch to
+# "Preview the file …" on a thumbnail control, not as node text. Switch to
 # the genuine selectable list-row mode first, then require the actual filename
 # text in a fresh hierarchy before selecting anything.
 if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
@@ -11897,12 +11923,12 @@ PY
   exit 1
 fi
 if ! wait_for_ui_node_text_desc "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
-    "CURRENT SAMPLE вЂў $PICKER_SAMPLE_NAME" "MPC Browser current sample" 30; then
+    "CURRENT SAMPLE • $PICKER_SAMPLE_NAME" "MPC Browser current sample" 30; then
   echo "ERROR: picker-return sample name did not reach Browser's current Pad/Layer state"
   exit 1
 fi
 if ! wait_for_ui_text_pair "$PICKER_RETURN_XML" "$PICKER_RETURN_REMOTE" \
-    "ASSIGNED вЂў $PICKER_SAMPLE_NAME" "PAD 01 / LAYER 01" 30; then
+    "ASSIGNED • $PICKER_SAMPLE_NAME" "PAD 01 / LAYER 01" 30; then
   echo "ERROR: picker-return assignment status did not identify the selected WAV and preserved Pad 01 / Layer 01 target"
   exit 1
 fi
@@ -11918,13 +11944,13 @@ if ! dump_device_ui "$PICKER_RETURN_REMOTE" "$PICKER_RETURN_XML"; then
   echo "ERROR: could not capture post-picker accessibility hierarchy"
   exit 1
 fi
-echo "Android Document Picker select в†’ return в†’ Pad/Layer assignment passed."
+echo "Android Document Picker select → return → Pad/Layer assignment passed."
 
 # BROW-010 cancellation: Back must return from the real DocumentsUI WAV picker
 # without assigning anything, losing the Browser destination, or replacing the
 # current sample. The state oracle compares live accessibility snapshots and a
 # native sampler identity emitted by onActivityResult; it never fakes a result.
-echo "Running Android Document Picker cancel в†’ Browser state-preservation test..."
+echo "Running Android Document Picker cancel → Browser state-preservation test..."
 PICKER_CANCEL_OPEN_XML="/tmp/mpc-groovebox-browser-picker-cancel-open-uiautomator.xml"
 PICKER_CANCEL_OPEN_REMOTE="/sdcard/mpc-groovebox-browser-picker-cancel-open-uiautomator.xml"
 PICKER_CANCEL_OPEN_PNG="/tmp/mpc-groovebox-browser-picker-cancel-open.png"
@@ -11981,8 +12007,8 @@ PY_BROWSER_PICKER_CANCEL_STATE
 picker_cancel_state_before="$(read_browser_picker_cancel_state "$PICKER_RETURN_XML")" || {
   echo "ERROR: could not read the Browser state before picker cancellation"; exit 1;
 }
-if ! grep -Fq -- '"sample":"CURRENT SAMPLE вЂў Browser-Picker-Return.wav"' <<<"$picker_cancel_state_before" \
-    || ! grep -Fq -- '"target":"TARGET вЂў PAD 01 / LAYER 01"' <<<"$picker_cancel_state_before"; then
+if ! grep -Fq -- '"sample":"CURRENT SAMPLE • Browser-Picker-Return.wav"' <<<"$picker_cancel_state_before" \
+    || ! grep -Fq -- '"target":"TARGET • PAD 01 / LAYER 01"' <<<"$picker_cancel_state_before"; then
   echo "ERROR: picker-cancel test baseline is not the known assigned WAV on Pad 01 / Layer 01"
   echo "$picker_cancel_state_before"; exit 1
 fi
@@ -12131,7 +12157,7 @@ found = [n for n in nodes
 if len(found) != 1:
     raise SystemExit(f"expected one Sample Edit frame-state node, found {len(found)}")
 text = found[0].attrib.get("text", "")
-match = re.search(r"Region\s+(\d+)\s*в†’\s*(\d+)\s*/\s*(\d+)\s+frames", text)
+match = re.search(r"Region\s+(\d+)\s*→\s*(\d+)\s*/\s*(\d+)\s+frames", text)
 if not match:
     raise SystemExit(f"could not parse Sample Edit region/frame state: {text!r}")
 print(" ".join(match.groups()))
@@ -12155,7 +12181,7 @@ wait_for_sample_edit_region_state() {
   return 1
 }
 
-echo "Running SAMP-008 Sample Edit real-touch region в†’ CROP в†’ native PCM frame-count acceptance..."
+echo "Running SAMP-008 Sample Edit real-touch region → CROP → native PCM frame-count acceptance..."
 if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
   echo "ERROR: could not capture Browser before entering Sample Edit crop acceptance"; exit 1
 fi
@@ -12506,7 +12532,7 @@ actual_state = (region_start, region_end, frames)
 if actual_state != expected_state:
     raise SystemExit(
         f"{phase}: viewport interaction mutated sample data: {actual_state} != {expected_state}")
-print(f"SAMP-010 {phase}: viewport {start_percent}вЂ“{end_percent}% and sample state {actual_state} verified.")
+print(f"SAMP-010 {phase}: viewport {start_percent}–{end_percent}% and sample state {actual_state} verified.")
 PY
   then
     echo "ERROR: SAMP-010 $phase viewport or native sample invariants failed"
@@ -12560,38 +12586,38 @@ wait_for_sample_audition_marker() {
 sample_zoom_marker_before="$(sample_audition_marker_count)"
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_BEFORE_XML" "$SAMPLE_ZOOM_BEFORE_REMOTE" \
     "Sample Edit zoom waveform in"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10вЂ“90%" 12; then
-  echo "ERROR: SAMP-010 ZOOM+ did not move the viewport to 10вЂ“90%"; exit 1
+if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 ZOOM+ did not move the viewport to 10–90%"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10вЂ“90%" 10 90 "zoom-in"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10–90%" 10 90 "zoom-in"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_IN_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture zoom-in viewport"; exit 1
 fi
 
-# Preserve the zoom-in XML before performing ZOOMв€’; each acceptance state
+# Preserve the zoom-in XML before performing ZOOM−; each acceptance state
 # gets its own hierarchy/screenshot pair instead of overwriting a prior milestone.
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" \
     "Sample Edit zoom waveform out"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0вЂ“100%" 12; then
-  echo "ERROR: SAMP-010 ZOOMв€’ did not restore the full viewport"; exit 1
+if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0–100%" 12; then
+  echo "ERROR: SAMP-010 ZOOM− did not restore the full viewport"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0вЂ“100%" 0 100 "zoom-out"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0–100%" 0 100 "zoom-out"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_OUT_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture zoom-out viewport"; exit 1
 fi
 
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" \
     "Sample Edit zoom waveform in"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10вЂ“90%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10–90%" 12; then
   echo "ERROR: SAMP-010 could not establish zoomed viewport before RESET"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10вЂ“90%" 10 90 "reset-preparation"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10–90%" 10 90 "reset-preparation"; then exit 1; fi
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" \
     "Sample Edit reset waveform zoom"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0вЂ“100%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0–100%" 12; then
   echo "ERROR: SAMP-010 RESET did not restore full viewport"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0вЂ“100%" 0 100 "reset"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0–100%" 0 100 "reset"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_RESET_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture reset viewport"; exit 1
 fi
@@ -12606,7 +12632,7 @@ fi
 if ! dump_device_ui_retry "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 8 4; then
   echo "ERROR: SAMP-010 could not refresh Sample Edit after Pad audition"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0вЂ“100%" 0 100 "audition"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" 0 100 "audition"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture post-audition viewport"; exit 1
 fi
@@ -12632,7 +12658,7 @@ fi
 echo "SAMP-010 real-touch zoom-in/out/reset and native Pad audition passed without mutating sample data."
 
 
-echo "Running Android user document-tree в†’ Browser results в†’ persisted grant restoration..."
+echo "Running Android user document-tree → Browser results → persisted grant restoration..."
 if ! adb_bounded 10 shell mkdir -p "$TREE_FOLDER_DEVICE"; then
   echo "ERROR: could not create user-folder test fixture"; exit 1
 fi
@@ -12691,7 +12717,7 @@ if ! dump_device_ui "$SAMPLE_BROWSER_RETURN_REMOTE" "$SAMPLE_BROWSER_RETURN_XML"
   echo "ERROR: could not inspect Browser Search after Sample Edit return"; exit 1
 fi
 if ! capture_ui_screenshot "$SAMPLE_BROWSER_RETURN_PNG" 10; then
-  echo "ERROR: could not capture Sample Edit в†’ Browser return screenshot"; exit 1
+  echo "ERROR: could not capture Sample Edit → Browser return screenshot"; exit 1
 fi
 if ! python3 - "$SAMPLE_BROWSER_RETURN_XML" <<'PY'
 import sys
@@ -12708,14 +12734,14 @@ query = fields[0].attrib.get("text", "").strip()
 # UIAutomator exposes this EditText hint as text when the current query is empty.
 if query not in ("", "Search files"):
     raise SystemExit(f"Browser Search retained stale query after CLEAR: {query!r}")
-print("Browser Search reset verified after Sample Edit в†’ Browser return.")
+print("Browser Search reset verified after Sample Edit → Browser return.")
 PY
 then
   echo "ERROR: Browser Search was not empty after Sample Edit return"; exit 1
 fi
 if ! test -s /tmp/mpc-groovebox-sample-browser-return.png \
     || ! test -s /tmp/mpc-groovebox-sample-browser-return-uiautomator.xml; then
-  echo "ERROR: Sample Edit в†’ Browser transition lacks screenshot/UI hierarchy evidence"; exit 1
+  echo "ERROR: Sample Edit → Browser transition lacks screenshot/UI hierarchy evidence"; exit 1
 fi
 
 # Enter Places > User Folder. The folder action should only appear in this location.
@@ -12847,7 +12873,7 @@ if ! wait_for_ui_text "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" "$TREE_SAMPLE_N
   echo "ERROR: selected document tree did not return its real WAV file as a Browser row"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$TREE_BROWSER_XML" "$TREE_BROWSER_REMOTE" \
-    "USER FOLDER вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: Browser did not report the actual tree-backed WAV count"; exit 1
 fi
 
@@ -12896,7 +12922,7 @@ if ! wait_for_ui_text "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" "$TREE_SAMPLE
   echo "ERROR: persisted document-tree grant did not restore the actual WAV result"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$TREE_RESTORED_XML" "$TREE_RESTORED_REMOTE" \
-    "USER FOLDER вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: restored folder provider status did not match the real scan result"; exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-tree-restored.png 10; then
@@ -13184,7 +13210,7 @@ if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOT
   echo "ERROR: FAVORITE 1 did not return its real WAV as a Browser row"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
-    "FAVORITE 1 вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: FAVORITE 1 provider status did not match its real tree scan"; exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-results.png 10; then
@@ -13230,7 +13256,7 @@ if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOT
   echo "ERROR: assigning FAVORITE 1 replaced the USER FOLDER results"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
-    "USER FOLDER вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
+    "USER FOLDER • 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
   echo "ERROR: USER FOLDER was not independently restored after switching from Favorite"; exit 1
 fi
 if ! tap_ui_description "$FAVORITE_TREE_RESULTS_XML" "MPC Browser navigation PLACES FAVORITE 1"; then
@@ -13240,7 +13266,7 @@ if ! wait_for_ui_text "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOT
   echo "ERROR: returning to FAVORITE 1 did not restore its distinct WAV result"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESULTS_XML" "$FAVORITE_TREE_RESULTS_REMOTE" \
-    "FAVORITE 1 вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 15; then
   echo "ERROR: Favorite result/status was not restored after switching back"; exit 1
 fi
 
@@ -13272,7 +13298,7 @@ if ! wait_for_ui_text "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REM
   echo "ERROR: Favorite 1's saved SAF grant did not restore its actual WAV row"; exit 1
 fi
 if ! wait_for_ui_node_text_desc "$FAVORITE_TREE_RESTORED_XML" "$FAVORITE_TREE_RESTORED_REMOTE" \
-    "FAVORITE 1 вЂў 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
+    "FAVORITE 1 • 1 WAV FILE INDEXED" "MPC Browser provider status" 20; then
   echo "ERROR: restored FAVORITE 1 provider status did not match the real scan"; exit 1
 fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-browser-favorite-tree-restored.png 10; then
@@ -13621,7 +13647,7 @@ for expected_fixture_field in \
 done
 echo "$project_fixture_line"
 echo "$project_fixture_line"
-echo "PROJECT_NATIVE_STARTUP_READY вЂў awaiting actual Main shell interaction"
+echo "PROJECT_NATIVE_STARTUP_READY • awaiting actual Main shell interaction"
 
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
   echo "ERROR: native Main shell did not publish fresh Android View-tree evidence"; exit 1
@@ -13682,7 +13708,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
-echo "Real Main в†’ Menu в†’ Project touch path and native summary verified; fresh Android View-tree evidence captured."
+echo "Real Main → Menu → Project touch path and native summary verified; fresh Android View-tree evidence captured."
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
 project_save_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
@@ -13805,8 +13831,8 @@ if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: reopened Project View tree missing"; exit 1; fi
-echo "Real Project Save As в†’ add Track in memory в†’ Open saved file restored exact persisted Track/Pattern-placement model."
-echo "Initial Project Save As в†’ mutate в†’ Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
+echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
+echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
 
 echo "Running extended Project persistence acceptance: full state digest, restart, legacy v1, cancel and malformed input..."
@@ -13994,7 +14020,7 @@ open_project_document() {
 }
 
 # Verify the dedicated debug-only native fixture populated actual non-default
-# MIDI events and a clipped placement before the real Save As в†’ mutate в†’ Open.
+# MIDI events and a clipped placement before the real Save As → mutate → Open.
 project_fixture_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_TEST_FIXTURE_READY" | tail -n 1 || true)"
 for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120"; do
   if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line_ext"; then
@@ -14003,7 +14029,7 @@ for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/11
   fi
 done
 
-# Verify that the initial real UI Save As в†’ mutate в†’ Open restored the complete
+# Verify that the initial real UI Save As → mutate → Open restored the complete
 # serialized domain, not merely the visible counts. The native fixture above is
 # non-empty and includes non-default tick/pitch/duration/velocity/probability/
 # ratchet/nudge values as well as a clipped Pattern placement with source offset.
@@ -14018,7 +14044,7 @@ if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
     || ! grep -Fq -- "formatVersion=2" <<<"$project_save_line_ext" \
     || ! grep -Fq -- "formatVersion=2" <<<"$project_open_line_ext" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_open_line_ext"; then
-  echo "ERROR: Project Save в†’ mutated model в†’ Open did not preserve exact native-domain bytes"
+  echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
   echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1
 fi
 echo "Project v2 Save/Open exact domain SHA passed: $project_saved_sha_ext"
@@ -14201,7 +14227,7 @@ if ! grep -Fq -- "formatVersion=2" <<<"$restart_open_line" \
     || ! grep -Fq -- "TRACKS=2" <<<"$restart_open_line" \
     || ! grep -Fq -- "PLACEMENTS=2" <<<"$restart_open_line" \
     || [[ "$restart_open_sha" != "$project_saved_sha_ext" ]]; then
-  echo "ERROR: force-stop/relaunch в†’ Open did not restore exact saved native state"
+  echo "ERROR: force-stop/relaunch → Open did not restore exact saved native state"
   echo "$restart_open_line"; exit 1
 fi
 show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
@@ -14574,9 +14600,9 @@ import xml.etree.ElementTree as ET
 path, filename = sys.argv[1:3]
 nodes = list(ET.parse(path).getroot().iter("node"))
 expected = {
-    "MPC Browser current sample": f"CURRENT SAMPLE вЂў {filename}",
-    "MPC Browser target Pad and Layer": "TARGET вЂў PAD 01 / LAYER 01",
-    "MPC Browser provider status": f"ASSIGNED вЂў {filename} в†’ PAD 01 / LAYER 01",
+    "MPC Browser current sample": f"CURRENT SAMPLE • {filename}",
+    "MPC Browser target Pad and Layer": "TARGET • PAD 01 / LAYER 01",
+    "MPC Browser provider status": f"ASSIGNED • {filename} → PAD 01 / LAYER 01",
 }
 for description, text in expected.items():
     matches = [node for node in nodes
@@ -14587,7 +14613,7 @@ for description, text in expected.items():
         raise SystemExit(
             f"expected one visible Browser node {description!r}={text!r}, found {len(matches)}"
         )
-print(f"Verified Browser sample assignment: {filename} в†’ Pad 01 / Layer 01")
+print(f"Verified Browser sample assignment: {filename} → Pad 01 / Layer 01")
 PY_SAMP_CURSOR_BROWSER_ASSIGNMENT
 then
   echo "ERROR: Browser assignment did not preserve the exact current sample and target Pad/Layer"; exit 1
@@ -14624,8 +14650,8 @@ import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 pattern = re.compile(
-    r"Region\s+([0-9]+)\s*в†’\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
-    r"(?:\s+вЂў\s+PLAYHEAD\s+([0-9]+))?"
+    r"Region\s+([0-9]+)\s*→\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
+    r"(?:\s+•\s+PLAYHEAD\s+([0-9]+))?"
 )
 for node in root.iter("node"):
     match = pattern.search(node.attrib.get("text", ""))
@@ -14662,12 +14688,12 @@ for attempt in {1..10}; do
 done
 if [[ "$samp_cursor_start_changed" != "1" ]]; then echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1; fi
 
-if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E в€’1K"; then
-  echo "ERROR: End в€’1K real-touch control was not actionable"; exit 1
+if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E −1K"; then
+  echo "ERROR: End −1K real-touch control was not actionable"; exit 1
 fi
 samp_cursor_region_changed=0
 for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe End в€’1K"; exit 1; fi
+  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe End −1K"; exit 1; fi
   samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
   if [[ -n "$samp_cursor_state" ]]; then
     read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
@@ -14677,7 +14703,7 @@ for attempt in {1..10}; do
   fi
   sleep 0.2
 done
-if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End в€’1K failed to change only the region end; state=$samp_cursor_state"; exit 1; fi
+if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1; fi
 if ! capture_ui_screenshot "$SAMP_CURSOR_REGION_PNG" 10; then echo "ERROR: could not capture adjusted-region screenshot"; exit 1; fi
 if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not capture adjusted-region hierarchy"; exit 1; fi
 
