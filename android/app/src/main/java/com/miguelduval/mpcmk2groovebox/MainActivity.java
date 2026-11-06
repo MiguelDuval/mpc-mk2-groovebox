@@ -5479,10 +5479,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         for (int i = 0; i < count; i++) {
-            final int note = nativePatternGetEventNote(selectedPad, i);
-            final int velocity = nativePatternGetEventVelocity(selectedPad, i);
-            final int duration = nativePatternGetEventDuration(selectedPad, i);
-            final int tick = nativePatternGetEventTick(selectedPad, i);
+            final int eventIndex = i;
+            final int note = nativePatternGetEventNote(selectedPad, eventIndex);
+            final int velocity = nativePatternGetEventVelocity(selectedPad, eventIndex);
+            final int duration = nativePatternGetEventDuration(selectedPad, eventIndex);
+            final int tick = nativePatternGetEventTick(selectedPad, eventIndex);
 
             LinearLayout row = row();
             row.setPadding(dp(8), dp(4), dp(8), dp(4));
@@ -5506,7 +5507,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             // Edit buttons
             Button editNote = actionButton("N" + note, v -> {
-                final String result = nativePatternSetEventNote(selectedPad, i, note);
+                final String result = nativePatternSetEventNote(selectedPad, eventIndex, note);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5514,7 +5515,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editNote, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editVel = actionButton("V" + velocity, v -> {
-                final String result = nativePatternSetEventVelocity(selectedPad, i, Math.min(127, velocity + 1));
+                final String result = nativePatternSetEventVelocity(selectedPad, eventIndex, Math.min(127, velocity + 1));
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5522,7 +5523,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editVel, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button delBtn = actionButton("DEL", v -> {
-                final String result = nativePatternDeleteEvent(selectedPad, i);
+                final String result = nativePatternDeleteEvent(selectedPad, eventIndex);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });

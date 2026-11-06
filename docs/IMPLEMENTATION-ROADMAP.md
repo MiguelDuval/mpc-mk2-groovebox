@@ -1,5 +1,12 @@
 # Implementation Roadmap
 
+## Follow-up compile correction — 2026-11-06
+
+Build #3719 / run `42233114496` on SHA `350495c0729ef08f4c385c339e219ac12e1b4338` completed with FAILURE during `:app:compileDebugJavaWithJavac` (focused Android unit policy test step 15). The earlier `nativePatternAddEvent` return-type mismatch is fixed, but javac then reported three non-effectively-final loop-index captures in the List Edit event-row lambdas at `MainActivity.java:5509`, `:5517`, and `:5525`. The follow-up captures `final int eventIndex = i` per row and uses it for note, velocity and delete actions. APK assembly, smoke preflight, emulator smoke and evidence upload were skipped; run #3719 produced no APK/evidence artifacts.
+
+The corrected Sample Edit source parsers on the current branch use U+2192 to match MainActivity, with a scoped source guard. The exact corrected-SHA Android Build is pending.
+
+
 ## Follow-up parser correction — 2026-11-06
 
 The exact source at SHA `350495c0729ef08f4c385c339e219ac12e1b4338` showed that both existing Sample Edit region parsers used U+2052 (`⁒`) while MainActivity emits U+2192 (`→`). The follow-up corrects both parsers and adds a scoped source guard for the two parser functions. U+2052 remains valid in other UI phrases and is not globally banned. Build #3719 / run `42233114496` is running on the pre-correction SHA and cannot validate this parser fix. SAMP-007 and SAMP-008 remain PENDING until the exact corrected SHA passes and its fresh XML/evidence is inspected.
