@@ -1796,8 +1796,11 @@ std::string AudioEngine::setPadSampleRegion(
         }
     }
 
-    auto& layerState =
-            projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
+    const auto* drumProgram = projectState_.activeTrackDrumProgram();
+    if (!drumProgram) {
+        return "Sample region change failed: no drum program assigned to active track";
+    }
+    auto& layerState = drumProgram->pad(padIndex).layer(layerIndex);
     const auto loop = clipSampleLoopToRegion(
             layerState.loopStartSample,
             layerState.loopEndSample,

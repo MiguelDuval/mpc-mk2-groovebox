@@ -87,6 +87,10 @@ public:
     std::size_t activeProgramIndexForTrack(
             std::size_t trackIndex) const noexcept;
 
+    // Returns the DrumProgram assigned to the active track, or nullptr if none assigned.
+    domain::DrumProgram* activeTrackDrumProgram() noexcept;
+    const domain::DrumProgram* activeTrackDrumProgram() const noexcept;
+
     bool setSequenceTempo(double tempoBpm) noexcept;
     bool setSequenceBars(std::int32_t bars) noexcept;
     bool setSequenceTimeSignature(

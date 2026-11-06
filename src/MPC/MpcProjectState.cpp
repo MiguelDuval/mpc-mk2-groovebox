@@ -374,6 +374,22 @@ std::size_t MpcProjectState::activeProgramIndexForTrack(
     return project_.drumPrograms.size();
 }
 
+domain::DrumProgram* MpcProjectState::activeTrackDrumProgram() noexcept {
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) {
+        return &project_.drumPrograms[programIndex];
+    }
+    return nullptr;
+}
+
+const domain::DrumProgram* MpcProjectState::activeTrackDrumProgram() const noexcept {
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) {
+        return &project_.drumPrograms[programIndex];
+    }
+    return nullptr;
+}
+
 bool MpcProjectState::selectNextSequence() noexcept {
     if (project_.sequences.empty()) {
         return false;
