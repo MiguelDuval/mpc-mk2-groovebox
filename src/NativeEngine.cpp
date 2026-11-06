@@ -1074,6 +1074,51 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
     }
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTuning(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint velocity,
+        jint tuningMilliSemitones)
+{
+    if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127) {
+        return;
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    const auto padIndex = static_cast<std::uint8_t>(pad);
+    const auto velocityValue = static_cast<std::uint8_t>(velocity);
+
+    core.audio().triggerPadWithTuningOverride(
+            padIndex, velocityValue,
+            static_cast<std::int32_t>(tuningMilliSemitones));
+
+    const auto state = core.sequenceTransportClock().snapshot();
+    const auto& projectState = core.projectState();
+    const auto trackIndex = projectState.activeTrackIndex();
+    const auto& tracks = projectState.activeSequence().tracks;
+
+    if (state.playing
+            && trackIndex < tracks.size()
+            && tracks[trackIndex].recordArmed
+            && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum) {
+        const auto tick = core.sequenceTransportClock().positionAtTimestamp(
+                monotonicNanos());
+        core.sequenceRecordQueue().tryEnqueue(
+                mpc::sequencer::SequenceRecordEvent{
+                        tick,
+                        static_cast<std::uint8_t>(trackIndex),
+                        padIndex,
+                        velocityValue,
+                        1u});
+        core.sequenceRecordQueue().tryEnqueue(
+                mpc::sequencer::SequenceRecordEvent{
+                        tick,
+                        static_cast<std::uint8_t>(trackIndex),
+                        padIndex,
+                        0u,
+                        0u});
+    }
+}
+
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioConfigureOutput(

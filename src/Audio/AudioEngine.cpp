@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <utility>
 
@@ -348,7 +349,8 @@ public:
                     startVoice(
                             pending.padIndex,
                             pending.velocity,
-                            sampleRate);
+                            sampleRate,
+                            pending.tuningOverrideMilliSemitones);
                 }
 
                 --pendingTriggerCount_;
@@ -624,7 +626,9 @@ private:
     void startVoice(
             std::uint8_t padIndex,
             std::uint8_t velocity,
-            int32_t sampleRate) noexcept {
+            int32_t sampleRate,
+            std::int32_t tuningOverrideMilliSemitones =
+                    std::numeric_limits<std::int32_t>::min()) noexcept {
         std::size_t selectedIndex = nextVoiceIndex_[padIndex];
         for (std::size_t offset = 0; offset < kMaxPadVoices; ++offset) {
             const std::size_t candidate =
@@ -661,6 +665,7 @@ private:
         voice.lastFilterCutoffHz = filterCutoffHz;
         voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
         voice.rightGain = pan < 0.0f ? 1.0f + pan : 1.0f;
+        voice.tuningOverrideMilliSemitones = tuningOverrideMilliSemitones;
 
         bool anyLayer = false;
         for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
@@ -716,8 +721,11 @@ private:
 
         const float tuningSemitones =
                 static_cast<float>(
-                    tuningMilliSemitones_[padIndex].load(
-                        std::memory_order_relaxed))
+                    voice.tuningOverrideMilliSemitones !=
+                            std::numeric_limits<std::int32_t>::min()
+                        ? voice.tuningOverrideMilliSemitones
+                        : tuningMilliSemitones_[padIndex].load(
+                              std::memory_order_relaxed))
                 / 1000.0f;
         const float semitoneRatio =
                 std::pow(2.0f, tuningSemitones / 12.0f);
@@ -776,6 +784,11 @@ private:
         float rightGain = 1.0f;
         float baseFilterCutoffHz = 20000.0f;
         float lastFilterCutoffHz = -1.0f;
+        // Transient per-voice tuning override for performance modes
+        // (e.g. Pad Perform). INT32_MIN means "no override — use pad's
+        // persistent tuning from tuningMilliSemitones_[padIndex]".
+        std::int32_t tuningOverrideMilliSemitones =
+                std::numeric_limits<std::int32_t>::min();
         bool active = false;
     };
 
@@ -1946,6 +1959,24 @@ void AudioEngine::triggerPadAtOffset(
                 padIndex,
                 velocity,
                 clampedOffset}));
+}
+
+void AudioEngine::triggerPadWithTuningOverride(
+        std::uint8_t padIndex,
+        std::uint8_t velocity,
+        std::int32_t tuningOverrideMilliSemitones,
+        std::int32_t offsetFrames) {
+    if (padIndex >= kPadCount || !isValidAudioTriggerVelocity(velocity)) {
+        return;
+    }
+
+    const auto clampedOffset = std::max(offsetFrames, 0);
+    static_cast<void>(triggerQueue_.tryEnqueue(
+            AudioTriggerEvent{
+                padIndex,
+                velocity,
+                clampedOffset,
+                tuningOverrideMilliSemitones}));
 }
 
 std::string AudioEngine::openInputStream() {

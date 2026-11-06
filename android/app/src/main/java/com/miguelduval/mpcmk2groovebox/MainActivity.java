@@ -469,6 +469,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioSetPadSampleName(
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
+    private static native void nativeAudioTriggerPadWithTuning(int pad, int velocity, int tuningMilliSemitones);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -5674,24 +5675,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
         // Build 4x4 grid of perform pads (chromatic mapping from source pad note)
-        // Real note/pitch mapping: each pad sets semitone offset via nativeAudioSetPadTuning
-        // then triggers the source pad. This changes actual pitch output, not just UI text.
+        // Real note/pitch mapping: each pad triggers with a transient tuning
+        // override via nativeAudioTriggerPadWithTuning. This changes actual
+        // pitch output for this trigger only; the pad's persistent tuning in
+        // project state is never modified by Pad Perform.
         int baseNote = 60; // Middle C as base
         for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
             LinearLayout levelRow = row();
             for (int colIdx = 0; colIdx < 4; colIdx++) {
                 int noteIndex = rowIdx * 4 + colIdx;
                 int note = baseNote + noteIndex;
-                float semitones = note - 60; // relative to Middle C
+                int tuningMilliSemitones = Math.round((note - 60) * 1000);
                 Button performBtn = actionButton("N" + note, v -> {
-                    String result = nativeAudioSetPadTuning(selectedPad, semitones);
-                    if (result != null) {
-                        setBottomStatus("PAD PERFORM: tuning failed - " + result);
-                        return;
-                    }
-                    nativeAudioTriggerPad(selectedPad, 100);
+                    nativeAudioTriggerPadWithTuning(selectedPad, 100, tuningMilliSemitones);
                     setBottomStatus("PAD PERFORM: pad " + (selectedPad + 1)
-                            + " note " + note + " (" + semitones + " semitones)");
+                            + " note " + note + " (" + (note - 60) + " semitones)");
                 });
                 performBtn.setMinWidth(dp(64));
                 performBtn.setMinHeight(dp(64));

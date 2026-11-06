@@ -195,6 +195,14 @@ public:
             std::uint8_t padIndex,
             std::uint8_t velocity,
             std::int32_t offsetFrames);
+    // Queues a trigger with a transient tuning override (milli-semitones).
+    // The override applies only to this trigger event; the pad's persistent
+    // tuning in project state is not modified. Use INT32_MIN for no override.
+    void triggerPadWithTuningOverride(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            std::int32_t tuningOverrideMilliSemitones,
+            std::int32_t offsetFrames = 0);
 
     AudioTriggerQueue& triggerQueue() noexcept {
         return triggerQueue_;
