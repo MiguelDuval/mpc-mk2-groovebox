@@ -79,6 +79,37 @@ The same file distinguishes audio-device setup from MIDI device entries and incl
 
 **Product decision:** when generic external MIDI routing becomes an active roadmap item, model device roles explicitly instead of treating every opened input port as interchangeable. Do not copy example device names, IDs, saved paths, serial-like values, Q-Link numbers or other machine-specific settings. Do not change the current Android MIDI bridge or MkII semantic adapter on the basis of this file alone.
 
+
+### 3.3 Global MIDI Learn and the XMM mapping model
+
+The LiveXplore Wiki has a more detailed, version-specific description of standalone MPC Global MIDI Learn. In the documented workflow, a mapping is created/exported as an XMM file from desktop MPC software or MPC Beats, then selected by the standalone application. The Wiki says the controller must be enabled in MIDI settings with the **Control** role selected. It also describes the feature as undocumented and requiring SSH/configuration changes on the standalone device; this is not a supported public plugin API.
+
+The XMM XML format is useful as a *conceptual mapping model*. The page documents per-control target IDs, MIDI message type, MIDI channel, data value/control number, a mapping behavior and a reverse flag. The author identifies behavior choices including Toggle button, Momentary button, Fixed button, Note, absolute CC, relative CC offset and relative CC two's-complement. The author explicitly says the Mapping_type field is not fully understood; the example distinguishes note, CC and no mapping, but this must not be treated as a fully verified formal specification.
+
+**Future product design lead:** if/when we implement generic learnable MIDI control, the semantic mapping model should be expressive enough to represent source message (Note/CC), channel, control number/note number, target semantic action/parameter, toggle/momentary/fixed behavior, absolute vs relative encoder mode, direction/reverse and value scaling. Keep this as a future generic-controller feature, separate from the hard-coded physical MkII adapter. Do not parse or depend on Akai XMM as our internal project format without a deliberate, tested interoperability feature.
+
+Source: [Global MIDI mapping in standalone mode](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-and-Force-global-midi-mapping-in-standalone-mode-how-to), edited 2022-09-03. This is older, third-party documentation of an undocumented Linux feature; current firmware applicability is not established.
+
+### 3.4 Internal MPC controller MIDI ports are not the Studio MkII
+
+A separate LiveXplore Wiki analysis captures traffic between the **internal control surface inside an MPC Live** and the standalone MPC application. It reports four ALSA ports in that environment: `MPC Public`, `MPC Private`, `MPC MIDI Port A` and `MPC MIDI Port B`. In the author's capture, Public carries specific SysEx traffic including pad LED/color updates, Private carries button/button-LED and pad-press traffic, and A/B are external MIDI jack ports connected by the MPC software.
+
+The page also documents an Akai universal identity request and replies containing MPC-family product IDs, plus a separate SysEx family for internal-controller pad colors and a 128×32 OLED pixel command. These IDs/commands describe that internal MPC controller interface. They are **not** the USB-MIDI identity or SysEx map for the external 2021 MPC Studio MkII. Our MkII's separate public protocol research and 160×80 LCD implementation remain authoritative.
+
+The Wiki's controller-MCU discussion names an STM32F401 but qualifies its clock estimate as probable. That observation is about the internal MPC Live controller hardware, not the Studio MkII. Do not infer the MkII MCU, port split, screen resolution or command bytes from it.
+
+**Product decision:** this page is useful primarily as a warning against mixing hardware layers. The internal standalone MPC controller's Public/Private ALSA split is not a reason to rename or reinterpret the Android Studio MkII public MIDI port. Do not copy the MPC Live product IDs, 128×32 OLED messages, internal controller SysEx, or Linux ALSA port arrangement into the MkII adapter.
+
+Source: [MPC internal controller MIDI aspects](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-internal-controller---Midi-aspects), last edited 2023-11-25. The author says the analysis concerns mainly MPC Live and may apply to other last-generation MPC/Force units; that scope limitation matters.
+
+### 3.5 MPC.settings is persistent host configuration, not a project schema
+
+The Wiki describes `MPC.settings` as a global XML configuration file read at application startup and saved when the configuration page is visited and at shutdown. It includes MIDI port definitions and other configuration. It also documents five folder shortcuts and an example `StandaloneWindowBounds` value of 1280×800.
+
+This adds a useful distinction between persistent application/device preferences and the musical project/song state. It does not mean our project file should serialize device ports or global UI preferences. The five folder shortcuts are a useful small UX pattern for a local-first Browser, but the original paths are per-device and should not be copied. The 1280×800 bound is a value from a particular standalone configuration; it is not a measured Android pixel target, a promise of every device's display size, or a reason to change our landscape geometry.
+
+Source: [MPC settings file properties](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-settings-file-properties), edited 2022-01-19. 
+
 ### 3.3 Q-Link and page-state configuration
 
 The settings example contains Q-Link assignments with an associated Momentary flag, alongside visibility entries for Main Mode and Sample Edit areas. This supports the general idea that a performance control can have an assignment and a momentary/latching behavior independent of its physical input transport.
@@ -100,6 +131,17 @@ The repository describes an autorun workaround for running custom scripts on sup
 The settings file includes machine-specific paths, recent-project records, storage identifiers, device names and other local configuration. Those values are not product requirements and are not copied into our documentation or app.
 
 A comment in the settings file suggests a possible debug-menu setting but explicitly leaves it untested. We do not treat that as a confirmed developer mode or design feature.
+
+
+### 3.6 MPC 3 first-analysis notes and the Gen2 version trap
+
+The LiveXplore Wiki's MPC 3 first-analysis page (last edited 2026-01-22) adds a useful version boundary. Its Gen1 observations include a move from Buildroot to Yocto, a dedicated image utility, the InMusic `edisksctl` mount utility, libc 2.39, a Linux 6.6.64 PREEMPT_RT kernel and external storage mounted with `noexec`. These are reported observations from the author's investigated Gen1 v3 environment, not requirements for our Android app.
+
+More importantly, the same page describes a **MPC 3.7.0 Gen2** update as a different, uncompressed image containing three Linux partitions, with the main root filesystem in the third partition. It gives an example mount offset of 56,819,712 bytes for that exact 3.7.0 image.
+
+This is a different-version observation. It does **not** prove that the Gen2 3.9.1 image has the same three-partition layout. But it means our old 3.9.1 Gen2 handoff's four-entry/XZ/FIT description cannot be trusted without validating the exact input image's bytes and hash; it might reflect an extraction/carving mistake, a different image/version, or a real format change. The conflicting hashes and extraction failures already recorded in section 6 must be resolved against one known-good 3.9.1 Gen2 artifact.
+
+Source: [MPC 3 first analysis](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-3-first-analysis), edited 2026-01-22. Treat the Gen2 example as a 3.7.0-specific lead, not a 3.9.1 specification.
 
 ## 4. Findings from Denon Reverse Engineering
 
