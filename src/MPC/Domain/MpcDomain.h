@@ -126,6 +126,10 @@ struct MidiNoteEvent {
     std::uint8_t ratchet = 1;
     // Signed microtiming offset from the quantized step, in project ticks.
     std::int32_t nudgeTicks = 0;
+    // Stable unique identity for this event within its Pattern.
+    // Assigned at creation time; survives sorting and field modifications.
+    // Zero means unassigned (legacy/deserialized events).
+    std::uint32_t eventId = 0;
 };
 
 struct Pattern {
@@ -133,6 +137,9 @@ struct Pattern {
     std::string name;
     std::int32_t lengthTicks = 3840;
     std::vector<MidiNoteEvent> notes;
+    // Monotonically increasing counter for assigning stable event IDs.
+    // Persisted with the pattern to avoid ID collisions on reload.
+    std::uint32_t nextEventId = 1;
 };
 
 struct PatternPlacement {

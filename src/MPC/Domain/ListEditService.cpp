@@ -1,12 +1,38 @@
 #include "MPC/Domain/ListEditService.h"
 
 #include <algorithm>
-#include <limits>
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <utility>
 
 namespace mpc::domain {
+
+// Helper: find event by stable eventId
+static MidiNoteEvent* findByEventId(Pattern& pattern, std::uint32_t eventId) {
+    if (eventId == 0) return nullptr;
+    for (auto& e : pattern.notes) {
+        if (e.eventId == eventId) return &e;
+    }
+    return nullptr;
+}
+
+static const MidiNoteEvent* findByEventId(const Pattern& pattern, std::uint32_t eventId) {
+    if (eventId == 0) return nullptr;
+    for (const auto& e : pattern.notes) {
+        if (e.eventId == eventId) return &e;
+    }
+    return nullptr;
+}
+
+// Helper: assign eventId if not already assigned (for legacy/deserialized events)
+static void ensureEventId(Pattern& pattern) {
+    for (auto& e : pattern.notes) {
+        if (e.eventId == 0) {
+            e.eventId = pattern.nextEventId++;
+        }
+    }
+}
 
 ListEditService::AddResult ListEditService::addEvent(
         Pattern& pattern,
@@ -17,18 +43,14 @@ ListEditService::AddResult ListEditService::addEvent(
         std::uint8_t velocity) {
     AddResult result;
 
-    auto addRedo = [&pattern, tick, durationTicks, note, velocity]() mutable {
+    // Ensure all existing events have IDs
+    ensureEventId(pattern);
+
+    const std::uint32_t newEventId = pattern.nextEventId++;
+
+    auto addRedo = [&pattern, tick, durationTicks, note, velocity, newEventId]() mutable {
         auto& notes = pattern.notes;
-        notes.erase(
-                std::remove_if(
-                        notes.begin(), notes.end(),
-                        [tick, note](const MidiNoteEvent& n) {
-                            return n.tick == tick &&
-                                   n.note == static_cast<std::uint8_t>(note);
-                        }),
-                notes.end());
-        notes.push_back(
-                MidiNoteEvent{tick, durationTicks, note, velocity, 127, 1, 0});
+        notes.push_back(MidiNoteEvent{tick, durationTicks, note, velocity, 127, 1, 0, newEventId});
         std::stable_sort(
                 notes.begin(), notes.end(),
                 [](const MidiNoteEvent& lhs, const MidiNoteEvent& rhs) {
@@ -36,20 +58,18 @@ ListEditService::AddResult ListEditService::addEvent(
                 });
     };
 
-    auto addUndo = [&pattern, tick, note]() mutable {
+    auto addUndo = [&pattern, newEventId]() mutable {
         auto& notes = pattern.notes;
         notes.erase(
                 std::remove_if(
                         notes.begin(), notes.end(),
-                        [tick, note](const MidiNoteEvent& n) {
-                            return n.tick == tick &&
-                                   n.note == static_cast<std::uint8_t>(note);
+                        [newEventId](const MidiNoteEvent& n) {
+                            return n.eventId == newEventId;
                         }),
                 notes.end());
     };
 
-    if (!history.record("Add Pattern Event", std::move(addUndo),
-                        std::move(addRedo))) {
+    if (!history.record("Add Pattern Event", std::move(addUndo), std::move(addRedo))) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -60,9 +80,7 @@ ListEditService::AddResult ListEditService::addEvent(
 
     const auto& notes = pattern.notes;
     for (std::size_t i = 0; i < notes.size(); ++i) {
-        if (notes[i].tick == tick && notes[i].note == note &&
-            notes[i].velocity == velocity &&
-            notes[i].durationTicks == durationTicks) {
+        if (notes[i].eventId == newEventId) {
             result.eventIndex = i;
             break;
         }
@@ -77,6 +95,8 @@ ListEditService::ModifyResult ListEditService::deleteEvent(
         std::size_t eventIndex) {
     ModifyResult result;
 
+    ensureEventId(pattern);
+
     auto& notes = pattern.notes;
     if (eventIndex >= notes.size()) {
         result.success = false;
@@ -84,28 +104,33 @@ ListEditService::ModifyResult ListEditService::deleteEvent(
         return result;
     }
 
-    const auto deletedNote = notes[eventIndex];
+    const std::uint32_t targetEventId = notes[eventIndex].eventId;
+    const MidiNoteEvent deletedEvent = notes[eventIndex];
 
-    auto delUndo = [&pattern, eventIndex, deletedNote]() mutable {
+    auto delUndo = [&pattern, targetEventId, deletedEvent]() mutable {
         auto& n = pattern.notes;
-        n.insert(n.begin() + static_cast<std::ptrdiff_t>(eventIndex),
-                 deletedNote);
-        std::stable_sort(
-                n.begin(), n.end(),
-                [](const MidiNoteEvent& lhs, const MidiNoteEvent& rhs) {
-                    return lhs.tick < rhs.tick;
-                });
-    };
-
-    auto delRedo = [&pattern, eventIndex]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n.erase(n.begin() + static_cast<std::ptrdiff_t>(eventIndex));
+        if (!findByEventId(pattern, targetEventId)) {
+            n.push_back(deletedEvent);
+            std::stable_sort(
+                    n.begin(), n.end(),
+                    [](const MidiNoteEvent& lhs, const MidiNoteEvent& rhs) {
+                        return lhs.tick < rhs.tick;
+                    });
         }
     };
 
-    if (!history.record("Delete Pattern Event", std::move(delUndo),
-                        std::move(delRedo))) {
+    auto delRedo = [&pattern, targetEventId]() mutable {
+        auto& n = pattern.notes;
+        n.erase(
+                std::remove_if(
+                        n.begin(), n.end(),
+                        [targetEventId](const MidiNoteEvent& e) {
+                            return e.eventId == targetEventId;
+                        }),
+                n.end());
+    };
+
+    if (!history.record("Delete Pattern Event", std::move(delUndo), std::move(delRedo))) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -123,6 +148,8 @@ ListEditService::ModifyResult ListEditService::setNote(
         std::uint8_t note) {
     ModifyResult result;
 
+    ensureEventId(pattern);
+
     auto& notes = pattern.notes;
     if (eventIndex >= notes.size()) {
         result.success = false;
@@ -130,23 +157,21 @@ ListEditService::ModifyResult ListEditService::setNote(
         return result;
     }
 
-    const auto oldNote = notes[eventIndex].note;
+    const std::uint32_t targetEventId = notes[eventIndex].eventId;
+    const std::uint8_t oldNote = notes[eventIndex].note;
 
-    auto undo = [&pattern, eventIndex, oldNote]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].note = oldNote;
+    auto undo = [&pattern, targetEventId, oldNote]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->note = oldNote;
         }
     };
-    auto redo = [&pattern, eventIndex, note]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].note = note;
+    auto redo = [&pattern, targetEventId, note]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->note = note;
         }
     };
 
-    if (!history.record("Change Pattern Event Note", std::move(undo),
-                        std::move(redo))) {
+    if (!history.record("Change Pattern Event Note", std::move(undo), std::move(redo))) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -171,18 +196,17 @@ ListEditService::ModifyResult ListEditService::setVelocity(
         return result;
     }
 
-    const auto oldVelocity = notes[eventIndex].velocity;
+    const std::uint32_t targetEventId = notes[eventIndex].eventId;
+    const std::uint8_t oldVelocity = notes[eventIndex].velocity;
 
-    auto undo = [&pattern, eventIndex, oldVelocity]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].velocity = oldVelocity;
+    auto undo = [&pattern, targetEventId, oldVelocity]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->velocity = oldVelocity;
         }
     };
-    auto redo = [&pattern, eventIndex, velocity]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].velocity = velocity;
+    auto redo = [&pattern, targetEventId, velocity]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->velocity = velocity;
         }
     };
 
@@ -205,6 +229,8 @@ ListEditService::ModifyResult ListEditService::setDuration(
         std::int32_t durationTicks) {
     ModifyResult result;
 
+    ensureEventId(pattern);
+
     auto& notes = pattern.notes;
     if (eventIndex >= notes.size()) {
         result.success = false;
@@ -212,18 +238,17 @@ ListEditService::ModifyResult ListEditService::setDuration(
         return result;
     }
 
-    const auto oldDuration = notes[eventIndex].durationTicks;
+    const std::uint32_t targetEventId = notes[eventIndex].eventId;
+    const std::int32_t oldDuration = notes[eventIndex].durationTicks;
 
-    auto undo = [&pattern, eventIndex, oldDuration]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].durationTicks = oldDuration;
+    auto undo = [&pattern, targetEventId, oldDuration]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->durationTicks = oldDuration;
         }
     };
-    auto redo = [&pattern, eventIndex, durationTicks]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].durationTicks = durationTicks;
+    auto redo = [&pattern, targetEventId, durationTicks]() mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->durationTicks = durationTicks;
         }
     };
 
@@ -246,6 +271,8 @@ ListEditService::ModifyResult ListEditService::setTick(
         std::int32_t tick) {
     ModifyResult result;
 
+    ensureEventId(pattern);
+
     auto& notes = pattern.notes;
     if (eventIndex >= notes.size()) {
         result.success = false;
@@ -253,42 +280,36 @@ ListEditService::ModifyResult ListEditService::setTick(
         return result;
     }
 
-    const auto oldTick = notes[eventIndex].tick;
-    const auto oldNote = notes[eventIndex].note;
-    const auto oldVelocity = notes[eventIndex].velocity;
-    const auto oldDuration = notes[eventIndex].durationTicks;
+    const std::uint32_t targetEventId = notes[eventIndex].eventId;
+    const std::int32_t oldTick = notes[eventIndex].tick;
+    const std::uint8_t oldNote = notes[eventIndex].note;
+    const std::uint8_t oldVelocity = notes[eventIndex].velocity;
+    const std::int32_t oldDuration = notes[eventIndex].durationTicks;
 
-    auto undo = [&pattern, oldTick, oldNote, oldVelocity, oldDuration]()
+    auto undo = [&pattern, targetEventId, oldTick, oldNote, oldVelocity, oldDuration]()
             mutable {
-        auto& n = pattern.notes;
-        auto it = std::find_if(
-                n.begin(), n.end(),
-                [oldTick, oldNote](const MidiNoteEvent& e) {
-                    return e.tick == oldTick && e.note == oldNote;
-                });
-        if (it != n.end()) {
-            it->tick = oldTick;
-            it->note = oldNote;
-            it->velocity = oldVelocity;
-            it->durationTicks = oldDuration;
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->tick = oldTick;
+            e->note = oldNote;
+            e->velocity = oldVelocity;
+            e->durationTicks = oldDuration;
             std::stable_sort(
-                    n.begin(), n.end(),
+                    pattern.notes.begin(), pattern.notes.end(),
                     [](const MidiNoteEvent& lhs, const MidiNoteEvent& rhs) {
                         return lhs.tick < rhs.tick;
                     });
         }
     };
 
-    auto redo = [&pattern, eventIndex, tick, oldNote, oldVelocity,
-                 oldDuration]() mutable {
-        auto& n = pattern.notes;
-        if (eventIndex < n.size()) {
-            n[eventIndex].tick = tick;
-            n[eventIndex].note = oldNote;
-            n[eventIndex].velocity = oldVelocity;
-            n[eventIndex].durationTicks = oldDuration;
+    auto redo = [&pattern, targetEventId, tick, oldNote, oldVelocity, oldDuration]()
+            mutable {
+        if (auto* e = findByEventId(pattern, targetEventId)) {
+            e->tick = tick;
+            e->note = oldNote;
+            e->velocity = oldVelocity;
+            e->durationTicks = oldDuration;
             std::stable_sort(
-                    n.begin(), n.end(),
+                    pattern.notes.begin(), pattern.notes.end(),
                     [](const MidiNoteEvent& lhs, const MidiNoteEvent& rhs) {
                         return lhs.tick < rhs.tick;
                     });
