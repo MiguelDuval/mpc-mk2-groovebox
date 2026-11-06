@@ -8096,6 +8096,7 @@ PY
     return 1
   fi
   read -r tap_x tap_y <<< "$coordinates"
+  echo "Real measured UI text tap target=$expected_text at $tap_x,$tap_y"
   if ! adb_bounded 10 shell input tap "$tap_x" "$tap_y"; then
     echo "ERROR: could not select visible picker text $expected_text at $tap_x,$tap_y"
     return 1
@@ -14694,6 +14695,34 @@ raise SystemExit("Sample Edit region/cursor text missing from accessibility hier
 PY
 }
 
+read_samp_cursor_snapshot_uptime() {
+  python3 - "$1" <<'PY_SAMP_CURSOR_UPTIME'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "SAMPLE":
+    raise SystemExit("SAMP-007 snapshot provenance/page mismatch")
+try:
+    uptime = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("SAMP-007 snapshot has no valid uptime")
+if uptime <= 0:
+    raise SystemExit("SAMP-007 snapshot uptime is not positive")
+print(uptime)
+PY_SAMP_CURSOR_UPTIME
+}
+
+assert_samp_cursor_snapshot_fresh() {
+  local path="$1" previous_uptime="$2" action="$3" current_uptime
+  current_uptime="$(read_samp_cursor_snapshot_uptime "$path")" || return 1
+  if (( current_uptime <= previous_uptime )); then
+    echo "ERROR: $action reused a stale Sample View tree: uptime=$current_uptime previous=$previous_uptime"
+    return 1
+  fi
+  echo "$current_uptime"
+}
+
 samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_BEFORE_XML")" || { echo "ERROR: initial region state could not be read"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
 if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
@@ -14701,49 +14730,48 @@ if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL ||
   echo "Expected=0 $SAMP_CURSOR_EXPECTED_TOTAL $SAMP_CURSOR_EXPECTED_TOTAL -1; actual=$samp_cursor_state"; exit 1
 fi
 
+SAMP_CURSOR_LAST_UPTIME="$(read_samp_cursor_snapshot_uptime "$SAMP_CURSOR_BEFORE_XML")" || { echo "ERROR: could not read Sample Edit baseline snapshot uptime"; exit 1; }
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_BEFORE_XML" "S +1K"; then
   echo "ERROR: Start +1K real-touch control was not actionable"; exit 1
 fi
-samp_cursor_start_changed=0
-for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe Start +1K"; exit 1; fi
-  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
-  if [[ -n "$samp_cursor_state" ]]; then
-    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
-    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
-      samp_cursor_start_changed=1; break
-    fi
-  fi
-  sleep 0.2
-done
-if [[ "$samp_cursor_start_changed" != "1" ]]; then echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then
+  echo "ERROR: could not capture a fresh Sample View tree after Start +1K"; exit 1
+fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_REGION_XML" "$SAMP_CURSOR_LAST_UPTIME" "Start +1K")" || exit 1
+samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML")" || { echo "ERROR: Start +1K region state is unavailable"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1
+fi
 
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E −1K"; then
   echo "ERROR: End −1K real-touch control was not actionable"; exit 1
 fi
-samp_cursor_region_changed=0
-for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe End −1K"; exit 1; fi
-  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
-  if [[ -n "$samp_cursor_state" ]]; then
-    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
-    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_END && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
-      samp_cursor_region_changed=1; break
-    fi
-  fi
-  sleep 0.2
-done
-if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then
+  echo "ERROR: could not capture a fresh Sample View tree after End −1K"; exit 1
+fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_REGION_XML" "$SAMP_CURSOR_LAST_UPTIME" "End −1K")" || exit 1
+samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML")" || { echo "ERROR: End −1K region state is unavailable"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1
+fi
 if ! capture_ui_screenshot "$SAMP_CURSOR_REGION_PNG" 10; then echo "ERROR: could not capture adjusted-region screenshot"; exit 1; fi
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not capture adjusted-region hierarchy"; exit 1; fi
 
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "PLAY"; then echo "ERROR: Sample Edit PLAY button was not actionable"; exit 1; fi
 samp_cursor_seen=0
 samp_cursor_progressed=0
 samp_cursor_first=-1
 samp_cursor_last=-1
 for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_CHECK_XML" 10; then echo "ERROR: could not capture live playback cursor"; exit 1; fi
+  if (( attempt > 1 )); then snapshot_project_view_tree_marker_baselines; fi
+  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_CHECK_XML" 2; then
+    echo "ERROR: no fresh Sample View tree while observing live playback cursor"; exit 1
+  fi
+  SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_LAST_UPTIME" "playback cursor")" || exit 1
   samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_CHECK_XML" 2>/dev/null || true)"
   if [[ -n "$samp_cursor_state" ]]; then
     read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
@@ -14755,7 +14783,7 @@ for attempt in {1..10}; do
       if (( samp_cursor_first < 0 )); then
         samp_cursor_first=$samp_cursor_frame
         if ! capture_ui_screenshot "$SAMP_CURSOR_DURING_PNG" 10; then echo "ERROR: could not capture active playhead screenshot"; exit 1; fi
-        if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_DURING_XML" 10; then echo "ERROR: could not capture active playhead hierarchy"; exit 1; fi
+        if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_DURING_XML"; then echo "ERROR: could not preserve active playhead hierarchy"; exit 1; fi
       elif (( samp_cursor_frame > samp_cursor_last )); then
         samp_cursor_progressed=1
         if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_PROGRESS_XML"; then echo "ERROR: could not preserve progressed cursor hierarchy"; exit 1; fi
@@ -14764,7 +14792,6 @@ for attempt in {1..10}; do
       if (( samp_cursor_frame > samp_cursor_last )); then samp_cursor_last=$samp_cursor_frame; fi
     fi
   fi
-  sleep 0.15
 done
 if [[ "$samp_cursor_seen" != "1" || "$samp_cursor_progressed" != "1" ]]; then
   echo "ERROR: native cursor was not observed and progressing inside the edited region"
@@ -14776,9 +14803,12 @@ fi
 echo "SAMP-007 region trim and native playback cursor passed: $samp_cursor_first -> $samp_cursor_last inside $SAMP_CURSOR_EXPECTED_START..$SAMP_CURSOR_EXPECTED_END."
 
 # Allow the one-shot preview to finish; the cursor must return to idle but the
-# selected region boundaries must remain unchanged.
+# selected region boundaries must remain unchanged. Baseline the marker before
+# waiting so the final XML must come from the actual transition back to idle.
+snapshot_project_view_tree_marker_baselines
 sleep 11
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture stopped playback state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture a fresh stopped playback state"; exit 1; fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_STOPPED_XML" "$SAMP_CURSOR_LAST_UPTIME" "stopped playback")" || exit 1
 samp_cursor_stopped_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || { echo "ERROR: stopped region state is unavailable"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_stopped_state"
 if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then

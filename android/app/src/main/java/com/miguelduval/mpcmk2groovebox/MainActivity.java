@@ -5444,7 +5444,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
         header.addView(actionButton("ADD", v -> {
-            final int result = nativePatternAddEvent(
+            final String result = nativePatternAddEvent(
                     selectedPad, 0, 60, 100, 480);
             if (result != null && !result.startsWith("Event added")) {
                 setBottomStatus(result);
@@ -12634,6 +12634,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         if (samplePlaybackCursorAccessibilityBucket != -1) {
                             samplePlaybackCursorAccessibilityBucket = -1;
                             refreshRegionInfo();
+                            scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
                         }
                         // Bounded startup grace: after a trigger, the cursor may be
                         // briefly unavailable while audio initializes. Retry a limited

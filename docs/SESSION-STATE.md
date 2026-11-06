@@ -1,3 +1,20 @@
+# Live checkpoint — 2026-11-06 (GitHub state independently verified)
+
+**Primary PR #23:** OPEN; `feature/mpc-one-ui-fidelity` HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d` → `fix/ui-shell-format-width-startup` base `5f562e54e2cf8235041590933232a3836d74a16a`. Latest known exact-HEAD green run remains Build #3402 / run `40528666946` (57/57 steps; APK artifact `12746190315`, visual evidence `12746712856`). PR #23 and `main` were not modified.
+
+**Current integration checkpoint:** PR #133 is OPEN / Draft on `checkpoint/mpc-ui-reference-and-product-20261030`, exact HEAD `4f1eab9694259f69e0d11527688aee0b9063db21`, based on PR #23 product SHA `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`. Build #3718 / run `42225799616` failed at `:app:compileDebugJavaWithJavac`: `MainActivity.java:5447` declared `nativePatternAddEvent(...)` as `final int`, but the Java native declaration returns `String` and the JNI implementation returns `jstring`. The isolated follow-up branch `fix/checkpoint-list-edit-and-samp007-20261106` starts from the exact failing HEAD and changes the local variable to `String`; PR #133 itself is not modified.
+
+**SAMP-007 evidence correction:**
+- Earlier PR #135 Build #3708 / run `42043903731` tested `13a9e8374003ce580f3a911e81d5922a5f963ea9` and failed at emulator smoke step 55. Evidence archive `13425177662` was downloaded and inspected.
+- `mpc-groovebox-sample-playback-cursor-before-uiautomator.xml` and `mpc-groovebox-sample-playback-cursor-region-changed-uiautomator.xml` both had `generated-at-uptime-ms=1252964`. The alleged post-touch hierarchy was the same page-entry snapshot. Build #3708 therefore does **not** prove that the Start +1K touch or native region setter failed; SAMP-007 remains unaccepted.
+- The current checkpoint already schedules app-side SAMPLE snapshots after region edits and active cursor bucket changes. The isolated follow-up additionally refreshes the snapshot on the cursor transition back to idle, baselines the app-side marker before each real touch/capture, requires strictly increasing snapshot uptime, preserves the measured touch coordinates, and removes only redundant reads of the same stale snapshot. Native region/frame/cursor assertions and the single existing SAMP-007 scenario remain strict.
+- The prior PR #135 branch was based on old checkpoint SHA `cc97dfb0ee7c1b5725f2ffb239a000a6e34dd459`; after the checkpoint branch advanced to `4f1eab9694259f69e0d11527688aee0b9063db21`, it became a divergent stack. Its changes are being re-applied as a new child branch of the current checkpoint rather than rebasing or rewriting history.
+- Exact-SHA full Android Build and evidence inspection for the new child branch are PENDING. Do not mark SAMP-007 passed until fresh XML uptime, exact region values, real touch and native cursor progression/idle evidence all agree.
+
+**Safety / remaining gates:** `main` unchanged; no merge, reset, rebase, force-push or history rewrite. `cancel-in-progress: false` remains in the Android workflow. Physical MPC Studio MkII validation remains NOT RUN. SAMP-010 and other action-catalog gaps remain separate and must not be inferred complete from SAMP-007.
+
+---
+
 # Live checkpoint — 2026-11-04
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
