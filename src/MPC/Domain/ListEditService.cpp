@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 
 namespace mpc::domain {
@@ -26,12 +27,80 @@ static const MidiNoteEvent* findByEventId(const Pattern& pattern, std::uint32_t 
 }
 
 // Helper: assign eventId if not already assigned (for legacy/deserialized events)
+// Uses a robust allocator that ensures unique IDs within the pattern.
 static void ensureEventId(Pattern& pattern) {
-    for (auto& e : pattern.notes) {
-        if (e.eventId == 0) {
-            e.eventId = pattern.nextEventId++;
+    // First pass: collect all existing non-zero eventIds
+    std::unordered_set<std::uint32_t> usedIds;
+    usedIds.reserve(pattern.notes.size() * 2);
+    for (const auto& e : pattern.notes) {
+        if (e.eventId != 0) {
+            usedIds.insert(e.eventId);
         }
     }
+
+    // Update nextEventId to be greater than any existing ID
+    for (const auto id : usedIds) {
+        if (id >= pattern.nextEventId) {
+            pattern.nextEventId = id + 1;
+        }
+    }
+
+    // Second pass: assign IDs to zero-ID events
+    for (auto& e : pattern.notes) {
+        if (e.eventId == 0) {
+            // Find the next available ID
+            while (usedIds.contains(pattern.nextEventId)) {
+                ++pattern.nextEventId;
+                // Handle overflow: if we wrap around, search from 1
+                if (pattern.nextEventId == 0) {
+                    pattern.nextEventId = 1;
+                }
+            }
+            e.eventId = pattern.nextEventId;
+            usedIds.insert(pattern.nextEventId);
+            ++pattern.nextEventId;
+            if (pattern.nextEventId == 0) {
+                pattern.nextEventId = 1;
+            }
+        }
+    }
+
+    // Verify all IDs are unique (debug check)
+    assert(usedIds.size() == pattern.notes.size());
+}
+
+// Helper: allocate a new unique eventId for a newly created event
+static std::uint32_t allocateEventId(Pattern& pattern) {
+    // Ensure existing IDs are unique first
+    std::unordered_set<std::uint32_t> usedIds;
+    usedIds.reserve(pattern.notes.size() * 2);
+    for (const auto& e : pattern.notes) {
+        if (e.eventId != 0) {
+            usedIds.insert(e.eventId);
+        }
+    }
+
+    // Update nextEventId to be greater than any existing ID
+    for (const auto id : usedIds) {
+        if (id >= pattern.nextEventId) {
+            pattern.nextEventId = id + 1;
+        }
+    }
+
+    // Find next available ID
+    while (usedIds.contains(pattern.nextEventId)) {
+        ++pattern.nextEventId;
+        if (pattern.nextEventId == 0) {
+            pattern.nextEventId = 1;
+        }
+    }
+
+    const std::uint32_t newId = pattern.nextEventId;
+    ++pattern.nextEventId;
+    if (pattern.nextEventId == 0) {
+        pattern.nextEventId = 1;
+    }
+    return newId;
 }
 
 ListEditService::AddResult ListEditService::addEvent(
@@ -46,7 +115,7 @@ ListEditService::AddResult ListEditService::addEvent(
     // Ensure all existing events have IDs
     ensureEventId(pattern);
 
-    const std::uint32_t newEventId = pattern.nextEventId++;
+    const std::uint32_t newEventId = allocateEventId(pattern);
 
     auto addRedo = [&pattern, tick, durationTicks, note, velocity, newEventId]() mutable {
         auto& notes = pattern.notes;
