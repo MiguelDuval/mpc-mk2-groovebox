@@ -4316,3 +4316,333 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDrainRecordEvent
                     core.projectState(),
                     core.sequenceRecordQueue()));
 }
+
+// ---------------------------------------------------------------------------
+// List Edit — pattern event CRUD via JNI
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Resolve the current editable pattern for the given pad index.
+// Returns nullptr if no valid Drum track with patterns exists.
+[[nodiscard]] inline mpc::domain::Pattern* resolveEditPattern(
+        jint padIndex) noexcept {
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
+            || trackIndex >= static_cast<jint>(tracks.size())) {
+        return nullptr;
+    }
+    auto& track = tracks[trackIndex];
+    if (track.kind != mpc::domain::TrackKind::Drum
+            || track.patterns.empty()) {
+        return nullptr;
+    }
+    return &track.patterns.front();
+}
+
+} // namespace
+
+extern "C" {
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventCount(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex)
+{
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return -1;
+    }
+    return static_cast<jint>(pattern->notes.size());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventNote(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].note);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventVelocity(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].velocity);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventDuration(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].durationTicks);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventTick(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].tick);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint eventIndex,
+        jint note)
+{
+    if (env == nullptr) return nullptr;
+    if (note < 0 || note > 127) {
+        return toJString(env, "Event note failed: range 0-127");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event note failed: invalid target");
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return toJString(env, "Event note failed: index out of range");
+    }
+    const auto prevNote = notes[eventIndex].note;
+    notes[eventIndex].note = static_cast<std::uint8_t>(note);
+    std::stable_sort(
+            notes.begin(), notes.end(),
+            [](const mpc::domain::MidiNoteEvent& lhs,
+               const mpc::domain::MidiNoteEvent& rhs) {
+                return lhs.tick < rhs.tick;
+            });
+    return toJString(env,
+            "Event note " + std::to_string(prevNote)
+                    + " -> " + std::to_string(note));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventVelocity(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint eventIndex,
+        jint velocity)
+{
+    if (env == nullptr) return nullptr;
+    if (velocity < 1 || velocity > 127) {
+        return toJString(env, "Event velocity failed: range 1-127");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event velocity failed: invalid target");
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return toJString(env, "Event velocity failed: index out of range");
+    }
+    const auto prevVelocity = notes[eventIndex].velocity;
+    notes[eventIndex].velocity = static_cast<std::uint8_t>(velocity);
+    return toJString(env,
+            "Event velocity " + std::to_string(prevVelocity)
+                    + " -> " + std::to_string(velocity));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventDuration(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint eventIndex,
+        jint duration)
+{
+    if (env == nullptr) return nullptr;
+    if (duration < 0) {
+        return toJString(env, "Event duration failed: negative value");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event duration failed: invalid target");
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return toJString(env, "Event duration failed: index out of range");
+    }
+    const auto length =
+            static_cast<std::int64_t>(pattern->lengthTicks);
+    if (static_cast<std::int64_t>(duration) > length) {
+        return toJString(env, "Event duration failed: exceeds pattern length");
+    }
+    const auto prevDuration = notes[eventIndex].durationTicks;
+    notes[eventIndex].durationTicks = static_cast<std::int32_t>(duration);
+    return toJString(env,
+            "Event duration " + std::to_string(prevDuration)
+                    + " -> " + std::to_string(duration));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint eventIndex,
+        jint tick)
+{
+    if (env == nullptr) return nullptr;
+    if (tick < 0) {
+        return toJString(env, "Event tick failed: negative value");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event tick failed: invalid target");
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return toJString(env, "Event tick failed: index out of range");
+    }
+    const auto length =
+            static_cast<std::int64_t>(pattern->lengthTicks);
+    if (static_cast<std::int64_t>(tick) >= length) {
+        return toJString(env, "Event tick failed: exceeds pattern length");
+    }
+    const auto prevTick = notes[eventIndex].tick;
+    notes[eventIndex].tick = static_cast<std::int32_t>(tick);
+    std::stable_sort(
+            notes.begin(), notes.end(),
+            [](const mpc::domain::MidiNoteEvent& lhs,
+               const mpc::domain::MidiNoteEvent& rhs) {
+                return lhs.tick < rhs.tick;
+            });
+    return toJString(env,
+            "Event tick " + std::to_string(prevTick)
+                    + " -> " + std::to_string(tick));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint tick,
+        jint note, jint velocity, jint duration)
+{
+    if (env == nullptr) return nullptr;
+    if (note < 0 || note > 127 || velocity < 1 || velocity > 127) {
+        return toJString(env, "Event add failed: note/velocity out of range");
+    }
+    if (tick < 0 || duration < 0) {
+        return toJString(env, "Event add failed: negative tick/duration");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event add blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event add failed: invalid target");
+    }
+    const auto length =
+            static_cast<std::int64_t>(pattern->lengthTicks);
+    if (static_cast<std::int64_t>(tick) >= length
+            || static_cast<std::int64_t>(duration) > length) {
+        return toJString(env, "Event add failed: tick/duration out of range");
+    }
+    if (std::any_of(
+            pattern->notes.begin(), pattern->notes.end(),
+            [tick, note](const mpc::domain::MidiNoteEvent& n) {
+                return n.tick == tick && n.note ==
+                        static_cast<std::uint8_t>(note);
+            })) {
+        return toJString(env, "Event add failed: same-pitch collision");
+    }
+    pattern->notes.push_back({
+        static_cast<std::int32_t>(tick),
+        static_cast<std::int32_t>(duration),
+        static_cast<std::uint8_t>(note),
+        static_cast<std::uint8_t>(velocity),
+        127,
+        1,
+        0
+    });
+    std::stable_sort(
+            pattern->notes.begin(), pattern->notes.end(),
+            [](const mpc::domain::MidiNoteEvent& lhs,
+               const mpc::domain::MidiNoteEvent& rhs) {
+                return lhs.tick < rhs.tick;
+            });
+    return toJString(env,
+            "Event added: note=" + std::to_string(note)
+                    + " tick=" + std::to_string(tick));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
+        JNIEnv* env, jobject /* thiz */, jint padIndex, jint eventIndex)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event delete blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event delete failed: invalid target");
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return toJString(env, "Event delete failed: index out of range");
+    }
+    const auto deletedNote = notes[eventIndex].note;
+    const auto deletedTick = notes[eventIndex].tick;
+    notes.erase(notes.begin() + eventIndex);
+    return toJString(env,
+            "Event deleted: note=" + std::to_string(deletedNote)
+                    + " tick=" + std::to_string(deletedTick));
+}

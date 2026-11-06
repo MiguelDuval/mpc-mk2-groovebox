@@ -270,6 +270,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int samplePlaybackCursorGraceAttempts = 0;
     private WaveformView sampleWaveform;
     private TextView sampleWaveformViewportInfo;
+    private LinearLayout listEditEventList;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -648,6 +649,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceMovePlayheadTicks(long deltaTicks);
     private static native long nativeSequencePositionTicks();
     private static native boolean nativeSequenceIsPlaying();
+
+    // List Edit — pattern event CRUD
+    private static native int nativePatternGetEventCount(int padIndex);
+    private static native int nativePatternGetEventNote(int padIndex, int eventIndex);
+    private static native int nativePatternGetEventVelocity(int padIndex, int eventIndex);
+    private static native int nativePatternGetEventDuration(int padIndex, int eventIndex);
+    private static native int nativePatternGetEventTick(int padIndex, int eventIndex);
+    private static native String nativePatternSetEventNote(int padIndex, int eventIndex, int note);
+    private static native String nativePatternSetEventVelocity(int padIndex, int eventIndex, int velocity);
+    private static native String nativePatternSetEventDuration(int padIndex, int eventIndex, int duration);
+    private static native String nativePatternSetEventTick(int padIndex, int eventIndex, int tick);
+    private static native String nativePatternAddEvent(int padIndex, int tick, int note, int velocity, int duration);
+    private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
 
     @Override
     protected void onCreate(Bundle state) {
@@ -1674,6 +1688,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
             case PREFERENCES:
                 showAudioSettingsPage();
+                break;
+            case LIST_EDIT:
+                showListEditPage();
                 break;
             default:
                 showUnavailableModePage(
@@ -5403,6 +5420,117 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 + " pad=" + (selectedPad + 1)
                 + " layer=" + (selectedLayer + 1)
                 + " sampleFrames=" + nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer));
+    }
+
+    // ------------------------------------------------------------------
+    // List Edit — pattern event list page
+    // ------------------------------------------------------------------
+
+    private void showListEditPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "LIST_EDIT";
+        navigationController.navigate(MpcUiState.Mode.LIST_EDIT);
+        navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        pageTitle.setText("LIST EDIT");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout header = row();
+        header.addView(sectionLabelView("PAD " + (selectedPad + 1),
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton("BACK", v -> navigateBackFromShell()),
+                new LinearLayout.LayoutParams(dp(62), dp(34)));
+        header.addView(actionButton("ADD", v -> {
+            final int result = nativePatternAddEvent(
+                    selectedPad, 0, 60, 100, 480);
+            if (result != null && !result.startsWith("Event added")) {
+                setBottomStatus(result);
+            } else {
+                refreshListEditPage();
+            }
+        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
+        page.addView(header);
+
+        listEditEventList = new LinearLayout(this);
+        listEditEventList.setOrientation(LinearLayout.VERTICAL);
+        listEditEventList.setPadding(dp(10), dp(8), dp(10), dp(8));
+        page.addView(listEditEventList,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        refreshListEditPage();
+        content.addView(page);
+    }
+
+    private void refreshListEditPage() {
+        if (listEditEventList == null) return;
+        listEditEventList.removeAllViews();
+
+        final int count = nativePatternGetEventCount(selectedPad);
+        if (count <= 0) {
+            TextView empty = label("No events in current pattern", 12, MUTED);
+            empty.setPadding(dp(10), dp(8), dp(10), dp(8));
+            listEditEventList.addView(empty);
+            return;
+        }
+
+        for (int i = 0; i < count; i++) {
+            final int note = nativePatternGetEventNote(selectedPad, i);
+            final int velocity = nativePatternGetEventVelocity(selectedPad, i);
+            final int duration = nativePatternGetEventDuration(selectedPad, i);
+            final int tick = nativePatternGetEventTick(selectedPad, i);
+
+            LinearLayout row = row();
+            row.setPadding(dp(8), dp(4), dp(8), dp(4));
+            row.setBackgroundColor(0xFF1A1A1A);
+
+            TextView tickView = label(String.format(Locale.ROOT, "T%04d", tick), 11, MUTED);
+            tickView.setMinWidth(dp(56));
+            row.addView(tickView, new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView noteView = label(String.format(Locale.ROOT, "Note %03d", note), 11, ACTIVE);
+            noteView.setMinWidth(dp(64));
+            row.addView(noteView, new LinearLayout.LayoutParams(dp(70), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView velView = label("Vel " + velocity, 11, ACTIVE);
+            velView.setMinWidth(dp(56));
+            row.addView(velView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            TextView durView = label("Dur " + duration, 11, ACTIVE);
+            durView.setMinWidth(dp(56));
+            row.addView(durView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            // Edit buttons
+            Button editNote = actionButton("N" + note, v -> {
+                final String result = nativePatternSetEventNote(selectedPad, i, note);
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editNote.setMinWidth(dp(32));
+            row.addView(editNote, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button editVel = actionButton("V" + velocity, v -> {
+                final String result = nativePatternSetEventVelocity(selectedPad, i, Math.min(127, velocity + 1));
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editVel.setMinWidth(dp(32));
+            row.addView(editVel, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button delBtn = actionButton("DEL", v -> {
+                final String result = nativePatternDeleteEvent(selectedPad, i);
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            delBtn.setMinWidth(dp(32));
+            row.addView(delBtn, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            listEditEventList.addView(row);
+        }
     }
 
     private void showSampleEditPanel(LinearLayout page) {
