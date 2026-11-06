@@ -1,7 +1,7 @@
-# Live checkpoint — 2026-11-04
+# Live checkpoint — 2026-11-06
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Branch HEAD:** `c4726efb3409e6328f475a8d7c00ab361a341406` (pushed to origin, confirmed via GitHub API).  
+**Branch HEAD:** `4f1eab9694259f69e0d11527688aee0b9063db21` (pushed to origin, confirmed via `git ls-remote`).  
 **Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
 **Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
 
@@ -29,17 +29,22 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 - PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
 - Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
 
-## Current session fixes (2026-11-04)
+## Current session fixes (2026-11-04 to 2026-11-06)
+
+- **fix(test): repair all UTF-8 encoding defects in smoke preflight** (commit `17afe71f`). Fixed 115 arrow mojibake (в†’ → →), em dash, en dash, ellipsis and plus-minus mojibake patterns across the smoke test script. Verified bash -n passes, encoding guard passes, no BOM, strict UTF-8 decode OK, LF line endings.
 
 - **fix(ui): add SAMPLE action to Main/Track View Function Bar after Browser sample assignment** (commit `1968a182`). After Browser assigns a WAV to the selected Pad/Layer there was no available SAMPLE action in the Main (and Track View) Function Bar, blocking the Browser → Sample Edit continuation. Added a `SAMPLE` function, enabled when `startupComplete && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0`, that opens Sample Edit via `showSamplePage()`. Metronome stays RESERVED.
-- **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
 
-## Current session root-cause fix (2026-11-04)
+- **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
 
 - **fix(ui): stop sample playback cursor updater when playback inactive** (commit `cfb834e6`). `startSamplePlaybackCursorUpdates()` scheduled `waveformUiHandler.postDelayed(this, 33L)` **unconditionally** at the end of every callback — even when no playback cursor exists (`totalFrames == 0` or `cursorFrame < 0`). This continuous ~30fps main-thread activity prevents Android UiAutomator's global idle detection from completing, causing subsequent `dump_device_ui`/`wait_for_ui_description` calls (after tapping SAMPLE to open Sample Edit) to time out.
   - Fix: moved `postDelayed(this, 33L)` inside the `if (totalFrames > 0 && cursorFrame >= 0 && cursorFrame < totalFrames)` block so it only reschedules when genuine playback is active. Added `return;` in the `else` block to stop scheduling when playback is not active.
   - Added `stopSamplePlaybackCursorUpdates()` method that removes callbacks and resets playhead when navigating away from Sample page.
   - Added `stopSamplePlaybackCursorUpdates()` calls to `showMainPage()`, `showBrowserPage()`, `showSequencePage()`, `showRecordPage()`, `showMutePage()` and `showMixPage()`.
+
+- **feat: add List Edit pattern event CRUD with native API and UI page** (commit `4f1eab96`). Implemented MENU-008 List Edit as a real feature page (not decorative):
+  - **Native layer (NativeEngine.cpp):** Added 10 JNIEXPORT functions for pattern event CRUD: `nativePatternGetEventCount`, `nativePatternGetEventNote/Velocity/Duration/Tick` (getters), `nativePatternSetEventNote/Velocity/Duration/Tick` (setters), `nativePatternAddEvent`, `nativePatternDeleteEvent`. All operate on the active Drum track's first pattern via `resolveEditPattern()` helper. Include bounds checking, playback-blocking, same-pitch collision rejection, and stable sort by tick.
+  - **Java layer (MainActivity.java):** Added 10 `private static native` declarations matching the C++ signatures. Added `showListEditPage()` and `refreshListEditPage()` methods building a List Edit page with event list (tick, note, velocity, duration), per-row edit buttons, ADD/DEL actions, and BACK navigation. Added `LIST_EDIT` case to `navigateToMode()` switch. Added `listEditEventList` field.
 
 **CI status (PR #133):**
 - Build #3697 / run 41922886590 (head `c4726efb`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
