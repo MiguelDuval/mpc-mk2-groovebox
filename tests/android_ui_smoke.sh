@@ -43,18 +43,21 @@ except UnicodeDecodeError as e:
 
 # 3. Reject known accidental mojibake in source-contract assertions
 # These are UTF-8 misencodings that would cause grep -Fq to miss-match Java source.
+# Patterns use Unicode escapes to keep the guard itself free of malformed values.
 mojibake_patterns = {
     '\u0432\u0402\u045e': '\u2022',   # вЂў -> • (BULLET)
     '\u0432\u20ac\u2019': '\u2212',   # в€’ -> − (MINUS SIGN)
+    '\u0432\u0402\u2014': '\u2014',   # вЂ— -> — (EM DASH)
 }
 lines = text.split('\n')
-import re
-grep_re = re.compile(r'grep\s+-Fq')
 found = False
 for i, line in enumerate(lines, 1):
+    # Skip the guard's own Python block (this section)
+    if 45 <= i <= 60:
+        continue
     for bad, good in mojibake_patterns.items():
-        if bad in line and grep_re.search(line):
-            print(f"ERROR: {path}:{i} contains mojibake '{bad}' in a grep -Fq assertion; use '{good}'", file=sys.stderr)
+        if bad in line:
+            print(f"ERROR: {path}:{i} contains mojibake '{bad}' in source-contract text; use '{good}'", file=sys.stderr)
             found = True
 if found:
     sys.exit(1)
@@ -419,7 +422,7 @@ for required in \
   "Main Track View length mode" \
   "Main Track View velocity state" \
   "Main Sequence transpose state" \
-  'TRANSPOSE\nвЂ”' \
+  'TRANSPOSE\n—' \
   "Main Track View selected layer" \
   "Main Mode sequence tempo source • SEQ • Global unavailable" \
   "Main Track visual hierarchy • Track / Program / workspace header" \
