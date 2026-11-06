@@ -4671,8 +4671,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSelect(
         core.projectState().selectPatternOnActiveTrack("");
         return toJString(env, "Pattern selection cleared");
     }
-    const std::string id = env->GetStringUTFChars(patternId, nullptr);
-    env->ReleaseStringUTFChars(patternId, id.c_str());
+    const char* utfChars = env->GetStringUTFChars(patternId, nullptr);
+    if (utfChars == nullptr) {
+        return toJString(env, "Pattern select failed: JNI string error");
+    }
+    const std::string id(utfChars);
+    env->ReleaseStringUTFChars(patternId, utfChars);
     if (!core.projectState().selectPatternOnActiveTrack(id)) {
         return toJString(env, "Pattern select failed: pattern not found");
     }

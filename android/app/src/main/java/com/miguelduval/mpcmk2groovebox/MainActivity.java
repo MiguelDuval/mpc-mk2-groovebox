@@ -664,6 +664,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativePatternAddEvent(int padIndex, int tick, int note, int velocity, int duration);
     private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
 
+    // Pattern selection
+    private static native String nativePatternSelect(String patternId);
+    private static native String nativePatternGetSelectedId();
+    private static native String[] nativePatternGetList();
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);

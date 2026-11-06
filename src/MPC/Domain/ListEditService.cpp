@@ -69,7 +69,10 @@ ListEditService::AddResult ListEditService::addEvent(
                 notes.end());
     };
 
-    if (!history.record("Add Pattern Event", std::move(addUndo), std::move(addRedo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Add Pattern Event",
+            std::move(addUndo),
+            std::move(addRedo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -130,7 +133,10 @@ ListEditService::ModifyResult ListEditService::deleteEvent(
                 n.end());
     };
 
-    if (!history.record("Delete Pattern Event", std::move(delUndo), std::move(delRedo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Delete Pattern Event",
+            std::move(delUndo),
+            std::move(delRedo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -171,7 +177,10 @@ ListEditService::ModifyResult ListEditService::setNote(
         }
     };
 
-    if (!history.record("Change Pattern Event Note", std::move(undo), std::move(redo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Change Pattern Event Note",
+            std::move(undo),
+            std::move(redo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -188,6 +197,8 @@ ListEditService::ModifyResult ListEditService::setVelocity(
         std::size_t eventIndex,
         std::uint8_t velocity) {
     ModifyResult result;
+
+    ensureEventId(pattern);
 
     auto& notes = pattern.notes;
     if (eventIndex >= notes.size()) {
@@ -210,8 +221,10 @@ ListEditService::ModifyResult ListEditService::setVelocity(
         }
     };
 
-    if (!history.record("Change Pattern Event Velocity", std::move(undo),
-                        std::move(redo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Change Pattern Event Velocity",
+            std::move(undo),
+            std::move(redo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -252,8 +265,10 @@ ListEditService::ModifyResult ListEditService::setDuration(
         }
     };
 
-    if (!history.record("Change Pattern Event Duration", std::move(undo),
-                        std::move(redo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Change Pattern Event Duration",
+            std::move(undo),
+            std::move(redo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
@@ -316,8 +331,10 @@ ListEditService::ModifyResult ListEditService::setTick(
         }
     };
 
-    if (!history.record("Change Pattern Event Tick", std::move(undo),
-                        std::move(redo))) {
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Change Pattern Event Tick",
+            std::move(undo),
+            std::move(redo)})) {
         result.success = false;
         result.error = "history record rejected";
         return result;
