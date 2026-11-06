@@ -1,7 +1,7 @@
 # Live checkpoint — 2026-11-06
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Branch HEAD:** `4f1eab9694259f69e0d11527688aee0b9063db21` (pushed to origin, confirmed via `git ls-remote`).  
+**Branch HEAD:** `534778b1` (local, push pending)  
 **Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
 **Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
 
@@ -45,6 +45,12 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
 - **feat: add List Edit pattern event CRUD with native API and UI page** (commit `4f1eab96`). Implemented MENU-008 List Edit as a real feature page (not decorative):
   - **Native layer (NativeEngine.cpp):** Added 10 JNIEXPORT functions for pattern event CRUD: `nativePatternGetEventCount`, `nativePatternGetEventNote/Velocity/Duration/Tick` (getters), `nativePatternSetEventNote/Velocity/Duration/Tick` (setters), `nativePatternAddEvent`, `nativePatternDeleteEvent`. All operate on the active Drum track's first pattern via `resolveEditPattern()` helper. Include bounds checking, playback-blocking, same-pitch collision rejection, and stable sort by tick.
   - **Java layer (MainActivity.java):** Added 10 `private static native` declarations matching the C++ signatures. Added `showListEditPage()` and `refreshListEditPage()` methods building a List Edit page with event list (tick, note, velocity, duration), per-row edit buttons, ADD/DEL actions, and BACK navigation. Added `LIST_EDIT` case to `navigateToMode()` switch. Added `listEditEventList` field.
+
+- **feat: add 16 Levels, Pad Perform UI pages and hardware MIDI bridge** (commit `534778b1`):
+  - **Native layer (NativeEngine.cpp):** Added 3 JNIEXPORT functions for hardware MIDI bridge: `nativeOnMidi` (receives raw MIDI bytes from controller, decodes via `MpcStudioMk2InputDecoder`, routes pad hits through `MpcStudioMk2SemanticAdapter` with 16 Levels velocity scaling, queues hardware actions), `nativeConsumeHardwareAction` (drains queued actions for Java side), `nativeConsumeSequenceLauncherPad` (returns queued launcher pad). Added `PadTrigger=64` to `SemanticActionType` enum.
+  - **Java layer (MainActivity.java):** Added 3 `private static native` declarations for hardware bridge. Added `PAD_TRIGGER` case in `applyHardwareAction()` to trigger pad audio with hardware-scaled velocity. Added `showLevels16Page()` (4x4 velocity grid, 1-127 range) and `showPadPerformPage()` (4x4 chromatic note grid). Added `LEVELS_16` and `PAD_PERFORM` cases to `navigateToMode()`.
+  - **Java constants (MpcStudioMk2SemanticActions.java):** Added `PAD_TRIGGER=64`.
+  - **C++ header (MpcStudioMk2SemanticAdapter.h):** Added `PadTrigger=64` to `SemanticActionType`.
 
 **CI status (PR #133):**
 - Build #3697 / run 41922886590 (head `c4726efb`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
