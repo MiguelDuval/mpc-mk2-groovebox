@@ -402,3 +402,30 @@ Physical Akai MPC Studio MkII acceptance remains **NOT RUN**. These successful A
 - Reserved/unsupported areas remain unavailable unless their real domain/backend is implemented. This catalog does not claim completion of every MPC 3.x feature.
 
 PR #133 remains Draft for product review. Do not merge automatically or change main.
+
+## SAMPLE playback cursor lifecycle — in progress (2026-11-05/06)
+
+**Root cause identified:** `startSamplePlaybackCursorUpdates()` scheduled `waveformUiHandler.postDelayed(this, 33L)` unconditionally at the end of every callback — even when no playback cursor exists. This continuous ~30fps main-thread activity prevents Android UiAutomator's global idle detection from completing, causing `dump_device_ui`/`wait_for_ui_description` calls after tapping SAMPLE to open Sample Edit to time out.
+
+### Fixes committed on checkpoint/mpc-ui-reference-and-product-20261030
+
+- **Commit `c2d02463`**: Moved `SAMPLE_CURSOR_UPDATER_STARTED` log out of `Runnable.run()` into `startSamplePlaybackCursorUpdates()` so it records one event per start, not ~30fps.
+- **Commit `cc97dfb0`**: Added `scheduleProjectPersistenceViewHierarchyCapture("SAMPLE")` in `showSamplePage()` so the app publishes its own SAMPLE view-tree snapshot instead of relying on external UiAutomator dumps.
+- **Commit `00814f9b`**: Added `scheduleProjectPersistenceViewHierarchyCapture("SAMPLE")` after region edits (`nudgeRegionStart`, `nudgeRegionEnd`, `resetRegion`, `cropRegion`), after PLAY button press, on meaningful cursor bucket changes, and on playback stop (grace exhausted). Added bounded startup grace (10 retries at 33ms) and cancellation on page exit/destruction.
+- **Commit `3dca8cc3`**: Fixed SAMPLE view-tree freshness protocol — removed duplicate `SAMPLE)` case in `capture_project_persistence_view_tree()`, and update `PROJECT_SAMPLE_TREE_MARKER_BEFORE` baseline after each successful capture so subsequent captures require fresh snapshots.
+- **Commit `fd723a93`**: Removed redundant second `capture_project_persistence_view_tree "SAMPLE"` call after entering Sample Edit that would time out because no new marker is generated without a state change.
+
+### CI status (PR #133)
+
+| Build | Run | Head SHA | Step 55 result | Notes |
+|---|---|---|---|---|
+| #3707 | 42041254623 | `cc97dfb0` | FAILURE | Steps 1-54 SUCCESS; emulator smoke test failed |
+| #3709 | 42043947543 | `00814f9b` | FAILURE | Steps 1-54 SUCCESS; emulator smoke test failed |
+| #3710 | 42063374222 | `3dca8cc3` | FAILURE | Steps 1-54 SUCCESS; emulator smoke test failed |
+| #3711 | 42196891082 | `fd723a93` | FAILURE | Steps 1-54 SUCCESS; emulator smoke test failed |
+
+**Current branch HEAD:** `fd723a93ec06f8d8c2f0882ba557b6365f032103` (pushed to origin).
+
+All four builds compiled and assembled the APK successfully (steps 1-54 pass), but step 55 (emulator smoke test) consistently fails after ~75 seconds. Detailed step-55 logs are not accessible via the available API. The failure may be in the SAMPLE view-tree capture protocol, the `tap_visible_text_early "SAMPLE"` action, or an earlier test section affected by the `project-persistence` smoke-mode restart.
+
+**Not yet verified:** complete idle → playback → idle → playback lifecycle; physical MPC Studio MkII validation remains PENDING.
