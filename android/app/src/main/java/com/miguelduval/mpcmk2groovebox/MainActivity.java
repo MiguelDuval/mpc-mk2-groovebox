@@ -12495,6 +12495,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                         Locale.ROOT,
                                         "Region %d → %d  /  %d frames • PLAYHEAD %d",
                                         start, end, totalFrames, cursorFrame));
+                                // Cursor telemetry is part of SAMP-007 evidence.
+                                // Publish only on a changed accessibility bucket,
+                                // not on every 33 ms waveform paint.
+                                scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
                             }
                         }
                         samplePlaybackCursorGraceAttempts = 0;
@@ -12504,6 +12508,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         if (samplePlaybackCursorAccessibilityBucket != -1) {
                             samplePlaybackCursorAccessibilityBucket = -1;
                             refreshRegionInfo();
+                            scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
                         }
                         // Bounded startup grace: after a trigger, the cursor may be
                         // briefly unavailable while audio initializes. Retry a limited
@@ -12608,6 +12613,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedPad, selectedLayer, next, end));
         refreshRegionInfo();
         refreshSampleWaveform();
+        // Publish a new app-side hierarchy after each real region edit so the
+        // emulator smoke cannot accidentally re-read the page-entry snapshot.
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void nudgeRegionEnd(long delta) {
@@ -12623,6 +12631,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 selectedPad, selectedLayer, start, next));
         refreshRegionInfo();
         refreshSampleWaveform();
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
     }
 
     private void resetRegion() {
