@@ -47,8 +47,9 @@ except UnicodeDecodeError as e:
 mojibake_patterns = {
     '\u0432\u0402\u045e': '\u2022',   # вЂў -> • (BULLET)
     '\u0432\u20ac\u2019': '\u2212',   # в€’ -> − (MINUS SIGN)
-    '\u0432\u0402\u2014': '\u2014',   # вЂ— -> — (EM DASH)
-    '\u0432\u0402\u00a2': '\u2026',   # вЂ¢ -> … (ELLIPSIS)
+    '\u0432\u0402\u201d': '\u2014',   # \xd0\xb2\xd0\x82\xe2\x80\x9d -> \xe2\x80\x94 (EM DASH)
+    '\u0432\u0402\u201c': '\u2013',   # \xd0\xb2\xd0\x82\xe2\x80\x9c -> \xe2\x80\x93 (EN DASH)
+    '\u0432\u0402\u00a6': '\u2026',   # вЂ¢ -> … (ELLIPSIS)
 }
 lines = text.split('\n')
 found = False
@@ -6550,7 +6551,7 @@ if not accessible_first <= target <= accessible_last <= accessible_total:
 ranges = []
 for node in nodes:
     text = node.attrib.get("text", "")
-    match = re.fullmatch(r"0*(\d+)[вЂ“-]0*(\d+)\s*/\s*0*(\d+)", text)
+    match = re.fullmatch(r"0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)", text)
     if match:
         ranges.append(tuple(map(int, match.groups())))
 if len(ranges) != 1:
@@ -6562,7 +6563,7 @@ if not shown_first <= target <= shown_last <= total:
     raise AssertionError(f"focused step {target} is outside visible Grid window {ranges[0]}")
 if (accessible_first, accessible_last, accessible_total) != (first, last, total):
     raise AssertionError("Grid text and semantic accessibility range disagree")
-print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}вЂ“{last} of {total}")
+print(f"Arrange-to-Grid focus evidence verified: step {target}, visible {first}–{last} of {total}")
 PY
     then
       echo "ERROR: Arrangement-to-Grid focus screenshot/accessibility hierarchy failed semantic checks"
@@ -7012,7 +7013,7 @@ if m is None:
     raise AssertionError("malformed Grid visible step range")
 first, last, total = map(int, m.groups())
 if last - first + 1 != 16 or not first <= step <= last <= total:
-    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}вЂ“{last}/{total}")
+    raise AssertionError(f"seeded event step {step} is outside 16-column Grid window {first}–{last}/{total}")
 counts = [int(m.group(1)) for n in nodes
           for m in [re.search(r"\bevents=(\d+)\b", n.attrib.get("text", ""))] if m]
 if counts != [1]:
@@ -7068,7 +7069,7 @@ if m is None:
     raise AssertionError("malformed Grid step range")
 first, last, total = map(int, m.groups())
 if last-first+1 != 16 or not first <= step <= last <= total:
-    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}вЂ“{last}/{total}")
+    raise AssertionError(f"Grid baseline does not include seeded step {step}: {first}–{last}/{total}")
 prefix = f"Grid event parameters: PAD 01, STEP {step:02d}, VEL "
 states = [n.attrib.get("content-desc", "") for n in nodes
           if n.attrib.get("content-desc", "").startswith(prefix)]
@@ -7173,7 +7174,7 @@ if after_range[2] != before_range[2] or after_range[1]-after_range[0]+1 >= befor
     raise AssertionError(f"ZOOM H must shrink only visible steps: {before_range!r} -> {after_range!r}")
 if not after_range[0] <= step <= after_range[1]:
     raise AssertionError(f"ZOOM H lost selected event step {step} from viewport {after_range!r}")
-print(f"Grid ZOOM H changed visible steps {before_range[0]}вЂ“{before_range[1]} -> {after_range[0]}вЂ“{after_range[1]}; event fields/timing unchanged.")
+print(f"Grid ZOOM H changed visible steps {before_range[0]}–{before_range[1]} -> {after_range[0]}–{after_range[1]}; event fields/timing unchanged.")
 PY_GRID_ZOOM_H
     then
       echo "ERROR: Grid ZOOM H changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_H_XML"; exit 1
@@ -7275,8 +7276,8 @@ if after_pad_count >= before_pad_count:
     raise AssertionError(f"ZOOM V must reduce visible Pad count: {before_pads!r} -> {after_pads!r}")
 if not min(after_pads) <= 1 <= max(after_pads):
     raise AssertionError(f"ZOOM V lost selected PAD 01 from viewport: {after_pads!r}")
-print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}вЂ“{before_pads[1]} -> "
-      f"{after_pads[0]}вЂ“{after_pads[1]}; event identity/timing/fields unchanged.")
+print(f"Grid ZOOM V changed Pad viewport only: {before_pads[0]}–{before_pads[1]} -> "
+      f"{after_pads[0]}–{after_pads[1]}; event identity/timing/fields unchanged.")
 PY_GRID_ZOOM_V
     then
       echo "ERROR: Grid ZOOM V changed event data or failed viewport acceptance"; cat "$GRID_ZOOM_V_XML"; exit 1
@@ -7361,7 +7362,7 @@ prefix=f"TRACK {track+1:02d} •"
 if not any(n.attrib.get("text","").startswith(prefix) for n in nodes): raise AssertionError(f"Track context not restored: {prefix}")
 ranges=[]
 for n in nodes:
- m=re.fullmatch(r"(?:STEPS\s*)?0*(\d+)[вЂ“-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
+ m=re.fullmatch(r"(?:STEPS\s*)?0*(\d+)[–-]0*(\d+)\s*/\s*0*(\d+)",n.attrib.get("text","").strip())
  if m: ranges.append(tuple(map(int,m.groups())))
 if len(ranges)!=1: raise AssertionError(f"expected one Grid range, got {ranges}")
 shown=ranges[0]
@@ -7371,7 +7372,7 @@ semantic=[n for n in nodes if n.attrib.get("content-desc","").startswith("Grid v
 if len(semantic)!=1: raise AssertionError(f"expected one semantic Grid range, got {len(semantic)}")
 m=re.fullmatch(r"Grid visible step range: steps\s+0*(\d+) through 0*(\d+) of 0*(\d+)",semantic[0].attrib.get("content-desc",""))
 if m is None or tuple(map(int,m.groups()))!=shown: raise AssertionError("Grid range text and description disagree")
-print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}вЂ“{last} of {total}.")
+print(f"Re-entered Grid evidence verified: Track {track+1}, step {target}, visible {first}–{last} of {total}.")
 PY
     then echo "ERROR: Grid re-entry hierarchy failed"; cat /tmp/mpc-groovebox-arrange-grid-reentry-uiautomator.xml; exit 1; fi
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-arrange-grid-reentry-capture-release; then echo "ERROR: release Grid re-entry capture failed"; exit 1; fi
@@ -9991,7 +9992,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_region_start_changed" != "1" ]]; then
   echo "ERROR: Start touch did not change only the start frame by exactly 1000"
-  echo "Before=$track_edit_region_before expected=$track_edit_region_start_expected вЂ” $track_edit_region_end_before actual=$track_edit_region_current"; exit 1
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_expected — $track_edit_region_end_before actual=$track_edit_region_current"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_START_CHANGED_REMOTE" "$TRACK_EDIT_REGION_START_CHANGED_XML"; then
   echo "ERROR: changed region Start hierarchy capture failed"; exit 1
@@ -10060,7 +10061,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_region_end_changed" != "1" ]]; then
   echo "ERROR: End touch did not change only the end frame by exactly 1000"
-  echo "Before=$track_edit_region_before expected=$track_edit_region_start_before вЂ” $track_edit_region_end_expected actual=$track_edit_region_current"; exit 1
+  echo "Before=$track_edit_region_before expected=$track_edit_region_start_before — $track_edit_region_end_expected actual=$track_edit_region_current"; exit 1
 fi
 if ! dump_device_ui "$TRACK_EDIT_REGION_END_CHANGED_REMOTE" "$TRACK_EDIT_REGION_END_CHANGED_XML"; then
   echo "ERROR: changed region End hierarchy capture failed"; exit 1
@@ -10141,12 +10142,12 @@ found = [n for n in root.iter("node")
 if len(found) != 1:
     raise SystemExit(f"expected one Track Edit velocity range field, found {len(found)}")
 text = found[0].attrib.get("text", "")
-match = re.search(r"VELOCITY\s+(\d+)\s*[вЂ”вЂ“-]\s*(\d+)", text)
+match = re.search(r"VELOCITY\s+(\d+)\s*[—-]\s*(\d+)", text)
 if match is None:
     raise SystemExit(f"could not parse layer velocity range from {text!r}")
 minimum, maximum = map(int, match.groups())
 if not 0 <= minimum <= maximum <= 127:
-    raise SystemExit(f"layer velocity range outside contract: {minimum} вЂ” {maximum}")
+    raise SystemExit(f"layer velocity range outside contract: {minimum} — {maximum}")
 print(minimum, maximum)
 PY
 }
@@ -10194,7 +10195,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_velocity_max_changed" != "1" ]]; then
   echo "ERROR: velocity MAX touch did not change only the upper bound by one"
-  echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before вЂ” $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
+  echo "Before=$track_edit_velocity_range_before expected=$track_edit_velocity_min_before — $track_edit_velocity_max_expected actual=$track_edit_velocity_max_current"; exit 1
 fi
 if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MAX_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MAX changed screenshot capture failed"; exit 1
@@ -10261,7 +10262,7 @@ for attempt in {1..15}; do
 done
 if [[ "$track_edit_velocity_min_changed" != "1" ]]; then
   echo "ERROR: velocity MIN touch did not change only the lower bound by one"
-  echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected вЂ” $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
+  echo "Before=$track_edit_velocity_range_before_min expected=$track_edit_velocity_min_expected — $track_edit_velocity_max_before_min actual=$track_edit_velocity_min_current"; exit 1
 fi
 if ! capture_ui_screenshot "$TRACK_EDIT_VELOCITY_MIN_CHANGED_PNG" 10; then
   echo "ERROR: Track Edit velocity MIN changed screenshot capture failed"; exit 1
@@ -12555,7 +12556,7 @@ actual_state = (region_start, region_end, frames)
 if actual_state != expected_state:
     raise SystemExit(
         f"{phase}: viewport interaction mutated sample data: {actual_state} != {expected_state}")
-print(f"SAMP-010 {phase}: viewport {start_percent}вЂ“{end_percent}% and sample state {actual_state} verified.")
+print(f"SAMP-010 {phase}: viewport {start_percent}–{end_percent}% and sample state {actual_state} verified.")
 PY
   then
     echo "ERROR: SAMP-010 $phase viewport or native sample invariants failed"
@@ -12609,10 +12610,10 @@ wait_for_sample_audition_marker() {
 sample_zoom_marker_before="$(sample_audition_marker_count)"
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_BEFORE_XML" "$SAMPLE_ZOOM_BEFORE_REMOTE" \
     "Sample Edit zoom waveform in"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10вЂ“90%" 12; then
-  echo "ERROR: SAMP-010 ZOOM+ did not move the viewport to 10вЂ“90%"; exit 1
+if ! wait_for_ui_text "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" "VIEW 10–90%" 12; then
+  echo "ERROR: SAMP-010 ZOOM+ did not move the viewport to 10–90%"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10вЂ“90%" 10 90 "zoom-in"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_IN_XML" "VIEW 10–90%" 10 90 "zoom-in"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_IN_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture zoom-in viewport"; exit 1
 fi
@@ -12621,26 +12622,26 @@ fi
 # gets its own hierarchy/screenshot pair instead of overwriting a prior milestone.
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_IN_XML" "$SAMPLE_ZOOM_IN_REMOTE" \
     "Sample Edit zoom waveform out"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0вЂ“100%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" "VIEW 0–100%" 12; then
   echo "ERROR: SAMP-010 ZOOM− did not restore the full viewport"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0вЂ“100%" 0 100 "zoom-out"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_OUT_XML" "VIEW 0–100%" 0 100 "zoom-out"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_OUT_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture zoom-out viewport"; exit 1
 fi
 
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_OUT_XML" "$SAMPLE_ZOOM_OUT_REMOTE" \
     "Sample Edit zoom waveform in"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10вЂ“90%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" "VIEW 10–90%" 12; then
   echo "ERROR: SAMP-010 could not establish zoomed viewport before RESET"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10вЂ“90%" 10 90 "reset-preparation"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_PREP_XML" "VIEW 10–90%" 10 90 "reset-preparation"; then exit 1; fi
 if ! tap_sample_edit_control "$SAMPLE_ZOOM_RESET_PREP_XML" "$SAMPLE_ZOOM_RESET_PREP_REMOTE" \
     "Sample Edit reset waveform zoom"; then exit 1; fi
-if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0вЂ“100%" 12; then
+if ! wait_for_ui_text "$SAMPLE_ZOOM_RESET_XML" "$SAMPLE_ZOOM_RESET_REMOTE" "VIEW 0–100%" 12; then
   echo "ERROR: SAMP-010 RESET did not restore full viewport"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0вЂ“100%" 0 100 "reset"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_RESET_XML" "VIEW 0–100%" 0 100 "reset"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_RESET_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture reset viewport"; exit 1
 fi
@@ -12655,7 +12656,7 @@ fi
 if ! dump_device_ui_retry "$SAMPLE_ZOOM_AUDITION_REMOTE" "$SAMPLE_ZOOM_AUDITION_XML" 8 4; then
   echo "ERROR: SAMP-010 could not refresh Sample Edit after Pad audition"; exit 1
 fi
-if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0вЂ“100%" 0 100 "audition"; then exit 1; fi
+if ! assert_sample_zoom_viewport "$SAMPLE_ZOOM_AUDITION_XML" "VIEW 0–100%" 0 100 "audition"; then exit 1; fi
 if ! capture_ui_screenshot "$SAMPLE_ZOOM_AUDITION_PNG" 10; then
   echo "ERROR: SAMP-010 could not capture post-audition viewport"; exit 1
 fi
