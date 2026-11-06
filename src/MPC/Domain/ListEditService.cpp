@@ -112,6 +112,28 @@ ListEditService::AddResult ListEditService::addEvent(
         std::uint8_t velocity) {
     AddResult result;
 
+    // Validate input values
+    if (tick < 0 || static_cast<std::int64_t>(tick) >= pattern.lengthTicks) {
+        result.success = false;
+        result.error = "tick out of range";
+        return result;
+    }
+    if (durationTicks < 0 || static_cast<std::int64_t>(durationTicks) > pattern.lengthTicks) {
+        result.success = false;
+        result.error = "duration out of range";
+        return result;
+    }
+    if (velocity > 127) {
+        result.success = false;
+        result.error = "velocity out of range";
+        return result;
+    }
+    if (tick + durationTicks > pattern.lengthTicks) {
+        result.success = false;
+        result.error = "event exceeds pattern length";
+        return result;
+    }
+
     // Ensure all existing events have IDs
     ensureEventId(pattern);
 
@@ -232,6 +254,14 @@ ListEditService::ModifyResult ListEditService::setNote(
         return result;
     }
 
+    // Note value is already constrained to 0-127 by uint8_t parameter
+    // but we can add explicit check for clarity
+    if (note > 127) {
+        result.success = false;
+        result.error = "note out of range";
+        return result;
+    }
+
     const std::uint32_t targetEventId = notes[eventIndex].eventId;
     const std::uint8_t oldNote = notes[eventIndex].note;
 
@@ -273,6 +303,14 @@ ListEditService::ModifyResult ListEditService::setVelocity(
     if (eventIndex >= notes.size()) {
         result.success = false;
         result.error = "index out of range";
+        return result;
+    }
+
+    // Velocity value is already constrained to 0-127 by uint8_t parameter
+    // but we can add explicit check for clarity
+    if (velocity > 127) {
+        result.success = false;
+        result.error = "velocity out of range";
         return result;
     }
 
@@ -320,6 +358,13 @@ ListEditService::ModifyResult ListEditService::setDuration(
         return result;
     }
 
+    // Validate duration value
+    if (durationTicks < 0 || static_cast<std::int64_t>(durationTicks) > pattern.lengthTicks) {
+        result.success = false;
+        result.error = "duration out of range";
+        return result;
+    }
+
     const std::uint32_t targetEventId = notes[eventIndex].eventId;
     const std::int32_t oldDuration = notes[eventIndex].durationTicks;
 
@@ -361,6 +406,13 @@ ListEditService::ModifyResult ListEditService::setTick(
     if (eventIndex >= notes.size()) {
         result.success = false;
         result.error = "index out of range";
+        return result;
+    }
+
+    // Validate tick value
+    if (tick < 0 || static_cast<std::int64_t>(tick) >= pattern.lengthTicks) {
+        result.success = false;
+        result.error = "tick out of range";
         return result;
     }
 
