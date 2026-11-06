@@ -663,6 +663,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativePatternAddEvent(int padIndex, int tick, int note, int velocity, int duration);
     private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
 
+    // Hardware MIDI bridge — MPC Studio MkII controller input
+    byte[] nativeOnMidi(byte[] data, long timestamp);
+    int[] nativeConsumeHardwareAction();
+    int nativeConsumeSequenceLauncherPad();
+
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -1691,6 +1696,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 break;
             case LIST_EDIT:
                 showListEditPage();
+                break;
+            case LEVELS_16:
+                showLevels16Page();
+                break;
+            case PAD_PERFORM:
+                showPadPerformPage();
                 break;
             default:
                 showUnavailableModePage(
@@ -5531,6 +5542,124 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             listEditEventList.addView(row);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 16 Levels — velocity layering for a source pad
+    // ------------------------------------------------------------------
+
+    private void showLevels16Page() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "LEVELS_16";
+        navigationController.navigate(MpcUiState.Mode.LEVELS_16);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        pageTitle.setText("16 LEVELS");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout header = row();
+        header.addView(sectionLabelView("SOURCE PAD " + (selectedPad + 1),
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton("BACK", v -> navigateBackFromShell()),
+                new LinearLayout.LayoutParams(dp(62), dp(34)));
+        header.addView(actionButton("VEL", v -> {
+            setBottomStatus("16 LEVELS: velocity mode active");
+        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
+        page.addView(header);
+
+        LinearLayout levelsGrid = new LinearLayout(this);
+        levelsGrid.setOrientation(LinearLayout.VERTICAL);
+        levelsGrid.setPadding(dp(10), dp(8), dp(10), dp(8));
+        page.addView(levelsGrid,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        // Build 4x4 grid of level pads
+        for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
+            LinearLayout levelRow = row();
+            for (int colIdx = 0; colIdx < 4; colIdx++) {
+                int levelIndex = rowIdx * 4 + colIdx;
+                int velocity = 1 + (levelIndex * 126) / 15;
+                Button levelBtn = actionButton("L" + (levelIndex + 1), v -> {
+                    nativeAudioTriggerPad(selectedPad, velocity);
+                    setBottomStatus("16 LEVELS: pad " + (selectedPad + 1)
+                            + " velocity " + velocity);
+                });
+                levelBtn.setMinWidth(dp(64));
+                levelBtn.setMinHeight(dp(64));
+                levelRow.addView(levelBtn, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            }
+            levelsGrid.addView(levelRow,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        content.addView(page);
+    }
+
+    // ------------------------------------------------------------------
+    // Pad Perform — note/chord/progression mapping
+    // ------------------------------------------------------------------
+
+    private void showPadPerformPage() {
+        clearStepEditPadLeds();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "PAD_PERFORM";
+        navigationController.navigate(MpcUiState.Mode.PAD_PERFORM);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        pageTitle.setText("PAD PERFORM");
+        content.removeAllViews();
+
+        LinearLayout page = page();
+        LinearLayout header = row();
+        header.addView(sectionLabelView("PERFORM MODE: NOTES",
+                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        header.addView(actionButton("BACK", v -> navigateBackFromShell()),
+                new LinearLayout.LayoutParams(dp(62), dp(34)));
+        header.addView(actionButton("MODE", v -> {
+            setBottomStatus("PAD PERFORM: note mode");
+        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
+        page.addView(header);
+
+        LinearLayout performGrid = new LinearLayout(this);
+        performGrid.setOrientation(LinearLayout.VERTICAL);
+        performGrid.setPadding(dp(10), dp(8), dp(10), dp(8));
+        page.addView(performGrid,
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+
+        // Build 4x4 grid of perform pads (chromatic mapping from source pad note)
+        int baseNote = 60; // Middle C as base
+        for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
+            LinearLayout levelRow = row();
+            for (int colIdx = 0; colIdx < 4; colIdx++) {
+                int noteIndex = rowIdx * 4 + colIdx;
+                int note = baseNote + noteIndex;
+                Button performBtn = actionButton("N" + note, v -> {
+                    nativeAudioTriggerPad(selectedPad, 100);
+                    setBottomStatus("PAD PERFORM: note " + note);
+                });
+                performBtn.setMinWidth(dp(64));
+                performBtn.setMinHeight(dp(64));
+                levelRow.addView(performBtn, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+            }
+            performGrid.addView(levelRow,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        content.addView(page);
     }
 
     private void showSampleEditPanel(LinearLayout page) {
@@ -18350,6 +18479,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 if (hardwareTrackMuteModeActive) hardwarePadMuteModeActive = false;
                 syncHardwareMuteModeLed();
                 setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
+                return;
+            case MpcStudioMk2SemanticActions.PAD_TRIGGER:
+                nativeAudioTriggerPad(value0, value1);
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:
                 setBottomStatus(nativeSequenceTogglePadMute(value0));

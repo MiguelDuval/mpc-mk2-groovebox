@@ -4646,3 +4646,136 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
             "Event deleted: note=" + std::to_string(deletedNote)
                     + " tick=" + std::to_string(deletedTick));
 }
+
+// ---------------------------------------------------------------------------
+// Hardware MIDI bridge — MPC Studio MkII controller input
+// ---------------------------------------------------------------------------
+
+#include "MPC/MpcStudioMk2SemanticAdapter.h"
+#include "MPC/MpcStudioMk2InputDecoder.h"
+
+namespace {
+
+std::unique_ptr<mpc::studio::MpcStudioMk2SemanticAdapter> semanticAdapter;
+std::vector<std::array<std::int32_t, 4>> hardwareActionQueue;
+std::int32_t queuedLauncherPad = -1;
+
+mpc::studio::MpcStudioMk2SemanticAdapter& adapter() {
+    if (!semanticAdapter) {
+        semanticAdapter = std::make_unique<mpc::studio::MpcStudioMk2SemanticAdapter>();
+    }
+    return *semanticAdapter;
+}
+
+} // namespace
+
+extern "C" {
+
+JNIEXPORT jbyteArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeOnMidi(
+        JNIEnv* env, jobject /* thiz */, jbyteArray data, jlong timestamp)
+{
+    if (env == nullptr || data == nullptr) return nullptr;
+
+    jsize length = env->GetArrayLength(data);
+    if (length <= 0) return nullptr;
+
+    jbyte* bytes = env->GetByteArrayElements(data, nullptr);
+    if (bytes == nullptr) return nullptr;
+
+    std::vector<std::uint8_t> midiBytes(length);
+    for (jsize i = 0; i < length; ++i) {
+        midiBytes[static_cast<std::size_t>(i)] =
+                static_cast<std::uint8_t>(bytes[i]);
+    }
+    env->ReleaseByteArrayElements(data, bytes, JNI_ABORT);
+
+    // Decode the raw MIDI bytes into input events
+    auto event = mpc::studio::decodeInput(
+            std::span<const std::uint8_t>(midiBytes));
+
+    std::vector<std::uint8_t> feedback;
+
+    if (event.has_value()) {
+        event->timestampNanos = timestamp;
+
+        if (event->type == mpc::studio::InputEventType::PadNote) {
+            auto result = adapter().handlePad(*event);
+            if (result.consumed && result.velocity > 0) {
+                // Queue the pad trigger for the Java side to execute via nativeAudioTriggerPad
+                hardwareActionQueue.push_back({
+                        static_cast<std::int32_t>(
+                            mpc::studio::SemanticActionType::PadTrigger),
+                        static_cast<std::int32_t>(result.targetPadIndex),
+                        static_cast<std::int32_t>(result.velocity), 0});
+            }
+            if (result.action.has_value()) {
+                const auto& a = result.action.value();
+                hardwareActionQueue.push_back(
+                        {static_cast<std::int32_t>(a.type),
+                                a.value0, a.value1, a.value2});
+            }
+        } else {
+            auto action = adapter().handleControl(*event);
+            if (action.has_value()) {
+                const auto& a = action.value();
+                hardwareActionQueue.push_back(
+                        {static_cast<std::int32_t>(a.type),
+                                a.value0, a.value1, a.value2});
+            }
+        }
+    }
+
+    // Generate LED feedback from adapter state
+    if (adapter().sixteenLevel()) {
+        feedback.push_back(0xB0); feedback.push_back(40); feedback.push_back(127);
+    }
+    if (adapter().fullLevel()) {
+        feedback.push_back(0xB0); feedback.push_back(39); feedback.push_back(127);
+    }
+    if (adapter().halfLevel()) {
+        feedback.push_back(0xB0); feedback.push_back(39); feedback.push_back(64);
+    }
+
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(feedback.size()));
+    if (result != nullptr && !feedback.empty()) {
+        env->SetByteArrayRegion(result, 0,
+                static_cast<jsize>(feedback.size()),
+                reinterpret_cast<const jbyte*>(feedback.data()));
+    }
+    return result;
+}
+
+JNIEXPORT jintArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeConsumeHardwareAction(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    if (hardwareActionQueue.empty()) return nullptr;
+
+    jsize count = static_cast<jsize>(hardwareActionQueue.size());
+    jintArray result = env->NewIntArray(count * 4);
+    if (result == nullptr) return nullptr;
+
+    std::vector<jint> flat(count * 4);
+    for (jsize i = 0; i < count; ++i) {
+        flat[static_cast<std::size_t>(i) * 4 + 0] = hardwareActionQueue[i][0];
+        flat[static_cast<std::size_t>(i) * 4 + 1] = hardwareActionQueue[i][1];
+        flat[static_cast<std::size_t>(i) * 4 + 2] = hardwareActionQueue[i][2];
+        flat[static_cast<std::size_t>(i) * 4 + 3] = hardwareActionQueue[i][3];
+    }
+    env->SetIntArrayRegion(result, 0, count * 4, flat.data());
+    hardwareActionQueue.clear();
+    return result;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeConsumeSequenceLauncherPad(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto pad = queuedLauncherPad;
+    queuedLauncherPad = -1;
+    return static_cast<jint>(pad);
+}
+
+} // extern "C"
