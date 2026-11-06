@@ -72,3 +72,15 @@ For the full rules, architecture, roadmap and acceptance criteria, read `docs/PR
 ## Current execution queue
 
 Follow the current, dated work queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`. Older dated blocks in that roadmap and `docs/SESSION-STATE.md` are historical context only; live PR/HEAD/Actions evidence takes precedence. Read `docs/SESSION-HISTORY-ARCHIVE.md` only when a specific regression or historical question requires it.
+
+
+## Firmware reverse-engineering evidence gate
+
+Before using original MPC firmware findings to change MIDI routing, device identity, audio architecture, persistence, or application behavior, read [docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md).
+
+Keep the evidence domains separate:
+- The firmware report describes the original standalone MPC application and operating system; it is not the protocol specification for the external 2021 MPC Studio MkII.
+- Use the MkII traceability/semantic maps for physical controller messages and feedback. A Linux device-tree product code or an internal control-surface serial is not a substitute for observed USB-MIDI identity.
+- Treat static strings, settings dumps and reverse-engineered descriptions as research leads, not proof of runtime behavior. Require an exact source, confidence label and focused test before changing product behavior.
+- Do not infer Gen2 architecture from the Gen1 3.9.1 binary. The older Gen2 handoff is explicitly incomplete/inconsistent; follow the report's re-acquisition and verification checklist before using it.
+- Do not add Pure Data, SQLite, Linux autorun/preload mechanisms or proprietary firmware assets merely because they appear in an upstream research source.
