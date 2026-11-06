@@ -14618,9 +14618,6 @@ fi
 if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_BEFORE_XML" 20; then
   echo "ERROR: Sample Edit waveform did not open for the assigned WAV"; exit 1
 fi
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_BEFORE_XML" 10; then
-  echo "ERROR: could not capture Sample Edit baseline hierarchy"; exit 1
-fi
 if ! capture_ui_screenshot "$SAMP_CURSOR_BEFORE_PNG" 10; then
   echo "ERROR: could not capture Sample Edit baseline screenshot"; exit 1
 fi
