@@ -68,6 +68,9 @@ ListEditService::AddResult ListEditService::addEvent(
         }
     }
 
+    return result;
+}
+
 ListEditService::ModifyResult ListEditService::deleteEvent(
         Pattern& pattern,
         MpcEditHistory& history,

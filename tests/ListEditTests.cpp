@@ -154,7 +154,7 @@ int main() {
         assert(history.redo());
         assert(pattern.notes[0].velocity == 110);
     }
-﻿
+
     // ---- Test 5: Change Tick with sort -> Undo -> Redo ----
     {
         Sequence seq = makeSequence();
