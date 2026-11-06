@@ -1,5 +1,20 @@
 # Implementation Roadmap
 
+## Follow-up compile correction — 2026-11-06
+
+Build #3719 / run `42233114496` on SHA `350495c0729ef08f4c385c339e219ac12e1b4338` completed with FAILURE during `:app:compileDebugJavaWithJavac` (focused Android unit policy test step 15). The earlier `nativePatternAddEvent` return-type mismatch is fixed, but javac then reported three non-effectively-final loop-index captures in the List Edit event-row lambdas at `MainActivity.java:5509`, `:5517`, and `:5525`. The follow-up captures `final int eventIndex = i` per row and uses it for note, velocity and delete actions. APK assembly, smoke preflight, emulator smoke and evidence upload were skipped; run #3719 produced no APK/evidence artifacts.
+
+The corrected Sample Edit source parsers on the current branch use U+2192 to match MainActivity, with a scoped source guard. The exact corrected-SHA Android Build is pending.
+
+
+## Follow-up parser correction — 2026-11-06
+
+The exact source at SHA `350495c0729ef08f4c385c339e219ac12e1b4338` showed that both existing Sample Edit region parsers used U+2052 (`⁒`) while MainActivity emits U+2192 (`→`). The follow-up corrects both parsers and adds a scoped source guard for the two parser functions. U+2052 remains valid in other UI phrases and is not globally banned. Build #3719 / run `42233114496` is running on the pre-correction SHA and cannot validate this parser fix. SAMP-007 and SAMP-008 remain PENDING until the exact corrected SHA passes and its fresh XML/evidence is inspected.
+
+
+> **Live update — 2026-11-06:** PR #23 remains OPEN at product SHA `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`; its latest verified exact-HEAD green run is Build #3402 / `40528666946`. The consolidated Draft PR #133 currently sits at `4f1eab9694259f69e0d11527688aee0b9063db21`; Build #3718 / `42225799616` exposed a Java compile mismatch in List Edit ADD (`nativePatternAddEvent` returns String, call site declared int). A child fix branch `fix/checkpoint-list-edit-and-samp007-20261106` addresses that compile error and hardens the existing SAMP-007 scenario against stale app-side View-tree snapshots. Build #3708 / `42043903731` on the older PR #135 stack failed at SAMP-007, but both before/after XML files had the identical uptime `1252964`; this was stale evidence, not proof of a failed native region edit. The new exact-HEAD workflow and fresh PNG/XML inspection remain pending. Do not mark SAMP-007 accepted. `cancel-in-progress: false`, `main` untouched, and physical MPC Studio MkII validation NOT RUN.
+
+
 > **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.
 
 
