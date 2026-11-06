@@ -1,7 +1,28 @@
 # Live checkpoint — 2026-11-06
 
+## Live verification — 2026-11-06, after checkpoint branch advanced
+
+**Primary PR #23:** OPEN, not merged. `feature/mpc-one-ui-fidelity` HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d` → `fix/ui-shell-format-width-startup` base `5f562e54e2cf8235041590933232a3836d74a16a`. Latest verified exact-head success remains Android Build #3402 / run `40528666946`; this is historical acceptance for PR #23's own HEAD, not the consolidated branch.
+
+**Consolidated PR #133:** OPEN / Draft, `checkpoint/mpc-ui-reference-and-product-20261030` HEAD `453a1a90756bf3f21477605b58403eac572270b9`, based on PR #23's product SHA. The previous checkpoint line `4f1eab9694259f69e0d11527688aee0b9063db21` is an ancestor, not the current checkpoint head.
+
+**Latest checkpoint workflow:** Android Build #3720 / run `42233435515`, exact SHA `453a1a90756bf3f21477605b58403eac572270b9`, FAILURE at step 15 `Run focused Android unit policy tests`. Steps 1–14 passed; later compile/test/build/emulator steps were skipped. Javac found three invalid Java declarations for the hardware JNI bridge (the methods lacked the `native` modifier) and List Edit ADD treated the JNI `String` result as `int`. No APK or visual-evidence artifact was produced.
+
+**Superseded PR #136 / old-base run:** PR #136 remains a Draft on `fix/checkpoint-list-edit-and-samp007-20261106`, head `82cdb0dfe8db93e9751884a90525e7c73cab8b3c`, but it was created against stale checkpoint base `4f1eab9694259f69e0d11527688aee0b9063db21`. Its Build #3723 / run `42234075205` failed at APK assembly because that old base's `src/NativeEngine.cpp` ended immediately after List Edit JNI, leaving the `extern "C"` block opened at line 4349 unclosed at EOF (compiler reported line 4648). The current checkpoint at `453a1a` contains the complete subsequent Hardware MIDI bridge tail; #3723 is not evidence against the current base and produced no artifacts.
+
+**Fresh-base follow-up:** isolated branch `fix/checkpoint-list-edit-samp007-livebase-20261106` was created from exact current checkpoint SHA `453a1a90756bf3f21477605b58403eac572270b9`. It contains:
+- `MainActivity.java`: declares the three Hardware MIDI bridge JNI methods as instance `native` methods (matching the C++ `jobject` signatures); fixes List Edit ADD's `String` return and captures a final per-row `eventIndex` for callbacks; publishes a fresh SAMPLE hierarchy when the cursor returns to idle.
+- The existing `tests/android_ui_smoke.sh` (not a duplicate): imports the corrected U+2192 Sample region parsers, source guard, fresh View-tree uptime/provenance assertions and strict SAMP-007 real-touch/cursor-progress/idle checks. Existing native region/frame assertions remain.
+- The roadmap and action catalog distinguish historical SAMP-008/009 evidence from current exact-head revalidation.
+
+Static source checks on the code checkpoint passed for the three JNI declarations, List Edit String/index captures, idle snapshot scheduling, smoke UTF-8/BOM, fresh snapshot helpers, U+2192 parser and restored NativeEngine hardware tail. Exact full Android Build and emulator/evidence acceptance are still PENDING; do not mark SAMP-007/008/009 complete on this branch yet.
+
+`cancel-in-progress: false` is confirmed unchanged. `main` and PR #23 are untouched. No merge, reset, rebase, force-push or history rewrite. Physical MPC Studio MkII validation remains NOT RUN.
+
+---
+
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Branch HEAD:** `534778b1` (local, push pending)  
+**Branch HEAD:** `453a1a90756bf3f21477605b58403eac572270b9` (pushed to origin; confirmed by PR #133 live metadata).  
 **Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
 **Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
 
