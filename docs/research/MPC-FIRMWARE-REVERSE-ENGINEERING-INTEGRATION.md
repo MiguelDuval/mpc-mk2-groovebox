@@ -194,9 +194,11 @@ It also describes the 3.9.1 Gen1 update as one image covering eight standalone h
 
 | Area | Knowledge added | Engineering consequence |
 |---|---|---|
-| MIDI architecture | Standalone MPC distinguishes Track, Global, Sync and Control roles in a settings example. | Preserve role-separated routing as a future external-MIDI design requirement. Do not expand current scope prematurely. |
+| MIDI architecture | Standalone MPC distinguishes Track, Global, Sync and Control roles in a settings example; the Global Learn XMM format includes Note/CC, channel, target, toggle/momentary/fixed and absolute/relative control modes. | Preserve role-separated routing and a sufficiently expressive generic mapping model as future external-MIDI work. Do not expand current scope prematurely or use XMM as our native project format. |
+| Internal MPC controller | LiveXplore documents separate Public/Private ports and internal-controller SysEx for MPC Live/related standalone devices. | Explicitly do not transfer these internal ports, product IDs or 128×32 OLED commands to external Studio MkII; use the separate MkII 160×80 protocol traceability. |
 | Controller adapter | Generic controllers can be used as secondary control surfaces in Linux MPC experiments. | Reinforces our own semantic adapter boundary; do not import Linux preload hooks or MPC Desktop workflows. |
-| Q-Link/performance state | Settings distinguish assignment and Momentary state. | Useful vocabulary for future on-screen/assignable controls; does not imply physical Q-Link hardware on Studio MkII. |
+| Q-Link/performance state | Settings distinguish assignment and Momentary state; XMM mapping records Toggle/Momentary/Fixed and absolute/relative CC behavior. | Useful vocabulary for future on-screen/assignable controls; does not imply physical Q-Link hardware on Studio MkII. |
+| Persistent settings | MPC.settings is a device/application-level XML preference store, with MIDI ports and five Browser folder shortcuts. | Keep app preferences separate from musical project serialization. Treat shortcut count as an optional UX reference, not copied per-device paths. |
 | App framework | MPC 3.9.1 Gen1 application contains JUCE and embedded Pd; SQLite references are present. | Confirms JUCE is a compatible architectural reference, but leaves Tracktion/Oboe as our chosen engine stack. No Pd or SQLite adoption by inference. |
 | Device identity | Runtime product code comes from the standalone device tree; other serials have separate origins. | Keep standalone hardware IDs out of the external MkII USB-MIDI identity path. |
 | Binary research method | 32-bit ARM ELF is stripped; .ARM.exidx matters for full function recovery. | Use focused static analysis only when a specific firmware question blocks implementation. |
@@ -215,6 +217,8 @@ It also describes the 3.9.1 Gen1 update as one image covering eight standalone h
 ## 6. Gen2 research status — do not overstate the evidence
 
 The public Denon Reverse Engineering material identifies a separate MPC-3.9.1-Gen2-update.img counterpart, but its detailed /usr/bin/MPC binary analysis reviewed above is explicitly from the **Gen1** image. It is not a Gen2 executable analysis.
+
+The LiveXplore Wiki also describes a **3.7.0 Gen2** image as an uncompressed container with three Linux partitions and gives a main-rootfs offset of 56,819,712 bytes for that specific image. This is not the 3.9.1 Gen2 image and must not be applied to it blindly. It does show that Gen2 firmware layout can differ by version and strengthens the requirement to hash and parse the exact 3.9.1 Gen2 artifact before accepting our older handoff's four-partition/XZ/FIT interpretation.
 
 Our repository also contains an older Gen2 research handoff on the historical main line (upload commits [9243f999](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/9243f999b2438984131747327a352e54ff947d37), [fcacdd1](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/fcacdd15a7a2d62d1ca88835551aa0f26cc9c4f0), and [764e80d](https://github.com/MiguelDuval/mpc-mk2-groovebox/commit/764e80d68567ef505c1ca72c2e424843ac2eeeb9)). That handoff must be treated as **incomplete and internally inconsistent**, not as a verified Gen2 platform specification:
 
@@ -241,13 +245,17 @@ Until those steps are complete, Gen2 details remain an open research item rather
 
 **No changes to the current implementation roadmap are required.** This research supports later decisions and does not outrank current CI blockers or the active acceptance queue.
 
-When external MIDI routing reaches its roadmap stage, design and test role-specific routing for Track Input, Global/Control and Sync separately from the dedicated MkII control-surface adapter. A role should be explicit and persisted only after the behavior and migration contract are designed.
+When external MIDI routing reaches its roadmap stage, design and test role-specific routing for Track Input, Global/Control and Sync separately from the dedicated MkII control-surface adapter. A role should be explicit and persisted only after the behavior and migration contract are designed. For user-mappable generic controllers, use the XMM research only as a capability checklist (Note/CC, channel, target, momentary/toggle, absolute/relative, reverse); implement our own typed schema and tests. Do not port the standalone MPC internal-controller Public/Private ports or their SysEx.
 
 When a concrete UI/domain question requires more MPC internals, return to the Gen1 binary with a narrow question (for example, a specific Track/Program ownership path or a parameter serialization question), record source offsets and confidence, and confirm the behavior against the official v3.9 manual or device observation. Do not copy executable code, extracted assets, proprietary artwork or firmware binaries.
 
 ## 8. Sources and provenance
 
 - TheKikGen Labs, **MPC-LiveXplore**: https://github.com/TheKikGen/MPC-LiveXplore
+- TheKikGen Labs Wiki, [Global MIDI mapping / XMM format](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-and-Force-global-midi-mapping-in-standalone-mode-how-to) (2022-09-03).
+- TheKikGen Labs Wiki, [MPC internal controller MIDI aspects](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-internal-controller---Midi-aspects) (2023-11-25).
+- TheKikGen Labs Wiki, [MPC.settings properties](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-settings-file-properties) (2022-01-19).
+- TheKikGen Labs Wiki, [MPC 3 first analysis](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-3-first-analysis) (2026-01-22).
 - TheKikGen Labs, **MPC-LiveXplore image maker**: https://github.com/TheKikGen/MPC-LiveXplore/tree/master/imgmaker
 - TheKikGen Labs, **MPC-LiveXplore bootstrap** (listed as a related project; not used as an app dependency): https://github.com/TheKikGen/MPC-LiveXplore-bootstrap
 - DeathCamel58, **denon-reverse-engineering**, MPC 3.9.1 Gen1 analysis at revision 0f7966516609e3de2b71e4aef21625bd8d94c57c: https://github.com/DeathCamel58/denon-reverse-engineering/tree/0f7966516609e3de2b71e4aef21625bd8d94c57c
