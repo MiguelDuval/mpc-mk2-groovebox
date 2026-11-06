@@ -407,6 +407,37 @@ int main() {
         result = ListEditService::deleteEvent(pattern, history, 0);
         assert(!result.success);
     }
+// ---- Test 9b: Legacy eventId handling (defect 2 regression test) ----
+    {
+        Sequence seq = makeSequence();
+        auto& pattern = seq.tracks[0].patterns[0];
+
+        // Manually add events with eventId == 0 (simulating deserialized project)
+        pattern.notes.push_back({0, 480, 60, 100, 127, 1, 0}); // eventId = 0
+        pattern.notes.push_back({100, 480, 64, 110, 127, 1, 0}); // eventId = 0
+        assert(pattern.notes[0].eventId == 0);
+        assert(pattern.notes[1].eventId == 0);
+        assert(pattern.nextEventId == 1);
+
+        MpcEditHistory history;
+
+        // setVelocity called directly without any prior ListEditService operation
+        auto result = ListEditService::setVelocity(pattern, history, 0, 50);
+        assert(result.success);
+        assert(pattern.notes[0].velocity == 50);
+        assert(pattern.notes[0].eventId != 0); // ID assigned
+        assert(pattern.notes[1].eventId != 0); // ID assigned
+        assert(pattern.notes[0].eventId != pattern.notes[1].eventId); // Unique IDs
+
+        // Undo should work with assigned eventIds
+        assert(history.undo());
+        assert(pattern.notes[0].velocity == 100);
+        assert(pattern.notes[0].eventId != 0);
+
+        // Redo should restore the modification
+        assert(history.redo());
+        assert(pattern.notes[0].velocity == 50);
+    }
 
     // ---- Test 10: Multiple Patterns on one Track ----
     {
