@@ -4655,6 +4655,69 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
                     + std::to_string(static_cast<std::int64_t>(eventIndex)));
 }
 
+// Pattern selection for the active track
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSelect(
+        JNIEnv* env, jobject /* thiz */, jstring patternId)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Pattern select blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    if (patternId == nullptr) {
+        // Clear selection (fallback to first pattern)
+        core.projectState().selectPatternOnActiveTrack("");
+        return toJString(env, "Pattern selection cleared");
+    }
+    const std::string id = env->GetStringUTFChars(patternId, nullptr);
+    env->ReleaseStringUTFChars(patternId, id.c_str());
+    if (!core.projectState().selectPatternOnActiveTrack(id)) {
+        return toJString(env, "Pattern select failed: pattern not found");
+    }
+    return toJString(env, "Pattern selected: " + id);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetSelectedId(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    const std::string& id = core.projectState().selectedPatternIdOnActiveTrack();
+    return toJString(env, id);
+}
+
+JNIEXPORT jobjectArray JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetList(
+        JNIEnv* env, jobject /* thiz */)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    auto& tracks = core.projectState().activeSequence().tracks;
+    const auto trackIndex = core.projectState().activeTrackIndex();
+    if (trackIndex >= tracks.size()) {
+        return nullptr;
+    }
+    auto& track = tracks[trackIndex];
+    const std::size_t count = track.patterns.size();
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (stringClass == nullptr) return nullptr;
+    jobjectArray result = env->NewObjectArray(static_cast<jsize>(count), stringClass, nullptr);
+    if (result == nullptr) return nullptr;
+    for (std::size_t i = 0; i < count; ++i) {
+        jstring str = env->NewStringUTF(track.patterns[i].id.c_str());
+        if (str == nullptr) {
+            env->DeleteLocalRef(result);
+            return nullptr;
+        }
+        env->SetObjectArrayElement(result, static_cast<jsize>(i), str);
+        env->DeleteLocalRef(str);
+    }
+    return result;
+}
+
 } // extern "C"
 
 // ---------------------------------------------------------------------------
