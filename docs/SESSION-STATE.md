@@ -1,3 +1,22 @@
+# Live checkpoint — 2026-11-06 (independently verified against GitHub)
+
+**Primary PR #23:** OPEN; `feature/mpc-one-ui-fidelity` HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d` → `fix/ui-shell-format-width-startup` base `5f562e54e2cf8235041590933232a3836d74a16a`. Latest known exact-HEAD green run remains Build #3402 / run `40528666946` (57/57 steps; APK artifact `12746190315`, visual evidence `12746712856`). PR #23 was not modified in this session.
+
+**SAMP-007 snapshot-freshness investigation (PR #135):**
+- PR #135 is OPEN / Draft, head branch `fix/ui-smoke-utf8-contract-20261105`, base `checkpoint/mpc-ui-reference-and-product-20261030` at `cc97dfb0ee7c1b5725f2ffb239a000a6e34dd459`.
+- Build #3708 / run `42043903731` tested `13a9e8374003ce580f3a911e81d5922a5f963ea9` and failed at emulator smoke step 55. Evidence archive `13425177662` was downloaded and inspected.
+- The two archived app-side XML files `mpc-groovebox-sample-playback-cursor-before-uiautomator.xml` and `mpc-groovebox-sample-playback-cursor-region-changed-uiautomator.xml` both report `generated-at-uptime-ms=1252964`. The supposed post-touch snapshot was the same page-entry snapshot. Therefore Build #3708 does **not** prove that the real Start +1K control or native region setter failed; SAMP-007 remains unaccepted.
+- Follow-up source commit `313d1f56e5c9667d6d0eb6bea149fbee7fd0fc37` adds app-side SAMPLE hierarchy publication after Start/End region edits and cursor bucket/idle transitions. The existing smoke now takes fresh marker baselines, requires strictly increasing snapshot uptime, and preserves the actual measured touch coordinates. It does not add a duplicate SAMP-007 scenario or weaken its native region/cursor assertions. Exact-HEAD emulator validation is still pending; no workflow run was visible for this source commit when this note was prepared.
+- This note is being committed after source commit `313d1f56`; refetch the live branch HEAD and its exact workflow run before further work.
+
+**Separate integration checkpoint blocker (PR #133):**
+- PR #133 current head at inspection: `4f1eab9694259f69e0d11527688aee0b9063db21`, base `feature/mpc-one-ui-fidelity`.
+- Build #3718 / run `42225799616` failed in `:app:compileDebugJavaWithJavac`: `MainActivity.java:5447` assigns the `int` return from `nativePatternAddEvent(...)` to a `String`, then performs String operations. This is an independent integration-branch compile blocker and is not fixed by PR #135.
+
+**Safety / gates:** `main` unchanged; no merge, reset, rebase, force-push, or history rewrite. `cancel-in-progress: false` remains in `.github/workflows/android-build.yml`. Physical MPC Studio MkII validation remains NOT RUN. SAMP-007, SAMP-010 and the other explicitly pending action-catalog gates must not be marked complete without exact-SHA evidence.
+
+---
+
 # Live checkpoint — 2026-11-04
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
