@@ -129,6 +129,7 @@ struct MidiNoteEvent {
     // Stable unique identity for this event within its Pattern.
     // Assigned at creation time; survives sorting and field modifications.
     // Zero means unassigned (legacy/deserialized events).
+    // Runtime-only: not persisted. IDs are assigned on load by ensureEventId().
     std::uint32_t eventId = 0;
 };
 
@@ -138,7 +139,7 @@ struct Pattern {
     std::int32_t lengthTicks = 3840;
     std::vector<MidiNoteEvent> notes;
     // Monotonically increasing counter for assigning stable event IDs.
-    // Persisted with the pattern to avoid ID collisions on reload.
+    // Runtime-only: not persisted. Reset on load; IDs assigned by ensureEventId().
     std::uint32_t nextEventId = 1;
 };
 
