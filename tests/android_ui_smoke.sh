@@ -48,6 +48,7 @@ mojibake_patterns = {
     '\u0432\u0402\u045e': '\u2022',   # вЂў -> • (BULLET)
     '\u0432\u20ac\u2019': '\u2212',   # в€’ -> − (MINUS SIGN)
     '\u0432\u0402\u2014': '\u2014',   # вЂ— -> — (EM DASH)
+    '\u0432\u0402\u00a2': '\u2026',   # вЂ¢ -> … (ELLIPSIS)
 }
 lines = text.split('\n')
 found = False
@@ -1523,7 +1524,7 @@ if ! grep -Fq -- '"PROJECTS", "PATTERNS", "KITS", "PLUGIN PRESETS", "SAMPLES", "
   exit 1
 fi
 
-for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIOвЂ¦'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGEвЂ¦'   'CHOOSE FOLDERвЂ¦'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for " + activeLocationItem'   'CURRENT SAMPLE'; do
+for required in   '"PLACES", "CONTENT", "EXPANSIONS"'   'void onNavigationItemSelected(String section, String item);'   'void onNavigateUp();'   'void onChooseFolder();'   'void onLocalScanRequested();'   'void onFileSelected(MpcBrowserFile file);'   'void onAuditionSelectedFile();'   'void setSection(String section)'   'void setLocalFiles(List<MpcBrowserFile> files, String status)'   'matchesBrowserQuery('   'addFileResult('   'MPC Browser scan local audio files'   'SCAN LOCAL AUDIO…'   'NO LOCAL WAV FILES'   'button.setContentDescription('   '"MPC Browser navigation " + section + " " + item'   'search.setContentDescription("MPC Browser search files")'   'clear.setContentDescription("MPC Browser clear search")'   'destination.setContentDescription("MPC Browser target Pad and Layer")'   'currentSample.setContentDescription("MPC Browser current sample")'   'DRUMS'   'INSTRUMENTS'   'OPEN STORAGE…'   'CHOOSE FOLDER…'   'setUserFolderFiles('   'MPC Browser open Android storage picker'   'MPC Browser choose a local folder for " + activeLocationItem'   'CURRENT SAMPLE'; do
   if ! grep -Fq -- "$required" "android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcBrowserView.java"; then
     echo "ERROR: MPC Browser information-architecture contract missing: $required"
     exit 1
@@ -7592,7 +7593,7 @@ if ! test -s /tmp/mpc-groovebox-browser.png || ! test -s /tmp/mpc-groovebox-brow
   echo "ERROR: Browser runtime evidence files are empty"
   exit 1
 fi
-for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGEвЂ¦"' 'contentDescription="MPC Browser current sample"'; do
+for required in 'contentDescription="MPC Browser results list"' 'text="OPEN STORAGE…"' 'contentDescription="MPC Browser current sample"'; do
   if ! grep -Fq -- "$required" /tmp/mpc-groovebox-browser-hierarchy.txt; then
     echo "ERROR: Browser runtime hierarchy is missing visible results contract: $required"
     cat /tmp/mpc-groovebox-browser-hierarchy.txt
@@ -11803,7 +11804,7 @@ if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
   exit 1
 fi
 # Android 16 DocumentsUI grid cards may expose the filename only as
-# "Preview the file вЂ¦" on a thumbnail control, not as node text. Switch to
+# "Preview the file …" on a thumbnail control, not as node text. Switch to
 # the genuine selectable list-row mode first, then require the actual filename
 # text in a fresh hierarchy before selecting anything.
 if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
