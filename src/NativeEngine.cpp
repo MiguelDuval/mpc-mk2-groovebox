@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "MPC/MpcCore.h"
+#include "MPC/MpcEditHistory.h"
 #include "MPC/MpcProjectPersistence.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
@@ -4837,6 +4838,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
             "Event deleted: note=" + std::to_string(deletedNote)
                     + " tick=" + std::to_string(deletedTick));
 }
+
+} // extern "C"
 
 // ---------------------------------------------------------------------------
 // Hardware MIDI bridge — MPC Studio MkII controller input

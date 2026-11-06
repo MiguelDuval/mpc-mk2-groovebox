@@ -5513,9 +5513,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             // Edit buttons — each button cycles the value up for immediate editing.
             // Note: cycles through 0-127. Velocity: cycles through 1-127.
             // Tick/Duration: increment/decrement by 10 ticks.
+            // Capture per-row state as effectively-final so lambdas reference
+            // the correct event index even if selectedPad changes later.
+            final int eventIndex = i;
+            final int rowSelectedPad = selectedPad;
+
             Button editNote = actionButton("N" + note, v -> {
                 final int nextNote = (note + 1) % 128;
-                final String result = nativePatternSetEventNote(selectedPad, i, nextNote);
+                final String result = nativePatternSetEventNote(rowSelectedPad, eventIndex, nextNote);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5524,7 +5529,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             Button editVel = actionButton("V" + velocity, v -> {
                 final int nextVel = (velocity % 127) + 1;
-                final String result = nativePatternSetEventVelocity(selectedPad, i, nextVel);
+                final String result = nativePatternSetEventVelocity(rowSelectedPad, eventIndex, nextVel);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5532,7 +5537,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editVel, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editTickUp = actionButton("T+", v -> {
-                final String result = nativePatternSetEventTick(selectedPad, i, tick + 10);
+                final String result = nativePatternSetEventTick(rowSelectedPad, eventIndex, tick + 10);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5540,7 +5545,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editTickUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editTickDown = actionButton("T-", v -> {
-                final String result = nativePatternSetEventTick(selectedPad, i, Math.max(0, tick - 10));
+                final String result = nativePatternSetEventTick(rowSelectedPad, eventIndex, Math.max(0, tick - 10));
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5548,7 +5553,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editTickDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editDurUp = actionButton("D+", v -> {
-                final String result = nativePatternSetEventDuration(selectedPad, i, duration + 10);
+                final String result = nativePatternSetEventDuration(rowSelectedPad, eventIndex, duration + 10);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5556,7 +5561,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editDurUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editDurDown = actionButton("D-", v -> {
-                final String result = nativePatternSetEventDuration(selectedPad, i, Math.max(0, duration - 10));
+                final String result = nativePatternSetEventDuration(rowSelectedPad, eventIndex, Math.max(0, duration - 10));
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5564,7 +5569,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editDurDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button delBtn = actionButton("DEL", v -> {
-                final String result = nativePatternDeleteEvent(selectedPad, i);
+                final String result = nativePatternDeleteEvent(rowSelectedPad, eventIndex);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
