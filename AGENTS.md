@@ -80,7 +80,7 @@ Before using original MPC firmware findings to change MIDI routing, device ident
 
 Keep the evidence domains separate:
 - The firmware report describes the original standalone MPC application and operating system; it is not the protocol specification for the external 2021 MPC Studio MkII.
-- Use the MkII traceability/semantic maps for physical controller messages and feedback. A Linux device-tree product code or an internal control-surface serial is not a substitute for observed USB-MIDI identity.
+- Use the MkII traceability/semantic maps for physical controller messages and feedback. A Linux device-tree product code or an internal control-surface serial is not a substitute for observed USB-MIDI identity. LiveXplore's MPC Live Public/Private ALSA ports, internal-controller SysEx and 128×32 OLED command are also a separate standalone-device protocol; never map them onto the external Studio MkII Public MIDI port or its 160×80 LCD.
 - Treat static strings, settings dumps and reverse-engineered descriptions as research leads, not proof of runtime behavior. Require an exact source, confidence label and focused test before changing product behavior.
 - Do not infer Gen2 architecture from the Gen1 3.9.1 binary. The older Gen2 handoff is explicitly incomplete/inconsistent; follow the report's re-acquisition and verification checklist before using it.
 - Do not add Pure Data, SQLite, Linux autorun/preload mechanisms or proprietary firmware assets merely because they appear in an upstream research source.
