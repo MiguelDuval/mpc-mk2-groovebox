@@ -4326,15 +4326,17 @@ namespace {
 
 // Resolve the current editable pattern for the given pad index.
 // Returns nullptr if no valid Drum track with patterns exists.
+// padIndex is a pad number (0-15), not a pattern index — it must NOT be
+// used to index into track.patterns[]. List Edit operates on the active
+// track's first pattern. If pattern selection per-pad is needed in future,
+// add an explicit activePatternIndex to MpcProjectState instead.
 [[nodiscard]] inline mpc::domain::Pattern* resolveEditPattern(
-        jint padIndex) noexcept {
+        jint /* padIndex */) noexcept {
     auto& core = mpc::MpcCore::instance();
     auto& state = core.projectState();
     const auto trackIndex = state.activeTrackIndex();
     auto& tracks = state.activeSequence().tracks;
-    if (padIndex < 0
-            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)
-            || trackIndex >= static_cast<jint>(tracks.size())) {
+    if (trackIndex >= static_cast<jint>(tracks.size())) {
         return nullptr;
     }
     auto& track = tracks[trackIndex];
@@ -4342,15 +4344,7 @@ namespace {
             || track.patterns.empty()) {
         return nullptr;
     }
-    // Return the pattern at padIndex if it exists, otherwise first pattern.
-    // This matches MPC behavior where pads map to program slots, each of which
-    // may have its own pattern. padIndex is validated above.
-    auto patternCount = track.patterns.size();
-    auto patternIndex = static_cast<std::size_t>(padIndex);
-    if (patternIndex >= patternCount) {
-        patternIndex = 0;
-    }
-    return &track.patterns[patternIndex];
+    return &track.patterns.front();
 }
 
 } // namespace
