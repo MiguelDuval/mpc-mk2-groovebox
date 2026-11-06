@@ -1944,6 +1944,7 @@ jstring selectSequenceForUi(
         return toJString(env, "Sequence selection failed");
     }
 
+    core.editHistory().clear();
     core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().update(
             state.activeSequence(),
@@ -3396,6 +3397,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
     }
     auto& state = mpc::MpcCore::instance().projectState();
     if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
+        mpc::MpcCore::instance().editHistory().clear();
         return toJString(
                 env,
                 state.trackStatus(static_cast<std::size_t>(trackIndex)));
@@ -3416,6 +3418,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
             static_cast<mpc::domain::TrackKind>(kind))) {
         return toJString(env, "Track creation failed");
     }
+    mpc::MpcCore::instance().editHistory().clear();
     return toJString(
             env,
             state.trackStatus(state.activeTrackIndex()));
