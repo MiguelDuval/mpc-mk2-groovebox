@@ -28,6 +28,7 @@ Relevant material reviewed:
 - imgmaker/readme.md and the image tool source.
 - MPC/autorun/readme.md.
 - conf/kernel_config and the captured MPC X hardware report.
+- Wiki pages on Global MIDI Learn/XMM mapping, internal MPC controller MIDI/SysEx, MPC.settings properties and MPC 3 first analysis.
 
 Useful anchors:
 - [Project README](https://github.com/TheKikGen/MPC-LiveXplore/blob/master/README.md)
@@ -110,13 +111,13 @@ This adds a useful distinction between persistent application/device preferences
 
 Source: [MPC settings file properties](https://github.com/TheKikGen/MPC-LiveXplore/wiki/MPC-settings-file-properties), edited 2022-01-19. 
 
-### 3.3 Q-Link and page-state configuration
+### 3.6 Q-Link and page-state configuration
 
 The settings example contains Q-Link assignments with an associated Momentary flag, alongside visibility entries for Main Mode and Sample Edit areas. This supports the general idea that a performance control can have an assignment and a momentary/latching behavior independent of its physical input transport.
 
 **Product interpretation:** this is relevant to future on-screen performance controls and any future generic assignable controller layer. It does not create a missing Q-Link knob bank on the MPC Studio MkII. The project master prompt remains correct: the 2021 Studio MkII does not have the dedicated physical Q-Link knob bank found on other MPC hardware.
 
-### 3.4 Firmware and image-tool boundaries
+### 3.7 Firmware and image-tool boundaries
 
 MPC-LiveXplore documents two generations of its image utility:
 - the older Python mpcimg workflow for older MPC/Force images;
@@ -126,14 +127,14 @@ The project README also lists SSH/bootstrap images for specific older MPC/Force 
 
 The repository describes an autorun workaround for running custom scripts on supported standalone firmware. It is a system-level Linux execution mechanism, not an Akai plugin SDK and not an API for our groovebox. We will not depend on it, package it, or use it as a development requirement.
 
-### 3.5 What we deliberately do not import
+### 3.8 What we deliberately do not import
 
 The settings file includes machine-specific paths, recent-project records, storage identifiers, device names and other local configuration. Those values are not product requirements and are not copied into our documentation or app.
 
 A comment in the settings file suggests a possible debug-menu setting but explicitly leaves it untested. We do not treat that as a confirmed developer mode or design feature.
 
 
-### 3.6 MPC 3 first-analysis notes and the Gen2 version trap
+### 3.9 MPC 3 first-analysis notes and the Gen2 version trap
 
 The LiveXplore Wiki's MPC 3 first-analysis page (last edited 2026-01-22) adds a useful version boundary. Its Gen1 observations include a move from Buildroot to Yocto, a dedicated image utility, the InMusic `edisksctl` mount utility, libc 2.39, a Linux 6.6.64 PREEMPT_RT kernel and external storage mounted with `noexec`. These are reported observations from the author's investigated Gen1 v3 environment, not requirements for our Android app.
 
