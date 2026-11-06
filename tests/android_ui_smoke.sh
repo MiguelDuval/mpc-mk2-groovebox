@@ -64,7 +64,24 @@ for i, line in enumerate(lines, 1):
 if found:
     sys.exit(1)
 
-print(f"Encoding guard passed: {path} is valid UTF-8 without BOM and free of source-contract mojibake")
+# The Sample Edit UI emits U+2192 in "Region start → end". Check both
+# existing parsers explicitly; U+2052 is used elsewhere as a UI separator,
+# so this is deliberately scoped to the two parser functions.
+for function_name in ("wait_for_sample_edit_region_state() {", "read_samp_cursor_region_state() {"):
+    start = text.find(function_name)
+    if start < 0:
+        print(f"ERROR: {path} is missing {function_name}", file=sys.stderr)
+        sys.exit(1)
+    end = text.find("\n}", start)
+    if end < 0:
+        print(f"ERROR: {path} has an unterminated {function_name}", file=sys.stderr)
+        sys.exit(1)
+    parser_body = text[start:end]
+    if "\u2192" not in parser_body or "\u2052" in parser_body:
+        print(f"ERROR: {path} {function_name} must parse the exact U+2192 Sample region label", file=sys.stderr)
+        sys.exit(1)
+
+print(f"Encoding guard passed: {path} is valid UTF-8 without BOM and source-contract parsers match the Sample UI")
 PY_ENCODING_GUARD
 if [ $? -ne 0 ]; then exit 1; fi
 
@@ -12182,7 +12199,7 @@ found = [n for n in nodes
 if len(found) != 1:
     raise SystemExit(f"expected one Sample Edit frame-state node, found {len(found)}")
 text = found[0].attrib.get("text", "")
-match = re.search(r"Region\s+(\d+)\s*⁒\s*(\d+)\s*/\s*(\d+)\s+frames", text)
+match = re.search(r"Region\s+(\d+)\s*→\s*(\d+)\s*/\s*(\d+)\s+frames", text)
 if not match:
     raise SystemExit(f"could not parse Sample Edit region/frame state: {text!r}")
 print(" ".join(match.groups()))
@@ -14681,7 +14698,7 @@ import xml.etree.ElementTree as ET
 
 root = ET.parse(sys.argv[1]).getroot()
 pattern = re.compile(
-    r"Region\s+([0-9]+)\s*⁒\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
+    r"Region\s+([0-9]+)\s*→\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
     r"(?:\s+•\s+PLAYHEAD\s+([0-9]+))?"
 )
 for node in root.iter("node"):

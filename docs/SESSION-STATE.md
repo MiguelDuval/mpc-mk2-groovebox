@@ -1,3 +1,7 @@
+## Follow-up parser correction — 2026-11-06
+
+The exact source at SHA `350495c0729ef08f4c385c339e219ac12e1b4338` showed that both existing Sample Edit region parsers used U+2052 (`⁒`) while MainActivity emits U+2192 (`→`). The follow-up corrects both parsers and adds a scoped source guard for the two parser functions. U+2052 remains valid in other UI phrases and is not globally banned. Build #3719 / run `42233114496` is running on the pre-correction SHA and cannot validate this parser fix. SAMP-007 and SAMP-008 remain PENDING until the exact corrected SHA passes and its fresh XML/evidence is inspected.
+
 # Live checkpoint — 2026-11-06 (GitHub state independently verified)
 
 **Primary PR #23:** OPEN; `feature/mpc-one-ui-fidelity` HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d` → `fix/ui-shell-format-width-startup` base `5f562e54e2cf8235041590933232a3836d74a16a`. Latest known exact-HEAD green run remains Build #3402 / run `40528666946` (57/57 steps; APK artifact `12746190315`, visual evidence `12746712856`). PR #23 and `main` were not modified.
