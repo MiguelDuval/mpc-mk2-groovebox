@@ -4341,7 +4341,15 @@ namespace {
             || track.patterns.empty()) {
         return nullptr;
     }
-    return &track.patterns.front();
+    // Return the pattern at padIndex if it exists, otherwise first pattern.
+    // This matches MPC behavior where pads map to program slots, each of which
+    // may have its own pattern. padIndex is validated above.
+    auto patternCount = track.patterns.size();
+    auto patternIndex = static_cast<std::size_t>(padIndex);
+    if (patternIndex >= patternCount) {
+        patternIndex = 0;
+    }
+    return &track.patterns[patternIndex];
 }
 
 } // namespace
@@ -4437,6 +4445,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
         return toJString(env, "Event edit blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event note failed: invalid target");
@@ -4454,6 +4463,30 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
                const mpc::domain::MidiNoteEvent& rhs) {
                 return lhs.tick < rhs.tick;
             });
+
+    auto noteUndo = [pattern, eventIndex, prevNote]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].note = prevNote;
+        }
+    };
+    auto noteRedo = [pattern, eventIndex, note]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].note =
+                static_cast<std::uint8_t>(note);
+        }
+    };
+
+    if (!history.record(
+            "Change Event Note",
+            std::move(noteUndo),
+            std::move(noteRedo))) {
+        return toJString(env, "Event note failed: history record rejected");
+    }
+
     return toJString(env,
             "Event note " + std::to_string(prevNote)
                     + " -> " + std::to_string(note));
@@ -4473,6 +4506,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventVelocity(
         return toJString(env, "Event edit blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event velocity failed: invalid target");
@@ -4484,6 +4518,30 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventVelocity(
     }
     const auto prevVelocity = notes[eventIndex].velocity;
     notes[eventIndex].velocity = static_cast<std::uint8_t>(velocity);
+
+    auto velUndo = [pattern, eventIndex, prevVelocity]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].velocity = prevVelocity;
+        }
+    };
+    auto velRedo = [pattern, eventIndex, velocity]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].velocity =
+                static_cast<std::uint8_t>(velocity);
+        }
+    };
+
+    if (!history.record(
+            "Change Event Velocity",
+            std::move(velUndo),
+            std::move(velRedo))) {
+        return toJString(env, "Event velocity failed: history record rejected");
+    }
+
     return toJString(env,
             "Event velocity " + std::to_string(prevVelocity)
                     + " -> " + std::to_string(velocity));
@@ -4503,6 +4561,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventDuration(
         return toJString(env, "Event edit blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event duration failed: invalid target");
@@ -4519,6 +4578,30 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventDuration(
     }
     const auto prevDuration = notes[eventIndex].durationTicks;
     notes[eventIndex].durationTicks = static_cast<std::int32_t>(duration);
+
+    auto durUndo = [pattern, eventIndex, prevDuration]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].durationTicks = prevDuration;
+        }
+    };
+    auto durRedo = [pattern, eventIndex, duration]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].durationTicks =
+                static_cast<std::int32_t>(duration);
+        }
+    };
+
+    if (!history.record(
+            "Change Event Duration",
+            std::move(durUndo),
+            std::move(durRedo))) {
+        return toJString(env, "Event duration failed: history record rejected");
+    }
+
     return toJString(env,
             "Event duration " + std::to_string(prevDuration)
                     + " -> " + std::to_string(duration));
@@ -4538,6 +4621,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
         return toJString(env, "Event edit blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event tick failed: invalid target");
@@ -4560,6 +4644,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
                const mpc::domain::MidiNoteEvent& rhs) {
                 return lhs.tick < rhs.tick;
             });
+
+    auto tickUndo = [pattern, eventIndex, prevTick]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].tick = prevTick;
+            std::stable_sort(
+                    n.begin(), n.end(),
+                    [](const mpc::domain::MidiNoteEvent& lhs,
+                       const mpc::domain::MidiNoteEvent& rhs) {
+                        return lhs.tick < rhs.tick;
+                    });
+        }
+    };
+    auto tickRedo = [pattern, eventIndex, tick]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n[static_cast<std::size_t>(eventIndex)].tick =
+                static_cast<std::int32_t>(tick);
+            std::stable_sort(
+                    n.begin(), n.end(),
+                    [](const mpc::domain::MidiNoteEvent& lhs,
+                       const mpc::domain::MidiNoteEvent& rhs) {
+                        return lhs.tick < rhs.tick;
+                    });
+        }
+    };
+
+    if (!history.record(
+            "Change Event Tick",
+            std::move(tickUndo),
+            std::move(tickRedo))) {
+        return toJString(env, "Event tick failed: history record rejected");
+    }
+
     return toJString(env,
             "Event tick " + std::to_string(prevTick)
                     + " -> " + std::to_string(tick));
@@ -4582,6 +4702,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
         return toJString(env, "Event add blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event add failed: invalid target");
@@ -4600,21 +4721,53 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
             })) {
         return toJString(env, "Event add failed: same-pitch collision");
     }
-    pattern->notes.push_back({
-        static_cast<std::int32_t>(tick),
-        static_cast<std::int32_t>(duration),
-        static_cast<std::uint8_t>(note),
-        static_cast<std::uint8_t>(velocity),
-        127,
-        1,
-        0
-    });
-    std::stable_sort(
-            pattern->notes.begin(), pattern->notes.end(),
-            [](const mpc::domain::MidiNoteEvent& lhs,
-               const mpc::domain::MidiNoteEvent& rhs) {
-                return lhs.tick < rhs.tick;
-            });
+
+    auto addUndo = [pattern, tick, note]() mutable {
+        auto& notes = pattern->notes;
+        notes.erase(
+                std::remove_if(
+                        notes.begin(), notes.end(),
+                        [tick, note](const mpc::domain::MidiNoteEvent& n) {
+                            return n.tick == tick &&
+                                   n.note == static_cast<std::uint8_t>(note);
+                        }),
+                notes.end());
+    };
+    auto addRedo = [pattern, tick, note, velocity, duration]() mutable {
+        auto& notes = pattern->notes;
+        notes.erase(
+                std::remove_if(
+                        notes.begin(), notes.end(),
+                        [tick, note](const mpc::domain::MidiNoteEvent& n) {
+                            return n.tick == tick &&
+                                   n.note == static_cast<std::uint8_t>(note);
+                        }),
+                notes.end());
+        notes.push_back({
+            static_cast<std::int32_t>(tick),
+            static_cast<std::int32_t>(duration),
+            static_cast<std::uint8_t>(note),
+            static_cast<std::uint8_t>(velocity),
+            127,
+            1,
+            0
+        });
+        std::stable_sort(
+                notes.begin(), notes.end(),
+                [](const mpc::domain::MidiNoteEvent& lhs,
+                   const mpc::domain::MidiNoteEvent& rhs) {
+                    return lhs.tick < rhs.tick;
+                });
+    };
+
+    if (!history.record(
+            "Add Pattern Event",
+            std::move(addUndo),
+            std::move(addRedo))) {
+        return toJString(env, "Event add failed: history record rejected");
+    }
+
+    addRedo();
     return toJString(env,
             "Event added: note=" + std::to_string(note)
                     + " tick=" + std::to_string(tick));
@@ -4630,6 +4783,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
         return toJString(env, "Event delete blocked: stop playback first");
     }
     stopSequenceForMutation();
+    auto& history = core.editHistory();
     auto* pattern = resolveEditPattern(padIndex);
     if (pattern == nullptr) {
         return toJString(env, "Event delete failed: invalid target");
@@ -4641,7 +4795,44 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
     }
     const auto deletedNote = notes[eventIndex].note;
     const auto deletedTick = notes[eventIndex].tick;
-    notes.erase(notes.begin() + eventIndex);
+    const auto deletedVelocity = notes[eventIndex].velocity;
+    const auto deletedDuration = notes[eventIndex].durationTicks;
+
+    auto delUndo = [pattern, eventIndex, deletedNote, deletedTick,
+                     deletedVelocity, deletedDuration]() mutable {
+        auto& n = pattern->notes;
+        n.insert(n.begin() + eventIndex, {
+            static_cast<std::int32_t>(deletedTick),
+            static_cast<std::int32_t>(deletedDuration),
+            static_cast<std::uint8_t>(deletedNote),
+            static_cast<std::uint8_t>(deletedVelocity),
+            127,
+            1,
+            0
+        });
+        std::stable_sort(
+                n.begin(), n.end(),
+                [](const mpc::domain::MidiNoteEvent& lhs,
+                   const mpc::domain::MidiNoteEvent& rhs) {
+                    return lhs.tick < rhs.tick;
+                });
+    };
+    auto delRedo = [pattern, eventIndex]() mutable {
+        auto& n = pattern->notes;
+        if (eventIndex >= 0 &&
+            static_cast<std::size_t>(eventIndex) < n.size()) {
+            n.erase(n.begin() + eventIndex);
+        }
+    };
+
+    if (!history.record(
+            "Delete Pattern Event",
+            std::move(delUndo),
+            std::move(delRedo))) {
+        return toJString(env, "Event delete failed: history record rejected");
+    }
+
+    delRedo();
     return toJString(env,
             "Event deleted: note=" + std::to_string(deletedNote)
                     + " tick=" + std::to_string(deletedTick));
@@ -4658,7 +4849,6 @@ namespace {
 
 std::unique_ptr<mpc::studio::MpcStudioMk2SemanticAdapter> semanticAdapter;
 std::vector<std::array<std::int32_t, 4>> hardwareActionQueue;
-std::int32_t queuedLauncherPad = -1;
 
 mpc::studio::MpcStudioMk2SemanticAdapter& adapter() {
     if (!semanticAdapter) {
@@ -4672,8 +4862,8 @@ mpc::studio::MpcStudioMk2SemanticAdapter& adapter() {
 extern "C" {
 
 JNIEXPORT jbyteArray JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeOnMidi(
-        JNIEnv* env, jobject /* thiz */, jbyteArray data, jlong timestamp)
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeOnMidi(
+        JNIEnv* env, jclass /* clazz */, jbyteArray data, jlong timestamp)
 {
     if (env == nullptr || data == nullptr) return nullptr;
 
@@ -4701,14 +4891,20 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeOnMidi(
 
         if (event->type == mpc::studio::InputEventType::PadNote) {
             auto result = adapter().handlePad(*event);
-            if (result.consumed && result.velocity > 0) {
-                // Queue the pad trigger for the Java side to execute via nativeAudioTriggerPad
+
+            // Normal pad trigger: not consumed by a special action,
+            // not a note-repeat hold/release, and velocity > 0.
+            // Consumed actions (mute, erase, copy, locate, mode) must NOT
+            // trigger audio. Repeating events are handled by the note repeat
+            // scheduler, not by direct audio trigger here.
+            if (!result.consumed && result.velocity > 0 && !result.repeating) {
                 hardwareActionQueue.push_back({
                         static_cast<std::int32_t>(
                             mpc::studio::SemanticActionType::PadTrigger),
                         static_cast<std::int32_t>(result.targetPadIndex),
                         static_cast<std::int32_t>(result.velocity), 0});
             }
+
             if (result.action.has_value()) {
                 const auto& a = result.action.value();
                 hardwareActionQueue.push_back(
@@ -4747,8 +4943,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeOnMidi(
 }
 
 JNIEXPORT jintArray JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeConsumeHardwareAction(
-        JNIEnv* env, jobject /* thiz */)
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeHardwareAction(
+        JNIEnv* env, jclass /* clazz */)
 {
     if (env == nullptr) return nullptr;
     if (hardwareActionQueue.empty()) return nullptr;
@@ -4770,12 +4966,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeConsumeHardwareAction(
 }
 
 JNIEXPORT jint JNICALL
-Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeConsumeSequenceLauncherPad(
-        JNIEnv* /* env */, jobject /* thiz */)
+Java_com_miguelduval_mpcmk2groovebox_AndroidMidiBridge_nativeConsumeSequenceLauncherPad(
+        JNIEnv* /* env */, jclass /* clazz */)
 {
-    const auto pad = queuedLauncherPad;
-    queuedLauncherPad = -1;
-    return static_cast<jint>(pad);
+    // No producer currently queues a launcher pad; return -1 (none pending).
+    return static_cast<jint>(-1);
 }
 
 } // extern "C"

@@ -1,7 +1,7 @@
 # Live checkpoint — 2026-11-06
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Branch HEAD:** `534778b1` (local, push pending)  
+**Branch HEAD:** `453a1a90756bf3f21477605b58403eac572270b9` (local, pushed to origin)  
 **Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
 **Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
 
@@ -52,10 +52,17 @@ A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, 
   - **Java constants (MpcStudioMk2SemanticActions.java):** Added `PAD_TRIGGER=64`.
   - **C++ header (MpcStudioMk2SemanticAdapter.h):** Added `PadTrigger=64` to `SemanticActionType`.
 
-**CI status (PR #133):**
-- Build #3697 / run 41922886590 (head `c4726efb`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED.
-- Build #3698 / run 41930588812 (head `31bfd617`): steps 1-54 all SUCCESS. Step 55 emulator smoke test FAILED again.
-- **Root cause identified and fixed:** continuous 33ms waveform cursor updater on main thread blocked UiAutomator idle detection. Fix committed as `cfb834e6` but **not yet pushed to origin** (git push hangs — likely auth/network). **Next: push `cfb834e6` to origin/checkpoint/mpc-ui-reference-and-product-20261030 and re-run Android Build to verify step 55 passes.**
+## CI status (PR #133)
+
+| Build | Run | HEAD | Steps 1-54 | Step 55 (emulator smoke) |
+|---|---|---|---|---|
+| #3697 | 41922886590 | `c4726efb` | SUCCESS | FAILED (cursor 33ms polling) |
+| #3698 | 41930588812 | `31bfd617` | SUCCESS | FAILED (same root cause) |
+| #3720 | 42233435515 | `453a1a90` | FAILED (Java compile) | not reached |
+
+**Build #3720 failure root cause:** Duplicate JNI declarations in MainActivity.java (hardware bridge methods declared without `native` keyword and competing with AndroidMidiBridge declarations). Fixed by removing duplicates from MainActivity — they correctly exist only in AndroidMidiBridge.
+
+**Next:** Push all fixes to origin/checkpoint/mpc-ui-reference-and-product-20261030 and re-run Android Build #3720+ to verify Java compile passes.
 
 ## Mandatory visual-reference rule
 

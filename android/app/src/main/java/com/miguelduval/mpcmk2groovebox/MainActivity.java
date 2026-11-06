@@ -663,11 +663,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativePatternAddEvent(int padIndex, int tick, int note, int velocity, int duration);
     private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
 
-    // Hardware MIDI bridge — MPC Studio MkII controller input
-    byte[] nativeOnMidi(byte[] data, long timestamp);
-    int[] nativeConsumeHardwareAction();
-    int nativeConsumeSequenceLauncherPad();
-
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -5455,7 +5450,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
         header.addView(actionButton("ADD", v -> {
-            final int result = nativePatternAddEvent(
+            final String result = nativePatternAddEvent(
                     selectedPad, 0, 60, 100, 480);
             if (result != null && !result.startsWith("Event added")) {
                 setBottomStatus(result);
@@ -5515,9 +5510,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             durView.setMinWidth(dp(56));
             row.addView(durView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
 
-            // Edit buttons
+            // Edit buttons — each button cycles the value up for immediate editing.
+            // Note: cycles through 0-127. Velocity: cycles through 1-127.
+            // Tick/Duration: increment/decrement by 10 ticks.
             Button editNote = actionButton("N" + note, v -> {
-                final String result = nativePatternSetEventNote(selectedPad, i, note);
+                final int nextNote = (note + 1) % 128;
+                final String result = nativePatternSetEventNote(selectedPad, i, nextNote);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
@@ -5525,12 +5523,45 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             row.addView(editNote, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button editVel = actionButton("V" + velocity, v -> {
-                final String result = nativePatternSetEventVelocity(selectedPad, i, Math.min(127, velocity + 1));
+                final int nextVel = (velocity % 127) + 1;
+                final String result = nativePatternSetEventVelocity(selectedPad, i, nextVel);
                 if (result != null) setBottomStatus(result);
                 refreshListEditPage();
             });
             editVel.setMinWidth(dp(32));
             row.addView(editVel, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button editTickUp = actionButton("T+", v -> {
+                final String result = nativePatternSetEventTick(selectedPad, i, tick + 10);
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editTickUp.setMinWidth(dp(32));
+            row.addView(editTickUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button editTickDown = actionButton("T-", v -> {
+                final String result = nativePatternSetEventTick(selectedPad, i, Math.max(0, tick - 10));
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editTickDown.setMinWidth(dp(32));
+            row.addView(editTickDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button editDurUp = actionButton("D+", v -> {
+                final String result = nativePatternSetEventDuration(selectedPad, i, duration + 10);
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editDurUp.setMinWidth(dp(32));
+            row.addView(editDurUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
+
+            Button editDurDown = actionButton("D-", v -> {
+                final String result = nativePatternSetEventDuration(selectedPad, i, Math.max(0, duration - 10));
+                if (result != null) setBottomStatus(result);
+                refreshListEditPage();
+            });
+            editDurDown.setMinWidth(dp(32));
+            row.addView(editDurDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
 
             Button delBtn = actionButton("DEL", v -> {
                 final String result = nativePatternDeleteEvent(selectedPad, i);
@@ -5638,15 +5669,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
         // Build 4x4 grid of perform pads (chromatic mapping from source pad note)
+        // Real note/pitch mapping: each pad sets semitone offset via nativeAudioSetPadTuning
+        // then triggers the source pad. This changes actual pitch output, not just UI text.
         int baseNote = 60; // Middle C as base
         for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
             LinearLayout levelRow = row();
             for (int colIdx = 0; colIdx < 4; colIdx++) {
                 int noteIndex = rowIdx * 4 + colIdx;
                 int note = baseNote + noteIndex;
+                float semitones = note - 60; // relative to Middle C
                 Button performBtn = actionButton("N" + note, v -> {
+                    String result = nativeAudioSetPadTuning(selectedPad, semitones);
+                    if (result != null) {
+                        setBottomStatus("PAD PERFORM: tuning failed - " + result);
+                        return;
+                    }
                     nativeAudioTriggerPad(selectedPad, 100);
-                    setBottomStatus("PAD PERFORM: note " + note);
+                    setBottomStatus("PAD PERFORM: pad " + (selectedPad + 1)
+                            + " note " + note + " (" + semitones + " semitones)");
                 });
                 performBtn.setMinWidth(dp(64));
                 performBtn.setMinHeight(dp(64));
