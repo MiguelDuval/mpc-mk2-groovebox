@@ -534,6 +534,13 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/MpcEditHistoryTests.cpp             -o build/native-tests/mpc_edit_history_tests
           build/native-tests/mpc_edit_history_tests
 
+      - name: Compile and run List Edit tests
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/ListEditTests.cpp             src/MPC/Domain/MpcDomain.cpp             src/MPC/Domain/ListEditService.cpp             src/MPC/MpcEditHistory.cpp             -o build/native-tests/list_edit_tests
+          build/native-tests/list_edit_tests
+
       - name: Assemble debug APK
         timeout-minutes: 15
         run: gradle --no-daemon :app:assembleDebug

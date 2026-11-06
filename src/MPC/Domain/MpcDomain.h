@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -162,8 +163,47 @@ struct Track {
     bool muted = false;
     bool soloed = false;
     bool recordArmed = false;
+    // ID of the Pattern currently selected for editing/playback on this track.
+    // Empty means the first pattern in track.patterns is the implicit selection.
+    std::string selectedPatternId;
     std::vector<Pattern> patterns;
     std::vector<PatternPlacement> placements;
+
+    // Returns the pattern selected for edit, or the first pattern if none selected.
+    Pattern* selectedPattern() noexcept {
+        if (patterns.empty()) return nullptr;
+        if (!selectedPatternId.empty()) {
+            auto it = std::find_if(patterns.begin(), patterns.end(),
+                [this](const Pattern& p) { return p.id == selectedPatternId; });
+            if (it != patterns.end()) return &(*it);
+        }
+        return &patterns.front();
+    }
+
+    const Pattern* selectedPattern() const noexcept {
+        if (patterns.empty()) return nullptr;
+        if (!selectedPatternId.empty()) {
+            auto it = std::find_if(patterns.begin(), patterns.end(),
+                [this](const Pattern& p) { return p.id == selectedPatternId; });
+            if (it != patterns.end()) return &(*it);
+        }
+        return &patterns.front();
+    }
+
+    // Selects a pattern by ID for this track. Returns false if pattern not found.
+    bool selectPattern(const std::string& patternId) noexcept {
+        if (patternId.empty()) {
+            selectedPatternId.clear();
+            return true;
+        }
+        for (const auto& p : patterns) {
+            if (p.id == patternId) {
+                selectedPatternId = patternId;
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 struct Sequence {

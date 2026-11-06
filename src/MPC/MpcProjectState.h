@@ -73,6 +73,12 @@ public:
             std::size_t trackIndex,
             std::string programId);
 
+    // Pattern selection on the active track.
+    bool selectPatternOnActiveTrack(const std::string& patternId) noexcept;
+    const std::string& selectedPatternIdOnActiveTrack() const noexcept;
+    domain::Pattern* selectedPatternOnActiveTrack() noexcept;
+    const domain::Pattern* selectedPatternOnActiveTrack() const noexcept;
+
     domain::DrumProgram* findDrumProgram(
             const std::string& programId) noexcept;
     const domain::DrumProgram* findDrumProgram(
