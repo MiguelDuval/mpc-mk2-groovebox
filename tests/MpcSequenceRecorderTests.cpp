@@ -157,7 +157,8 @@ void testRejectsMalformedQueuedEvents() {
     assert(recorder.drain(state, queue) == 0);
     assert(track.patterns.front().notes.empty());
 
-    assert(queue.tryEnqueue({120, 0, 2, 90, 2}));
+    // NoteHit (2) is now a valid one-shot record event; 3 remains malformed.
+    assert(queue.tryEnqueue({120, 0, 2, 90, 3}));
     assert(queue.tryEnqueue({240, 0, 2, 0, 0}));
     assert(recorder.drain(state, queue) == 0);
     assert(track.patterns.front().notes.empty());
