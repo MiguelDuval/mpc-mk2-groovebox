@@ -14391,9 +14391,6 @@ PY
 then
   echo "ERROR: failed to produce checked v1/malformed fixtures"; exit 1
 fi
-then
-  echo "ERROR: failed to produce checked v1/malformed fixtures"; exit 1
-fi
 expected_v2_sha_ext="$(sha256sum "$PROJECT_V2_CANONICAL_HOST" | awk '{print $1}')"
 expected_v1_sha_ext="$(sha256sum "$PROJECT_V1_CANONICAL_HOST" | awk '{print $1}')"
 if [[ ! "$expected_v1_sha_ext" =~ ^[0-9a-f]{64}$ ]]; then
