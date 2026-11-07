@@ -1785,6 +1785,13 @@ std::string AudioEngine::setPadSampleRegion(
         return "Sample region change failed: invalid frame range";
     }
 
+    // Resolve the Track-owned Drum Program before stopping audio. An
+    // unassigned track must not interrupt an otherwise healthy output stream.
+    auto* drumProgram = projectState_.activeTrackDrumProgram();
+    if (drumProgram == nullptr) {
+        return "Sample region change failed: no drum program assigned to active track";
+    }
+
     // Region edits are user-facing sample edits. Apply them atomically from
     // the perspective of the running engine by rebuilding the callback
     // snapshot after the state change.
@@ -1796,10 +1803,6 @@ std::string AudioEngine::setPadSampleRegion(
         }
     }
 
-    const auto* drumProgram = projectState_.activeTrackDrumProgram();
-    if (!drumProgram) {
-        return "Sample region change failed: no drum program assigned to active track";
-    }
     auto& layerState = drumProgram->pad(padIndex).layer(layerIndex);
     const auto loop = clipSampleLoopToRegion(
             layerState.loopStartSample,
