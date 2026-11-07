@@ -53,7 +53,7 @@ Tests are tools for finding defects. They are not the product and they must not 
 - Upload the resulting APK artifact.
 - Do not run the full native test matrix, full JVM/JUnit test matrix, shell smoke preflight or Android emulator smoke test on every commit.
 - Newer fast runs may cancel older fast runs for the same branch; stale fast runs have no value once a newer source revision exists.
-- Documentation-only changes should not start Android builds unless the workflow itself changes.
+- Standalone docs-only pushes/PRs are excluded by path filters. A docs-only commit inside an already mixed product PR may still trigger a fast APK build because GitHub evaluates the PR's cumulative changed-file set; that build is intentionally cheap.
 
 ### Targeted checks — selective
 
