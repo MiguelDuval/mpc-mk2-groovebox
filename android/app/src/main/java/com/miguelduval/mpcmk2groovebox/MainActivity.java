@@ -18547,7 +18547,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     hardwareHalfLevelActive = false;
                 }
                 syncHardwareLevelModeLeds();
-                if (value0 != 0 && value1 >= 0) {
+                if (value0 != 0 && value1 >= 0 && value2 == 1
+                        && sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE) {
+                    selectedPad = Math.max(0, Math.min(15, value1));
+                    navigationController.setSelectedPad(selectedPad);
+                    if ("LEVELS_16".equals(currentPage)) {
+                        showLevels16Page();
+                    }
+                    setBottomStatus(
+                            "16 LEVEL • TUNE • ORIGINAL PAD " + (selectedPad + 1));
+                } else if (value0 != 0 && value1 >= 0) {
                     setBottomStatus(
                             "16 LEVEL • "
                                     + (sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE

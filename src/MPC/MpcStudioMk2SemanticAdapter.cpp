@@ -253,6 +253,16 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
             r.action = make(Type::SixteenLevelState, 0, -1);
             return rememberPress(r);
         }
+        if (sixteenLevelTuneMode_.load(std::memory_order_acquire)
+                && shiftHeld_) {
+            // Shift+Pad selects the Tune reference Pad, matching MPC 3.9.
+            // Capture the press as consumed so its release cannot trigger audio.
+            lastPadIndex_ = e.padIndex;
+            r.consumed = true;
+            r.action = make(Type::SixteenLevelState, 1, lastPadIndex_, 1);
+            return rememberPress(r);
+        }
+
         r.targetPadIndex = lastPadIndex_;
         if (sixteenLevelTuneMode_.load(std::memory_order_acquire)) {
             r.tuningMode = true;

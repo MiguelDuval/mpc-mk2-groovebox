@@ -42,6 +42,20 @@ int main(){
   const auto tuneOneAboveOriginal = tuneLevels.handlePad(pad(4));
   assert(tuneOneAboveOriginal.tuningMode
           && tuneOneAboveOriginal.tuningOffsetMilliSemitones == 1000);
+  static_cast<void>(tuneLevels.handleControl(btn(49)));
+  const auto originalPadSelection = tuneLevels.handlePad(pad(9));
+  assert(originalPadSelection.consumed);
+  typeOf(originalPadSelection.action, SemanticActionType::SixteenLevelState);
+  assert(originalPadSelection.action->value0 == 1
+          && originalPadSelection.action->value1 == 9
+          && originalPadSelection.action->value2 == 1);
+  const auto originalPadSelectionRelease = tuneLevels.handlePad(padOff(9));
+  assert(originalPadSelectionRelease.consumed);
+  static_cast<void>(tuneLevels.handleControl(btn(49, false)));
+  const auto tuneRelativeToNewOriginal = tuneLevels.handlePad(pad(3));
+  assert(tuneRelativeToNewOriginal.targetPadIndex == 9);
+  assert(tuneRelativeToNewOriginal.tuningMode
+          && tuneRelativeToNewOriginal.tuningOffsetMilliSemitones == 0);
   tuneLevels.setSixteenLevelTuneMode(false);
   const auto tuneHighestRelease = tuneLevels.handlePad(padOff(15));
   assert(!tuneHighestRelease.consumed && tuneHighestRelease.targetPadIndex == 4);
