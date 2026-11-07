@@ -13,6 +13,10 @@ struct AudioTriggerEvent final {
     std::uint8_t padIndex = 0;
     std::uint8_t velocity = 0;
     std::int32_t offsetFrames = 0;
+    // Optional transient tuning override for performance modes (e.g. Pad Perform).
+    // INT32_MIN means "no override — use the pad's persistent tuning".
+    std::int32_t tuningOverrideMilliSemitones =
+            std::numeric_limits<std::int32_t>::min();
 };
 
 // This queue carries note-on events; velocity-zero note-off messages are not

@@ -272,7 +272,9 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
     }
 
     activeTrackIndex_ = trackIndex;
-    const auto& track = activeSequence().tracks[trackIndex];
+    auto& track = activeSequence().tracks[trackIndex];
+    // When selecting a track, reset pattern selection to the first pattern.
+    track.selectedPatternId.clear();
     if (track.kind == domain::TrackKind::Drum) {
         const auto index = activeProgramIndexForTrack(trackIndex);
         if (index < project_.drumPrograms.size()) {
@@ -313,6 +315,26 @@ bool MpcProjectState::setTrackProgram(
     return true;
 }
 
+bool MpcProjectState::selectPatternOnActiveTrack(
+        const std::string& patternId) noexcept {
+    auto& track = activeSequence().tracks[activeTrackIndex_];
+    return track.selectPattern(patternId);
+}
+
+const std::string& MpcProjectState::selectedPatternIdOnActiveTrack()
+        const noexcept {
+    return activeSequence().tracks[activeTrackIndex_].selectedPatternId;
+}
+
+domain::Pattern* MpcProjectState::selectedPatternOnActiveTrack() noexcept {
+    return activeSequence().tracks[activeTrackIndex_].selectedPattern();
+}
+
+const domain::Pattern* MpcProjectState::selectedPatternOnActiveTrack()
+        const noexcept {
+    return activeSequence().tracks[activeTrackIndex_].selectedPattern();
+}
+
 domain::DrumProgram* MpcProjectState::findDrumProgram(
         const std::string& programId) noexcept {
     for (auto& program : project_.drumPrograms) {
@@ -350,6 +372,22 @@ std::size_t MpcProjectState::activeProgramIndexForTrack(
         }
     }
     return project_.drumPrograms.size();
+}
+
+domain::DrumProgram* MpcProjectState::activeTrackDrumProgram() noexcept {
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) {
+        return &project_.drumPrograms[programIndex];
+    }
+    return nullptr;
+}
+
+const domain::DrumProgram* MpcProjectState::activeTrackDrumProgram() const noexcept {
+    const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
+    if (programIndex < project_.drumPrograms.size()) {
+        return &project_.drumPrograms[programIndex];
+    }
+    return nullptr;
 }
 
 bool MpcProjectState::selectNextSequence() noexcept {

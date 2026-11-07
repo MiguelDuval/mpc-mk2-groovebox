@@ -50,7 +50,8 @@ mojibake_patterns = {
     '\u0432\u0402\u201d': '\u2014',   # \xd0\xb2\xd0\x82\xe2\x80\x9d -> \xe2\x80\x94 (EM DASH)
     '\u0432\u0402\u201c': '\u2013',   # \xd0\xb2\xd0\x82\xe2\x80\x9c -> \xe2\x80\x93 (EN DASH)
     '\u0432\u0402\u00a6': '\u2026',   # вЂ¢ -> … (ELLIPSIS)
-    '\\u0432\\u0402\\u0092': '\\u2192',   # в†' -> → (RIGHTWARDS ARROW)\n}
+    '\\u0432\\u0402\\u0092': '\\u2192',   # escaped right-arrow mojibake marker
+}
 lines = text.split('\n')
 found = False
 for i, line in enumerate(lines, 1):
@@ -64,7 +65,24 @@ for i, line in enumerate(lines, 1):
 if found:
     sys.exit(1)
 
-print(f"Encoding guard passed: {path} is valid UTF-8 without BOM and free of source-contract mojibake")
+# The Sample Edit UI emits U+2192 in "Region start → end". Check both
+# existing parsers explicitly; U+2052 is used elsewhere as a UI separator,
+# so this is deliberately scoped to the two parser functions.
+for function_name in ("wait_for_sample_edit_region_state() {", "read_samp_cursor_region_state() {"):
+    start = text.find(function_name)
+    if start < 0:
+        print(f"ERROR: {path} is missing {function_name}", file=sys.stderr)
+        sys.exit(1)
+    end = text.find("\n}", start)
+    if end < 0:
+        print(f"ERROR: {path} has an unterminated {function_name}", file=sys.stderr)
+        sys.exit(1)
+    parser_body = text[start:end]
+    if "\u2192" not in parser_body or "\u2052" in parser_body:
+        print(f"ERROR: {path} {function_name} must parse the exact U+2192 Sample region label", file=sys.stderr)
+        sys.exit(1)
+
+print(f"Encoding guard passed: {path} is valid UTF-8 without BOM and source-contract parsers match the Sample UI")
 PY_ENCODING_GUARD
 if [ $? -ne 0 ]; then exit 1; fi
 
@@ -13372,7 +13390,14 @@ PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
 
 project_marker_count() {
   local marker="$1" timeout_seconds="${2:-5}" logs
-  logs="$(adb_bounded "$timeout_seconds" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  # Use a fixed adb timeout (5s) for logcat -d; the timeout_seconds parameter
+  # is the remaining wait time for the polling loop, not the adb command timeout.
+  # Passing a short remaining time to adb_bounded causes logcat to be killed
+  # before it can complete on slow CI runners, missing the marker.
+  # Bound the logcat read by entry count. A full-buffer dump can outlive the
+  # fixed ADB timeout late in a long smoke run and omit the newest marker.
+  # Keep the marker baseline and freshness comparison below unchanged.
+  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   grep -F -c -- "$marker" <<<"$logs" || true
 }
 
@@ -13492,8 +13517,52 @@ wait_for_new_project_marker() {
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 3 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
+  adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
+}
+
+# Reuse a View tree that was freshly captured and validated by the immediately
+# preceding navigation helper. Requiring another pre-draw event without any UI
+# transition is not a new acceptance check; it is a race on an unchanged page.
+reuse_current_project_view_tree() {
+  local expected_page="$1" target_xml="$2"
+  if [[ ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
+    echo "ERROR: no validated current View tree to reuse for page $expected_page"; return 1
+  fi
+  if ! python3 - "$PROJECT_CURRENT_APP_XML" "$expected_page" <<'PY_REUSE_PROJECT_VIEW_TREE'
+import sys
+import xml.etree.ElementTree as ET
+source, expected_page = sys.argv[1], sys.argv[2]
+root = ET.parse(source).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree":
+    raise SystemExit("current snapshot is not an app-owned Android View tree")
+if root.attrib.get("page") != expected_page:
+    raise SystemExit(
+        f"current snapshot page mismatch: expected {expected_page}, got {root.attrib.get('page')}")
+try:
+    generated = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("current snapshot has no valid generation timestamp")
+if generated <= 0 or not list(root.iter("node")):
+    raise SystemExit("current snapshot is empty or has an invalid generation timestamp")
+PY_REUSE_PROJECT_VIEW_TREE
+  then
+    echo "ERROR: current View tree is not valid for reuse on page $expected_page"; return 1
+  fi
+  # Some callers request evidence at the exact path that was just
+  # captured. Treat that as an already-preserved snapshot instead of asking
+  # cp to copy a file onto itself (which correctly exits non-zero).
+  if [[ "$PROJECT_CURRENT_APP_XML" == "$target_xml" ]]; then
+    echo "Reused validated $expected_page View tree at its existing evidence path."
+    return 0
+  fi
+  if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
+    echo "ERROR: could not preserve current $expected_page View-tree evidence"; return 1
+  fi
+  if ! cmp -s -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
+    echo "ERROR: preserved $expected_page View tree differs from validated snapshot"; return 1
+  fi
+  echo "Reused exact validated $expected_page View tree without requesting a duplicate redraw."
 }
 
 project_shell_geometry() {
@@ -13735,8 +13804,13 @@ if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
 fi
 if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: Project route did not publish fresh Android View-tree XML"; exit 1
+# tap_mpc_menu_tile already captures and validates a fresh PROJECT hierarchy,
+# including its page provenance, generation timestamp and enabled Open/Save
+# controls. Reuse that exact immutable snapshot for route evidence: asking for
+# a second "fresh" pre-draw marker without changing the UI is a race and can
+# only time out on an otherwise stable page.
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: validated Project route View-tree snapshot could not be preserved"; exit 1
 fi
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
@@ -13796,7 +13870,7 @@ if ! tap_mpc_menu_tile 0 0; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: Main View tree before mutation missing"; exit 1; fi
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: validated Main View tree before mutation missing"; exit 1; fi
 if ! tap_main_new_track; then exit 1; fi
 sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
@@ -13805,7 +13879,7 @@ if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: mutated Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: validated mutated Project View tree missing"; exit 1; fi
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
@@ -13863,7 +13937,7 @@ if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: reopened Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: validated reopened Project View tree missing"; exit 1; fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
 echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
@@ -14195,7 +14269,7 @@ if [[ "$project_doc_a_open_sha" != "$PROJECT_DOC_A_SHA" ]] \
 fi
 if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-a-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
 
 # B must separately reopen as its newer three-Track snapshot. Restart acceptance
 # below deliberately reopens A and retains the A digest assertion.
@@ -14211,7 +14285,7 @@ if [[ "$project_doc_b_open_sha" != "$project_doc_b_sha" ]] \
 fi
 if ! show_project_route_extended "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-b-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
 echo "Two-document isolation passed: A SHA=$project_doc_a_open_sha retains TRACKS=2; B SHA=$project_doc_b_open_sha retains TRACKS=3."
 
 
@@ -14247,7 +14321,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_MAIN_PNG" 10; then
   echo "ERROR: could not capture post-restart Main screenshot"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: restart Main View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: validated restart Main View tree missing"; exit 1; fi
 show_project_route_extended
 open_project_document "Untitled.mpcproj"
 if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
@@ -14267,7 +14341,7 @@ show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: restart Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: validated restart Project View tree missing"; exit 1; fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
 save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
@@ -14408,7 +14482,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML" 30; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
 
 # SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
@@ -14694,6 +14768,34 @@ raise SystemExit("Sample Edit region/cursor text missing from accessibility hier
 PY
 }
 
+read_samp_cursor_snapshot_uptime() {
+  python3 - "$1" <<'PY_SAMP_CURSOR_UPTIME'
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != "SAMPLE":
+    raise SystemExit("SAMP-007 snapshot provenance/page mismatch")
+try:
+    uptime = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("SAMP-007 snapshot has no valid uptime")
+if uptime <= 0:
+    raise SystemExit("SAMP-007 snapshot uptime is not positive")
+print(uptime)
+PY_SAMP_CURSOR_UPTIME
+}
+
+assert_samp_cursor_snapshot_fresh() {
+  local path="$1" previous_uptime="$2" action="$3" current_uptime
+  current_uptime="$(read_samp_cursor_snapshot_uptime "$path")" || return 1
+  if (( current_uptime <= previous_uptime )); then
+    echo "ERROR: $action reused a stale Sample View tree: uptime=$current_uptime previous=$previous_uptime"
+    return 1
+  fi
+  echo "$current_uptime"
+}
+
 samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_BEFORE_XML")" || { echo "ERROR: initial region state could not be read"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
 if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
@@ -14701,49 +14803,48 @@ if (( samp_cursor_start != 0 || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL ||
   echo "Expected=0 $SAMP_CURSOR_EXPECTED_TOTAL $SAMP_CURSOR_EXPECTED_TOTAL -1; actual=$samp_cursor_state"; exit 1
 fi
 
+SAMP_CURSOR_LAST_UPTIME="$(read_samp_cursor_snapshot_uptime "$SAMP_CURSOR_BEFORE_XML")" || { echo "ERROR: could not read Sample Edit baseline snapshot uptime"; exit 1; }
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_BEFORE_XML" "S +1K"; then
   echo "ERROR: Start +1K real-touch control was not actionable"; exit 1
 fi
-samp_cursor_start_changed=0
-for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe Start +1K"; exit 1; fi
-  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
-  if [[ -n "$samp_cursor_state" ]]; then
-    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
-    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
-      samp_cursor_start_changed=1; break
-    fi
-  fi
-  sleep 0.2
-done
-if [[ "$samp_cursor_start_changed" != "1" ]]; then echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then
+  echo "ERROR: could not capture a fresh Sample View tree after Start +1K"; exit 1
+fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_REGION_XML" "$SAMP_CURSOR_LAST_UPTIME" "Start +1K")" || exit 1
+samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML")" || { echo "ERROR: Start +1K region state is unavailable"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: Start +1K failed to change only the region start; state=$samp_cursor_state"; exit 1
+fi
 
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "E −1K"; then
   echo "ERROR: End −1K real-touch control was not actionable"; exit 1
 fi
-samp_cursor_region_changed=0
-for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not observe End −1K"; exit 1; fi
-  samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML" 2>/dev/null || true)"
-  if [[ -n "$samp_cursor_state" ]]; then
-    read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
-    if (( samp_cursor_start == SAMP_CURSOR_EXPECTED_START && samp_cursor_end == SAMP_CURSOR_EXPECTED_END && samp_cursor_total == SAMP_CURSOR_EXPECTED_TOTAL && samp_cursor_frame == -1 )); then
-      samp_cursor_region_changed=1; break
-    fi
-  fi
-  sleep 0.2
-done
-if [[ "$samp_cursor_region_changed" != "1" ]]; then echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then
+  echo "ERROR: could not capture a fresh Sample View tree after End −1K"; exit 1
+fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_REGION_XML" "$SAMP_CURSOR_LAST_UPTIME" "End −1K")" || exit 1
+samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_REGION_XML")" || { echo "ERROR: End −1K region state is unavailable"; exit 1; }
+read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
+if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
+  echo "ERROR: End −1K failed to change only the region end; state=$samp_cursor_state"; exit 1
+fi
 if ! capture_ui_screenshot "$SAMP_CURSOR_REGION_PNG" 10; then echo "ERROR: could not capture adjusted-region screenshot"; exit 1; fi
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_REGION_XML" 10; then echo "ERROR: could not capture adjusted-region hierarchy"; exit 1; fi
 
+snapshot_project_view_tree_marker_baselines
 if ! tap_ui_text "$SAMP_CURSOR_REGION_XML" "PLAY"; then echo "ERROR: Sample Edit PLAY button was not actionable"; exit 1; fi
 samp_cursor_seen=0
 samp_cursor_progressed=0
 samp_cursor_first=-1
 samp_cursor_last=-1
 for attempt in {1..10}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_CHECK_XML" 10; then echo "ERROR: could not capture live playback cursor"; exit 1; fi
+  if (( attempt > 1 )); then snapshot_project_view_tree_marker_baselines; fi
+  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_CHECK_XML" 2; then
+    echo "ERROR: no fresh Sample View tree while observing live playback cursor"; exit 1
+  fi
+  SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_LAST_UPTIME" "playback cursor")" || exit 1
   samp_cursor_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_CHECK_XML" 2>/dev/null || true)"
   if [[ -n "$samp_cursor_state" ]]; then
     read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_state"
@@ -14755,7 +14856,7 @@ for attempt in {1..10}; do
       if (( samp_cursor_first < 0 )); then
         samp_cursor_first=$samp_cursor_frame
         if ! capture_ui_screenshot "$SAMP_CURSOR_DURING_PNG" 10; then echo "ERROR: could not capture active playhead screenshot"; exit 1; fi
-        if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_DURING_XML" 10; then echo "ERROR: could not capture active playhead hierarchy"; exit 1; fi
+        if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_DURING_XML"; then echo "ERROR: could not preserve active playhead hierarchy"; exit 1; fi
       elif (( samp_cursor_frame > samp_cursor_last )); then
         samp_cursor_progressed=1
         if ! cp "$SAMP_CURSOR_CHECK_XML" "$SAMP_CURSOR_PROGRESS_XML"; then echo "ERROR: could not preserve progressed cursor hierarchy"; exit 1; fi
@@ -14764,7 +14865,6 @@ for attempt in {1..10}; do
       if (( samp_cursor_frame > samp_cursor_last )); then samp_cursor_last=$samp_cursor_frame; fi
     fi
   fi
-  sleep 0.15
 done
 if [[ "$samp_cursor_seen" != "1" || "$samp_cursor_progressed" != "1" ]]; then
   echo "ERROR: native cursor was not observed and progressing inside the edited region"
@@ -14776,9 +14876,12 @@ fi
 echo "SAMP-007 region trim and native playback cursor passed: $samp_cursor_first -> $samp_cursor_last inside $SAMP_CURSOR_EXPECTED_START..$SAMP_CURSOR_EXPECTED_END."
 
 # Allow the one-shot preview to finish; the cursor must return to idle but the
-# selected region boundaries must remain unchanged.
+# selected region boundaries must remain unchanged. Baseline the marker before
+# waiting so the final XML must come from the actual transition back to idle.
+snapshot_project_view_tree_marker_baselines
 sleep 11
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture stopped playback state"; exit 1; fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture a fresh stopped playback state"; exit 1; fi
+SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_STOPPED_XML" "$SAMP_CURSOR_LAST_UPTIME" "stopped playback")" || exit 1
 samp_cursor_stopped_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || { echo "ERROR: stopped region state is unavailable"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_stopped_state"
 if (( samp_cursor_start != SAMP_CURSOR_EXPECTED_START || samp_cursor_end != SAMP_CURSOR_EXPECTED_END || samp_cursor_total != SAMP_CURSOR_EXPECTED_TOTAL || samp_cursor_frame != -1 )); then
@@ -14979,8 +15082,8 @@ PROJECT_CURRENT_APP_XML="$PROJECT_EXT_V1_XML"
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu from the measured v1-loaded Android View tree"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MENU" "$PROJECT_NEW_MENU_APP_XML"; then
-  echo "ERROR: real Menu View tree unavailable for New Project acceptance"; exit 1
+if ! reuse_current_project_view_tree "MENU" "$PROJECT_NEW_MENU_APP_XML"; then
+  echo "ERROR: validated Menu View tree unavailable for New Project acceptance"; exit 1
 fi
 if ! tap_visible_description_early "$PROJECT_NEW_MENU_APP_XML" "MPC Menu New Project"; then
   echo "ERROR: real New Project Function Bar target is missing, disabled, or has invalid bounds"; exit 1
@@ -15046,8 +15149,8 @@ PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_H
 if ! tap_mpc_menu_tile 3 3; then
   echo "ERROR: could not inspect new Project's unlinked status"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
-  echo "ERROR: new Project View tree unavailable"; exit 1
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
+  echo "ERROR: validated new Project View tree unavailable"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_NEW_PROJECT_XML"
 if ! grep -Fq -- "MPC Project current name Untitled" "$PROJECT_NEW_PROJECT_XML" \
@@ -15342,6 +15445,6 @@ if [[ "$project_recovery_open_sha" != "$project_recovery_source_sha" ]] || ! gre
 fi
 if ! show_project_route_extended; then exit 1; fi
 if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."
 

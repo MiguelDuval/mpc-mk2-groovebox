@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -125,6 +126,11 @@ struct MidiNoteEvent {
     std::uint8_t ratchet = 1;
     // Signed microtiming offset from the quantized step, in project ticks.
     std::int32_t nudgeTicks = 0;
+    // Stable unique identity for this event within its Pattern.
+    // Assigned at creation time; survives sorting and field modifications.
+    // Zero means unassigned (legacy/deserialized events).
+    // Runtime-only: not persisted. IDs are assigned on load by ensureEventId().
+    std::uint32_t eventId = 0;
 };
 
 struct Pattern {
@@ -132,6 +138,9 @@ struct Pattern {
     std::string name;
     std::int32_t lengthTicks = 3840;
     std::vector<MidiNoteEvent> notes;
+    // Monotonically increasing counter for assigning stable event IDs.
+    // Runtime-only: not persisted. Reset on load; IDs assigned by ensureEventId().
+    std::uint32_t nextEventId = 1;
 };
 
 struct PatternPlacement {
@@ -162,8 +171,47 @@ struct Track {
     bool muted = false;
     bool soloed = false;
     bool recordArmed = false;
+    // ID of the Pattern currently selected for editing/playback on this track.
+    // Empty means the first pattern in track.patterns is the implicit selection.
+    std::string selectedPatternId;
     std::vector<Pattern> patterns;
     std::vector<PatternPlacement> placements;
+
+    // Returns the pattern selected for edit, or the first pattern if none selected.
+    Pattern* selectedPattern() noexcept {
+        if (patterns.empty()) return nullptr;
+        if (!selectedPatternId.empty()) {
+            auto it = std::find_if(patterns.begin(), patterns.end(),
+                [this](const Pattern& p) { return p.id == selectedPatternId; });
+            if (it != patterns.end()) return &(*it);
+        }
+        return &patterns.front();
+    }
+
+    const Pattern* selectedPattern() const noexcept {
+        if (patterns.empty()) return nullptr;
+        if (!selectedPatternId.empty()) {
+            auto it = std::find_if(patterns.begin(), patterns.end(),
+                [this](const Pattern& p) { return p.id == selectedPatternId; });
+            if (it != patterns.end()) return &(*it);
+        }
+        return &patterns.front();
+    }
+
+    // Selects a pattern by ID for this track. Returns false if pattern not found.
+    bool selectPattern(const std::string& patternId) noexcept {
+        if (patternId.empty()) {
+            selectedPatternId.clear();
+            return true;
+        }
+        for (const auto& p : patterns) {
+            if (p.id == patternId) {
+                selectedPatternId = patternId;
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 struct Sequence {

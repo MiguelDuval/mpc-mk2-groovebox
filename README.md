@@ -16,7 +16,7 @@ The Android device is the visual/compute surface. The MPC Studio MkII is the pri
 - Ableton Link 4.0 — network tempo/transport synchronization.
 - Android MIDI service — USB/BLE/virtual MIDI transport.
 
-## Current development branches
+## Reference branches (historical; verify the active branch in GitHub before working)
 
 - main — stable reference.
 - foundation/mpc-studio-mk2 — repository architecture/bootstrap.
@@ -72,6 +72,13 @@ https://github.com/Ableton/link
 MPC Studio MkII protocol:
 https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts
 
+MPC firmware reverse-engineering integration:
+[docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md)
+
+Public firmware research sources:
+https://github.com/TheKikGen/MPC-LiveXplore
+https://github.com/DeathCamel58/denon-reverse-engineering
+
 MPC Studio MkII practical mapping:
 https://github.com/gstepniewski/MPC-Studio-Mk2-Ableton-Midi-Remote-Script
 
@@ -80,6 +87,19 @@ https://github.com/kurtjcu/MPC-project-file-definitions
 
 Official MPC standalone UX reference:
 https://cdn.inmusicbrands.com/Software/15JM26PSBC/MPC%20Standalone%20OS%20-%20User%20Guide%20-%20v3.9.pdf
+
+## Build, CI and APK delivery
+
+This repository is hosted on **GitHub**. **GitHub Actions is the only authoritative CI/CD and APK delivery system** for this project.
+
+- Workflow: [Android Build](.github/workflows/android-build.yml).
+- It runs for pull requests and pushes to the configured `main`, `foundation/**`, `work/**`, `feature/**` and `checkpoint/**` branches.
+- Workflow concurrency deliberately uses `cancel-in-progress: false` so a newer push does not cancel an in-progress acceptance run.
+- The expected APK artifact is `app-debug.apk`; the visual acceptance artifact is `mpc-ui-visual-evidence`.
+- An APK uploaded by a failed/incomplete workflow is not an accepted release. Require a successful full run on the exact commit SHA, including emulator smoke and visual evidence.
+- Always record the GitHub Actions run URL/ID, exact tested SHA, artifact ID/name, and the SHA-256 of the APK file itself after inspecting the downloaded artifact. GitHub's digest for the ZIP artifact is not the APK's own checksum.
+
+Do not treat a local build as the final APK delivery and do not create a parallel CI/CD pipeline without explicit authorization.
 
 ## Agent instructions
 

@@ -247,7 +247,7 @@ Before changing a physical control, read the operating protocol and safe-change 
 
 ## 10. Bounded implementation and physical-validation queue
 
-This is a controller-mapping queue, not a replacement for the overall roadmap's current Project persistence priority.
+This is the primary controller-mapping and product-execution queue. Project persistence remains a necessary integrity gate, but it is subordinate to the physical MkII P0 workflow except where a persistence defect prevents reliable controller operation or risks user data. Standalone touchscreen-only operation is secondary; every user-visible workflow should have a documented MkII entry path and state feedback.
 
 ### P0 — foundational physical operation
 1. Verify Android USB permission, device/port enumeration and opening input/output ports on the real phone; record exact port names.

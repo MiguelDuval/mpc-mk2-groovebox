@@ -23,6 +23,7 @@ add_library(mpcgroovebox SHARED
     src/MPC/MpcStudioMk2SemanticAdapter.cpp
     src/MPC/Sequencer/MpcNoteRepeatScheduler.cpp
     src/MPC/Domain/MpcDomain.cpp
+    src/MPC/Domain/ListEditService.cpp
     src/MPC/MpcProjectState.cpp
     src/MPC/MpcProjectPersistence.cpp
     src/MPC/MpcCore.cpp

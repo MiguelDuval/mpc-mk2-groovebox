@@ -73,6 +73,12 @@ public:
             std::size_t trackIndex,
             std::string programId);
 
+    // Pattern selection on the active track.
+    bool selectPatternOnActiveTrack(const std::string& patternId) noexcept;
+    const std::string& selectedPatternIdOnActiveTrack() const noexcept;
+    domain::Pattern* selectedPatternOnActiveTrack() noexcept;
+    const domain::Pattern* selectedPatternOnActiveTrack() const noexcept;
+
     domain::DrumProgram* findDrumProgram(
             const std::string& programId) noexcept;
     const domain::DrumProgram* findDrumProgram(
@@ -80,6 +86,10 @@ public:
 
     std::size_t activeProgramIndexForTrack(
             std::size_t trackIndex) const noexcept;
+
+    // Returns the DrumProgram assigned to the active track, or nullptr if none assigned.
+    domain::DrumProgram* activeTrackDrumProgram() noexcept;
+    const domain::DrumProgram* activeTrackDrumProgram() const noexcept;
 
     bool setSequenceTempo(double tempoBpm) noexcept;
     bool setSequenceBars(std::int32_t bars) noexcept;
