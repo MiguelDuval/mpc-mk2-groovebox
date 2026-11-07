@@ -288,7 +288,6 @@ int main() {
     // ---- Test 11: Multiple Tracks ----
     {
         Sequence seq = makeSequence();
-        auto& trackA = seq.tracks[0];
 
         Track trackB;
         trackB.id = "track-2";
@@ -308,7 +307,7 @@ int main() {
         auto result = ListEditService::addEvent(
                 seq.tracks[1].patterns[0], history, 0, 480, 36, 120);
         assert(result.success);
-        assert(trackA.patterns[0].notes.empty());
+        assert(seq.tracks[0].patterns[0].notes.empty());
         assert(seq.tracks[1].patterns[0].notes.size() == 1);
     }
 
