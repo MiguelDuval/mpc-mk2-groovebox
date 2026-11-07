@@ -13736,7 +13736,10 @@ if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
 fi
 if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+# The first Project pre-draw can arrive after the ordinary 10s UI settle window.
+# Build #3792 recorded the valid fresh marker 10.7s after PROJECT_RENDER_COMPLETE;
+# keep provenance/page assertions strict while giving this heavy first route 20s.
+if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" 20; then
   echo "ERROR: Project route did not publish fresh Android View-tree XML"; exit 1
 fi
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
