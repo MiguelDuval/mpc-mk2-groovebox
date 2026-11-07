@@ -3,7 +3,9 @@
 #include "MPC/Domain/MpcDomain.h"
 #include "MPC/MpcEditHistory.h"
 
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 

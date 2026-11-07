@@ -5,9 +5,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 using mpc::domain::ListEditService;
@@ -19,34 +22,34 @@ using mpc::MpcEditHistory;
 static Track makeDrumTrack() {
     Track track;
     track.id = "track-drum";
- track.name = "DRUMS"
- track.type = mpc::domain::ProgramType::Drum;
- track.kind = mpc::domain::TrackKind::Drum;
- track.programId = "drum-program-1"
+    track.name = "DRUMS";
+    track.type = mpc::domain::ProgramType::Drum;
+    track.kind = mpc::domain::TrackKind::Drum;
+    track.programId = "drum-program-1";
 
- Pattern pattern;
- pattern.id = "pattern-01"
- pattern.name = "Pattern 01"
- pattern.lengthTicks = 1920;
+    Pattern pattern;
+    pattern.id = "pattern-01";
+    pattern.name = "Pattern 01";
+    pattern.lengthTicks = 1920;
 
- track.patterns.push_back(pattern);
- return track;
+    track.patterns.push_back(pattern);
+    return track;
 }
 
 static Sequence makeSequence() {
     Sequence sequence;
     sequence.id = "sequence-01";
- sequence.name = "Sequence 01"
- sequence.tempoBpm = 120.0;
- sequence.lengthTicks = 3840;
- sequence.loopEnabled = true;
- sequence.loopStartTicks = 0;
- sequence.loopEndTicks = 3840;
- sequence.quantizeGridTicks = 240;
- sequence.swingPercent = 0;
+    sequence.name = "Sequence 01";
+    sequence.tempoBpm = 120.0;
+    sequence.lengthTicks = 3840;
+    sequence.loopEnabled = true;
+    sequence.loopStartTicks = 0;
+    sequence.loopEndTicks = 3840;
+    sequence.quantizeGridTicks = 240;
+    sequence.swingPercent = 0;
 
- sequence.tracks.push_back(makeDrumTrack());
- return sequence;
+    sequence.tracks.push_back(makeDrumTrack());
+    return sequence;
 }
 
 static bool notesEqual(
@@ -265,22 +268,22 @@ int main() {
 
         Pattern patternB;
         patternB.id = "pattern-02";
- patternB.name = \Pattern 02;
- patternB.lengthTicks = 1920;
- track.patterns.push_back(patternB);
+        patternB.name = "Pattern 02";
+        patternB.lengthTicks = 1920;
+        track.patterns.push_back(patternB);
 
- assert(track.selectPattern(\pattern-02\));
- auto* selected = track.selectedPattern();
- assert(selected != nullptr);
- assert(selected->id == \pattern-02\);
+        assert(track.selectPattern("pattern-02"));
+        auto* selected = track.selectedPattern();
+        assert(selected != nullptr);
+        assert(selected->id == "pattern-02");
 
- MpcEditHistory history;
- auto result = ListEditService::addEvent(
- *selected, history, 0, 480, 60, 100);
- assert(result.success);
- assert(selected->notes.size() == 1);
- assert(track.patterns[0].notes.empty());
- }
+        MpcEditHistory history;
+        auto result = ListEditService::addEvent(
+                *selected, history, 0, 480, 60, 100);
+        assert(result.success);
+        assert(selected->notes.size() == 1);
+        assert(track.patterns[0].notes.empty());
+    }
 
     // ---- Test 11: Multiple Tracks ----
     {
@@ -289,24 +292,25 @@ int main() {
 
         Track trackB;
         trackB.id = "track-2";
- trackB.name = \BASS;
- trackB.type = mpc::domain::ProgramType::Drum;
- trackB.kind = mpc::domain::TrackKind::Drum;
- trackB.programId = "drum-program-1"
- Pattern patternB;
- patternB.id = \pattern-bass-01;
- patternB.name = \Bass Pattern 01;
- patternB.lengthTicks = 1920;
- trackB.patterns.push_back(patternB);
- seq.tracks.push_back(std::move(trackB));
+        trackB.name = "BASS";
+        trackB.type = mpc::domain::ProgramType::Drum;
+        trackB.kind = mpc::domain::TrackKind::Drum;
+        trackB.programId = "drum-program-2";
 
- MpcEditHistory history;
- auto result = ListEditService::addEvent(
- seq.tracks[0].patterns[0], history, 0, 480, 36, 120);
- assert(result.success);
- assert(seq.tracks[0].patterns[0].notes.size() == 1);
- assert(seq.tracks[1].patterns[0].notes.empty());
- }
+        Pattern patternB;
+        patternB.id = "pattern-bass-01";
+        patternB.name = "Bass Pattern 01";
+        patternB.lengthTicks = 1920;
+        trackB.patterns.push_back(patternB);
+        seq.tracks.push_back(std::move(trackB));
+
+        MpcEditHistory history;
+        auto result = ListEditService::addEvent(
+                seq.tracks[1].patterns[0], history, 0, 480, 36, 120);
+        assert(result.success);
+        assert(trackA.patterns[0].notes.empty());
+        assert(seq.tracks[1].patterns[0].notes.size() == 1);
+    }
 
     // ---- Test 12: Stable sorting with equal Tick ----
     {
@@ -694,31 +698,33 @@ int main() {
     {
         Sequence seq = makeSequence();
         auto& pattern = seq.tracks[0].patterns[0];
-
-        // Set nextEventId near wrap-around
         pattern.nextEventId = std::numeric_limits<std::uint32_t>::max() - 2;
 
         MpcEditHistory history;
-
-        // Add events - should handle wrap-around correctly
         auto result1 = ListEditService::addEvent(pattern, history, 0, 480, 60, 100);
         assert(result1.success);
-        assert(pattern.notes[0].eventId == std::numeric_limits<std::uint32_t>::max() - 1);
+        assert(pattern.notes[0].eventId
+                == std::numeric_limits<std::uint32_t>::max() - 2);
 
         auto result2 = ListEditService::addEvent(pattern, history, 100, 480, 64, 110);
         assert(result2.success);
-        // Should wrap to 1
-        assert(pattern.notes[1].eventId == 1);
+        assert(pattern.notes[1].eventId
+                == std::numeric_limits<std::uint32_t>::max() - 1);
 
         auto result3 = ListEditService::addEvent(pattern, history, 200, 480, 67, 120);
         assert(result3.success);
-        assert(pattern.notes[2].eventId == 2);
+        assert(pattern.notes[2].eventId
+                == std::numeric_limits<std::uint32_t>::max());
 
-        // Undo/Redo should work across wrap boundary
+        auto result4 = ListEditService::addEvent(pattern, history, 300, 480, 69, 100);
+        assert(result4.success);
+        assert(pattern.notes[3].eventId == 1);
+
         assert(history.undo());
-        assert(pattern.notes.size() == 2);
-        assert(history.redo());
         assert(pattern.notes.size() == 3);
+        assert(history.redo());
+        assert(pattern.notes.size() == 4);
+        assert(pattern.notes[3].eventId == 1);
     }
 
     // ---- Test 24: Existing event ID at UINT32_MAX ----
@@ -726,22 +732,17 @@ int main() {
         Sequence seq = makeSequence();
         auto& pattern = seq.tracks[0].patterns[0];
 
-        // Add event with ID at UINT32_MAX
         pattern.notes.push_back({0, 480, 60, 100, 127, 1, 0});
         pattern.notes[0].eventId = std::numeric_limits<std::uint32_t>::max();
-        pattern.nextEventId = std::numeric_limits<std::uint32_t>::max() + 1; // Will wrap to 0
+        pattern.nextEventId = 0; // Simulate a wrapped runtime allocator counter.
 
         MpcEditHistory history;
-
-        // Add another event - should handle the wrap correctly
         auto result = ListEditService::addEvent(pattern, history, 100, 480, 64, 90);
         assert(result.success);
-
-        // New event should get ID 1 (wrapped from 0)
         assert(pattern.notes[1].eventId == 1);
-        assert(pattern.notes[0].eventId == std::numeric_limits<std::uint32_t>::max());
+        assert(pattern.notes[0].eventId
+                == std::numeric_limits<std::uint32_t>::max());
 
-        // Undo/Redo
         assert(history.undo());
         assert(pattern.notes.size() == 1);
         assert(history.redo());
@@ -780,32 +781,31 @@ int main() {
         pattern.lengthTicks = 1000;
 
         MpcEditHistory history;
-
-        // Valid: tick + duration == lengthTicks
         auto result1 = ListEditService::addEvent(pattern, history, 500, 500, 60, 100);
         assert(result1.success);
 
-        // Invalid: tick + duration > lengthTicks
         auto result2 = ListEditService::addEvent(pattern, history, 600, 500, 64, 100);
         assert(!result2.success);
         assert(result2.error == "event exceeds pattern length");
 
- // Test setTick with boundary
- pattern.notes.clear();
- ListEditService::addEvent(pattern, history, 100, 200, 60, 100);
- assert(pattern.notes[0].tick == 100);
- assert(pattern.notes[0].durationTicks == 200);
+        pattern.notes.clear();
+        auto addResult = ListEditService::addEvent(pattern, history, 100, 200, 60, 100);
+        assert(addResult.success);
+        assert(pattern.notes[0].tick == 100);
+        assert(pattern.notes[0].durationTicks == 200);
 
- // Valid: new tick + duration <= lengthTicks
- auto result3 = ListEditService::setTick(pattern, history, 0, 800);
- assert(result3.success);
- assert(pattern.notes[0].tick == 800);
+        auto result3 = ListEditService::setTick(pattern, history, 0, 800);
+        assert(result3.success);
+        assert(pattern.notes[0].tick == 800);
 
- // Invalid: new tick + duration > lengthTicks
- auto result4 = ListEditService::setTick(pattern, history, 0, 900);
- assert(!result4.success);
- assert(result4.error == "tick out of range");
- }
+        auto result4 = ListEditService::setTick(pattern, history, 0, 900);
+        assert(!result4.success);
+        assert(result4.error == "event exceeds pattern length");
+
+        auto result5 = ListEditService::setDuration(pattern, history, 0, 201);
+        assert(!result5.success);
+        assert(result5.error == "event exceeds pattern length");
+    }
 
     // ---- Test 27: Repeated Undo/Redo after ID repair ----
     {
