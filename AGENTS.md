@@ -42,8 +42,6 @@ This gate is mandatory even for agents working from pre-existing plans, cached c
 # Project source hierarchy
 18. **Use the MPC One ↔ Studio cross-device matrix.** When mapping an MPC One action to the MPC Studio MkII, consult `docs/MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md` as well as the semantic map and protocol traceability document. It defines non-identical gestures, alternate routes, reserved actions and physical-validation gaps. Never silently equate different secondary functions or invent controls the Studio does not have.
 
-
-
 Use these documents together:
 
 - `docs/SESSION-STATE.md` — concise, update-at-milestone state checkpoint; verify against live GitHub before relying on it.
@@ -73,7 +71,6 @@ For the full rules, architecture, roadmap and acceptance criteria, read `docs/PR
 
 Follow the current, dated work queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`. Older dated blocks in that roadmap and `docs/SESSION-STATE.md` are historical context only; live PR/HEAD/Actions evidence takes precedence. Read `docs/SESSION-HISTORY-ARCHIVE.md` only when a specific regression or historical question requires it.
 
-
 ## Firmware reverse-engineering evidence gate
 
 Before using original MPC firmware findings to change MIDI routing, device identity, audio architecture, persistence, or application behavior, read [docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md).
@@ -84,3 +81,18 @@ Keep the evidence domains separate:
 - Treat static strings, settings dumps and reverse-engineered descriptions as research leads, not proof of runtime behavior. Require an exact source, confidence label and focused test before changing product behavior.
 - Do not infer Gen2 architecture from the Gen1 3.9.1 binary. The older Gen2 handoff is explicitly incomplete/inconsistent; follow the report's re-acquisition and verification checklist before using it.
 - Do not add Pure Data, SQLite, Linux autorun/preload mechanisms or proprietary firmware assets merely because they appear in an upstream research source.
+
+## GitHub repository and APK build authority
+
+This project is hosted and developed on **GitHub**. The only authoritative CI/CD system for this repository is **GitHub Actions**, using [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml).
+
+- Use GitHub branches, commits, pull requests, checks, Actions runs and Actions artifacts as the source of truth.
+- Build and publish the deliverable APK through the GitHub Actions workflow. A local Gradle build may be used for focused developer feedback, but it is not the accepted CI/release APK and must never be presented as the requested Actions artifact.
+- For every acceptance claim, record the exact repository, branch, commit SHA, PR, workflow name/run ID/URL, conclusion, relevant job and step results, and artifact IDs/names.
+- The APK is not accepted merely because the APK assembly and upload steps succeeded. The full required workflow—including native/JVM tests, emulator smoke and required visual-evidence upload—must pass on the exact reported SHA.
+- Download and inspect the APK artifact from that exact successful run. Verify the APK inside the archive and compute its own SHA-256; do not confuse GitHub's artifact-archive digest with the APK file digest.
+- Inspect the visual-evidence artifact from the same run and confirm that expected screenshots, UI hierarchies and logs are present and correspond to the same SHA.
+- A failed or incomplete workflow may still have uploaded an APK. Treat it as an intermediate diagnostic candidate, not as an accepted release.
+- Do not introduce a second hosting or CI/CD platform, duplicate build pipeline, runner configuration or external release dependency without explicit product-owner authorization.
+
+The active branch/PR can change. Read `docs/SESSION-STATE.md`, then verify every mutable value against live GitHub state before acting.
