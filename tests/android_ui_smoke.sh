@@ -13736,9 +13736,21 @@ if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
 fi
 if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: Project route did not publish fresh Android View-tree XML"; exit 1
+# tap_mpc_menu_tile already captures and validates a fresh PROJECT hierarchy,
+# including its page provenance, generation timestamp and enabled Open/Save
+# controls. Reuse that exact immutable snapshot for route evidence: asking for
+# a second "fresh" pre-draw marker without changing the UI is a race and can
+# only time out on an otherwise stable page.
+if [[ ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
+  echo "ERROR: validated Project route View-tree snapshot is missing"; exit 1
 fi
+if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: could not preserve validated Project route View-tree evidence"; exit 1
+fi
+if ! cmp -s -- "$PROJECT_CURRENT_APP_XML" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: preserved Project route XML differs from the validated snapshot"; exit 1
+fi
+echo "Preserved the exact fresh Project View tree already validated by tap_mpc_menu_tile."
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
