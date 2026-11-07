@@ -53,7 +53,8 @@ namespace detail {
         const audio::AudioTriggerEvent trigger{
             static_cast<std::uint8_t>(event.padIndex),
             event.velocity,
-            frameOffset};
+            frameOffset,
+            event.tuningOffsetMilliSemitones};
 
         if (queue.tryEnqueue(trigger)) {
             ++result.written;
@@ -87,7 +88,8 @@ namespace detail {
         const audio::AudioTriggerEvent trigger{
             static_cast<std::uint8_t>(event.padIndex),
             event.velocity,
-            *frameOffset};
+            *frameOffset,
+            event.tuningOffsetMilliSemitones};
 
         if (queue.tryEnqueue(trigger)) {
             ++result.written;

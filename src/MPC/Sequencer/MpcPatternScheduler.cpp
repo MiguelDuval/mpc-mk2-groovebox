@@ -146,6 +146,8 @@ ScheduleResult schedulePatternWindow(
             scheduled.ratchetCount = static_cast<std::uint8_t>(
                     ratchetCount(note));
             scheduled.sourceNoteIndex = noteIndex;
+            scheduled.tuningOffsetMilliSemitones =
+                    note.tuningOffsetMilliSemitones;
         }
     };
 
@@ -259,6 +261,8 @@ ScheduleResult schedulePatternWindowInRange(
             scheduled.ratchetCount = static_cast<std::uint8_t>(
                     ratchetCount(note));
             scheduled.sourceNoteIndex = noteIndex;
+            scheduled.tuningOffsetMilliSemitones =
+                    note.tuningOffsetMilliSemitones;
         }
     };
 

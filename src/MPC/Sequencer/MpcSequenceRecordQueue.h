@@ -18,6 +18,7 @@ struct SequenceRecordEvent final {
     std::uint8_t padIndex = 0;
     std::uint8_t velocity = 0;
     std::uint8_t pressed = kSequenceRecordNoteOff;
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
 
 inline constexpr std::size_t kSequenceRecordQueueCapacity = 1024;

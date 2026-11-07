@@ -12,7 +12,7 @@ int main() {
     mpc::domain::Pattern pattern;
     pattern.lengthTicks = 3840;
     pattern.notes = {
-            {0, 120, 36, 100, 127, 1},
+            {0, 120, 36, 100, 127, 1, 0, 12000},
             {960, 120, 37, 110, 127, 1},
             {1920, 120, 38, 90, 127, 1}};
 
@@ -52,6 +52,7 @@ int main() {
     assert(events[0].padIndex == 0);
     assert(events[0].velocity == 100);
     assert(events[0].offsetFrames == 0);
+    assert(events[0].tuningOffsetMilliSemitones == 12000);
 
     assert(events[1].padIndex == 1);
     assert(events[1].velocity == 110);

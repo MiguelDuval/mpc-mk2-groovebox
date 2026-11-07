@@ -1952,22 +1952,22 @@ void AudioEngine::triggerPadAtOffset(
                 0}));
 }
 
-void AudioEngine::triggerPadWithTuningOffset(
+bool AudioEngine::triggerPadWithTuningOffset(
         std::uint8_t padIndex,
         std::uint8_t velocity,
         std::int32_t tuningOffsetMilliSemitones) {
     if (padIndex >= kPadCount
             || !isValidAudioTriggerVelocity(velocity)
             || !isValidAudioTriggerTuningOffset(tuningOffsetMilliSemitones)) {
-        return;
+        return false;
     }
 
-    static_cast<void>(triggerQueue_.tryEnqueue(
+    return triggerQueue_.tryEnqueue(
             AudioTriggerEvent{
                     padIndex,
                     velocity,
                     0,
-                    tuningOffsetMilliSemitones}));
+                    tuningOffsetMilliSemitones});
 }
 
 std::string AudioEngine::openInputStream() {

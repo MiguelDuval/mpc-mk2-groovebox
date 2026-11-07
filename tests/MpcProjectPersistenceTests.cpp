@@ -23,7 +23,8 @@ bool notesEqual(
         if (a.tick != b.tick || a.durationTicks != b.durationTicks
                 || a.note != b.note || a.velocity != b.velocity
                 || a.probability != b.probability || a.ratchet != b.ratchet
-                || a.nudgeTicks != b.nudgeTicks) {
+                || a.nudgeTicks != b.nudgeTicks
+                || a.tuningOffsetMilliSemitones != b.tuningOffsetMilliSemitones) {
             return false;
         }
     }
@@ -118,8 +119,8 @@ mpc::domain::Project makeProject() {
     pattern.name = "Shared Pattern";
     pattern.lengthTicks = 1920;
     pattern.notes = {
-        MidiNoteEvent{120, 180, 36, 97, 88, 3, -11},
-        MidiNoteEvent{600, 90, 42, 111, 123, 2, 7}
+        MidiNoteEvent{120, 180, 36, 97, 88, 3, -11, 8500},
+        MidiNoteEvent{600, 90, 42, 111, 123, 2, 7, -4250}
     };
     track.patterns.push_back(pattern);
     sequence.tracks.push_back(track);
@@ -145,7 +146,7 @@ int main() {
     domain::Project source = makeProject();
     const auto baselineNotes = source.sequences[0].tracks[0].patterns[0].notes;
     const auto serialized = persistence::serializeProject(source);
-    assert(serialized.find("MPCMK2_PROJECT 2") == 0);
+    assert(serialized.find("MPCMK2_PROJECT 3") == 0);
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
@@ -285,6 +286,21 @@ int main() {
     assert(legacyNote.probability == 99);
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
+    assert(legacyNote.tuningOffsetMilliSemitones == 0);
+
+    // Version 2 adds placement counts but predates per-note pitch offsets.
+    std::string legacyV2 = legacyV1;
+    legacyV2.replace(legacyV2.find("MPCMK2_PROJECT 1"), 16, "MPCMK2_PROJECT 2");
+    const auto legacyTrack = legacyV2.find("TRACK ");
+    assert(legacyTrack != std::string::npos);
+    const auto legacyTrackEnd = legacyV2.find('\n', legacyTrack);
+    assert(legacyTrackEnd != std::string::npos);
+    legacyV2.insert(legacyTrackEnd, " 0");
+    domain::Project legacyV2Project;
+    assert(persistence::deserializeProject(legacyV2, legacyV2Project, &error));
+    assert(legacyV2Project.sequences[0].tracks[0].placements.empty());
+    assert(legacyV2Project.sequences[0].tracks[0].patterns[0]
+            .notes[0].tuningOffsetMilliSemitones == 0);
 
     // A failed parse must leave every field of the already-open Project intact,
     // not merely preserve its identity. The truncated v2 payload is deliberately
@@ -321,14 +337,14 @@ int main() {
     assert(persistence::serializeProject(invalidDurationProject, &error).empty());
     assert(!error.empty());
 
-    const std::string validNoteRecord = "NOTE 120 180 36 97 88 3 -11";
+    const std::string validNoteRecord = "NOTE 120 180 36 97 88 3 -11 8500";
     const auto noteRecordPosition = serialized.find(validNoteRecord);
     assert(noteRecordPosition != std::string::npos);
     std::string malformedNoteBytes = serialized;
     malformedNoteBytes.replace(
             noteRecordPosition,
             validNoteRecord.size(),
-            "NOTE -1 180 36 97 88 3 -11");
+            "NOTE -1 180 36 97 88 3 -11 8500");
     error.clear();
     assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
     assert(!error.empty());
@@ -338,11 +354,28 @@ int main() {
     malformedNoteBytes.replace(
             noteRecordPosition,
             validNoteRecord.size(),
-            "NOTE 120 -1 36 97 88 3 -11");
+            "NOTE 120 -1 36 97 88 3 -11 8500");
     error.clear();
     assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    malformedNoteBytes = serialized;
+    malformedNoteBytes.replace(
+            noteRecordPosition,
+            validNoteRecord.size(),
+            "NOTE 120 180 36 97 88 3 -11 48001");
+    error.clear();
+    assert(!persistence::deserializeProject(malformedNoteBytes, loaded, &error));
+    assert(!error.empty());
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    domain::Project invalidTuningOffset = source;
+    invalidTuningOffset.sequences[0].tracks[0].patterns[0]
+            .notes[0].tuningOffsetMilliSemitones = 48001;
+    error.clear();
+    assert(persistence::serializeProject(invalidTuningOffset, &error).empty());
+    assert(!error.empty());
 
     // Keep serialization symmetric with the decoder: malformed numeric fields
     // that the reader rejects must never be written into an unreadable project.

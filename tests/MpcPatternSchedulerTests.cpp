@@ -53,7 +53,7 @@ int main() {
 
     mpc::domain::Pattern nudgePattern;
     nudgePattern.lengthTicks = 1000;
-    nudgePattern.notes = {{100, 30, 40, 100, 127, 1, 40}};
+    nudgePattern.notes = {{100, 30, 40, 100, 127, 1, 40, 14500}};
     const auto nudged = mpc::sequencer::schedulePatternWindow(
             nudgePattern,
             mpc::sequencer::TickWindow{0, 200, 0},
@@ -62,6 +62,7 @@ int main() {
     assert(nudged.written == 1);
     assert(output[0].offsetTicks == 140);
     assert(output[0].patternTick == 100);
+    assert(output[0].tuningOffsetMilliSemitones == 14500);
 
     mpc::domain::Pattern nudgeWrapPattern;
     nudgeWrapPattern.lengthTicks = 1000;

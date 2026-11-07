@@ -19,6 +19,7 @@ struct ScheduledMidiEvent final {
     std::uint8_t velocity = 0;
     std::uint8_t ratchetCount = 1;
     std::size_t sourceNoteIndex = 0;
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
 
 struct ScheduleResult final {

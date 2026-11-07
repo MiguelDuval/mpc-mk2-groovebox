@@ -25,6 +25,27 @@ void assertNoStalePlayback(
     assert(!queue.tryDequeue(stale));
 }
 
+void testPlaybackSessionPreservesPerNotePitchOffset() {
+    mpc::MpcProjectState state;
+    auto& pattern = state.activeSequence().tracks.front().patterns.front();
+    pattern.notes.push_back({0, 120, 36, 100, 127, 1, 0, 13500});
+
+    mpc::audio::AudioTriggerQueue queue;
+    mpc::sequencer::MpcSequencePlaybackSession session(state, queue);
+    assert(session.start());
+
+    const auto result = session.advance(120, 73u, 48000);
+    assert(result.scheduled == 1);
+    assert(result.routed == 1);
+    assert(result.queued == 1);
+
+    mpc::audio::AudioTriggerEvent event{};
+    assert(queue.tryDequeue(event));
+    assert(event.padIndex == 0);
+    assert(event.tuningOffsetMilliSemitones == 13500);
+    assert(!queue.tryDequeue(event));
+}
+
 void testTrackVectorMutationStopsBeforeDereferencingTrackReferences() {
     mpc::MpcProjectState state;
     prepareAudibleDefaultPattern(state);
@@ -96,6 +117,7 @@ void testProjectReplacementInvalidatesPlaybackGeneration() {
 } // namespace
 
 int main() {
+    testPlaybackSessionPreservesPerNotePitchOffset();
     testTrackVectorMutationStopsBeforeDereferencingTrackReferences();
     testDrumProgramVectorMutationStopsBeforeDereferencingProgramReferences();
     testSequenceShapeMutationInvalidatesPlaybackSnapshot();

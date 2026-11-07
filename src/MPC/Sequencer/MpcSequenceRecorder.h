@@ -98,7 +98,9 @@ public:
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads
                     || event.velocity > 127
-                    || event.pressed > kSequenceRecordNoteHit) {
+                    || event.pressed > kSequenceRecordNoteHit
+                    || !audio::isValidAudioTriggerTuningOffset(
+                            event.tuningOffsetMilliSemitones)) {
                 continue;
             }
 
@@ -142,6 +144,8 @@ public:
                 note.velocity = event.velocity;
                 note.probability = 127;
                 note.ratchet = 1;
+                note.tuningOffsetMilliSemitones =
+                        event.tuningOffsetMilliSemitones;
 
                 if (state.activeSequence().timingCorrectEnabled) {
                     quantizeAndSwing(

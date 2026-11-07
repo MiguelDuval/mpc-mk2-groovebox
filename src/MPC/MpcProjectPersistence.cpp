@@ -1,4 +1,5 @@
 #include "MPC/MpcProjectPersistence.h"
+#include "Audio/AudioTriggerQueue.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <algorithm>
@@ -206,7 +207,10 @@ bool readPad(Decoder& in, domain::Pad& pad) {
     return true;
 }
 
-bool readPattern(Decoder& in, domain::Pattern& pattern) {
+bool readPattern(
+        Decoder& in,
+        domain::Pattern& pattern,
+        bool hasTuningOffset) {
     std::size_t noteCount = 0;
     if (!in.tag("PATTERN")
             || !in.text(pattern.id)
@@ -229,12 +233,18 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
                 || !in.value(velocity)
                 || !in.value(probability)
                 || !in.value(ratchet)
-                || !in.value(note.nudgeTicks)) {
+                || !in.value(note.nudgeTicks)
+                || (hasTuningOffset
+                        && !in.value(note.tuningOffsetMilliSemitones))) {
             return false;
         }
         if (pitch > 127 || velocity > 127 || probability > 127
                 || ratchet < 1 || ratchet > 8) {
             return in.fail("MIDI note field is out of range");
+        }
+        if (!audio::isValidAudioTriggerTuningOffset(
+                    note.tuningOffsetMilliSemitones)) {
+            return in.fail("MIDI note tuning offset is out of range");
         }
         note.note = static_cast<std::uint8_t>(pitch);
         note.velocity = static_cast<std::uint8_t>(velocity);
@@ -258,7 +268,9 @@ bool validatePatternData(const domain::Project& project, std::string* error) {
                             || note.durationTicks > pattern.lengthTicks
                             || note.note > 127 || note.velocity > 127
                             || note.probability > 127
-                            || note.ratchet < 1 || note.ratchet > 8) {
+                            || note.ratchet < 1 || note.ratchet > 8
+                            || !audio::isValidAudioTriggerTuningOffset(
+                                    note.tuningOffsetMilliSemitones)) {
                         return setError(error, "MIDI note range is invalid for its Pattern");
                     }
                 }
@@ -647,7 +659,8 @@ std::string serializeProject(const domain::Project& project, std::string* error)
                         << static_cast<unsigned int>(note.velocity) << ' '
                         << static_cast<unsigned int>(note.probability) << ' '
                         << static_cast<unsigned int>(note.ratchet) << ' '
-                        << note.nudgeTicks << '\n';
+                        << note.nudgeTicks << ' '
+                        << note.tuningOffsetMilliSemitones << '\n';
                 }
             }
             for (const auto& placement : track.placements) {
@@ -685,7 +698,7 @@ bool deserializeProject(
     if (!in.value(magic) || magic != "MPCMK2_PROJECT" || !in.value(version)) {
         return setError(error, "Invalid project header");
     }
-    if (version != 1 && version != kCurrentProjectFormatVersion) {
+    if (version < 1 || version > kCurrentProjectFormatVersion) {
         return setError(error, "Unsupported project format version");
     }
 
@@ -786,7 +799,7 @@ bool deserializeProject(
             track.patterns.reserve(patternCount);
             for (std::size_t patternIndex = 0; patternIndex < patternCount; ++patternIndex) {
                 domain::Pattern pattern;
-                if (!readPattern(in, pattern)) return false;
+                if (!readPattern(in, pattern, version >= 3)) return false;
                 track.patterns.push_back(std::move(pattern));
             }
             track.placements.reserve(placementCount);

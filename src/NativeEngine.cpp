@@ -1077,7 +1077,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
 }
 
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jboolean JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTuningOffset(
         JNIEnv* /* env */, jobject /* thiz */,
         jint pad, jint velocity, jint tuningOffsetMilliSemitones)
@@ -1085,13 +1085,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
     if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127
             || !mpc::audio::isValidAudioTriggerTuningOffset(
                     tuningOffsetMilliSemitones)) {
-        return;
+        return JNI_FALSE;
     }
 
-    mpc::audio::AudioEngine::instance().triggerPadWithTuningOffset(
+    auto& core = mpc::MpcCore::instance();
+    const auto queuedAudio = core.audio().triggerPadWithTuningOffset(
             static_cast<std::uint8_t>(pad),
             static_cast<std::uint8_t>(velocity),
             static_cast<std::int32_t>(tuningOffsetMilliSemitones));
+    if (!queuedAudio) {
+        return JNI_FALSE;
+    }
+
+    const auto transport = core.sequenceTransportClock().snapshot();
+    const auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (!transport.playing
+            || !core.sequenceRecorder().active()
+            || trackIndex >= tracks.size()
+            || trackIndex >= mpc::domain::kMaxSequenceTracks) {
+        return JNI_FALSE;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (!track.recordArmed || track.kind != mpc::domain::TrackKind::Drum) {
+        return JNI_FALSE;
+    }
+
+    const mpc::sequencer::SequenceRecordEvent event{
+            sequenceSession().positionTicks(),
+            static_cast<std::uint8_t>(trackIndex),
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(velocity),
+            mpc::sequencer::kSequenceRecordNoteHit,
+            static_cast<std::int32_t>(tuningOffsetMilliSemitones)};
+    return core.sequenceRecordQueue().tryEnqueue(event) ? JNI_TRUE : JNI_FALSE;
 }
 
 extern "C" JNIEXPORT jstring JNICALL

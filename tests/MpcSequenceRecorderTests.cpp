@@ -327,9 +327,9 @@ void testClockedRepeatHitRecordsAsOnePatternNote() {
     recorder.begin(state);
 
     assert(queue.tryEnqueue({
-            360, 0, 5, 117, mpc::sequencer::kSequenceRecordNoteHit}));
+            360, 0, 5, 117, mpc::sequencer::kSequenceRecordNoteHit, 12000}));
     assert(queue.tryEnqueue({
-            600, 0, 5, 83, mpc::sequencer::kSequenceRecordNoteHit}));
+            600, 0, 5, 83, mpc::sequencer::kSequenceRecordNoteHit, -7500}));
 
     assert(recorder.drain(state, queue) == 2);
     const auto& notes = track.patterns.front().notes;
@@ -338,10 +338,12 @@ void testClockedRepeatHitRecordsAsOnePatternNote() {
     assert(notes[0].durationTicks == 120);
     assert(notes[0].note == state.activeDrumProgram().pad(5).midiNote);
     assert(notes[0].velocity == 117);
+    assert(notes[0].tuningOffsetMilliSemitones == 12000);
     assert(notes[1].tick == 600);
     assert(notes[1].durationTicks == 120);
     assert(notes[1].note == state.activeDrumProgram().pad(5).midiNote);
     assert(notes[1].velocity == 83);
+    assert(notes[1].tuningOffsetMilliSemitones == -7500);
 
     assert(recorder.finish(state, queue, 720) == 0);
     assert(track.patterns.front().notes.size() == 2);

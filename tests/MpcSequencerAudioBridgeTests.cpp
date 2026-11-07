@@ -8,7 +8,7 @@ int main() {
     mpc::audio::AudioTriggerQueue queue;
 
     const std::array<mpc::sequencer::ScheduledPadEvent, 3> input{{
-            {10, 0, 100, 0},
+            {10, 0, 100, 0, 12000},
             {20, 1, 110, 1},
             {30, 2, 120, 2}}};
 
@@ -29,6 +29,8 @@ int main() {
         assert(event.padIndex == input[index].padIndex);
         assert(event.velocity == input[index].velocity);
         assert(event.offsetFrames == offsets[index]);
+        assert(event.tuningOffsetMilliSemitones
+                == input[index].tuningOffsetMilliSemitones);
     }
 
     const std::array<mpc::sequencer::ScheduledPadEvent, 2> invalidInput{{

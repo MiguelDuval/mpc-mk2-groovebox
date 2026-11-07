@@ -196,7 +196,7 @@ public:
             std::uint8_t velocity,
             std::int32_t offsetFrames);
     // Plays a pad with a temporary pitch offset without mutating Program state.
-    void triggerPadWithTuningOffset(
+    bool triggerPadWithTuningOffset(
             std::uint8_t padIndex,
             std::uint8_t velocity,
             std::int32_t tuningOffsetMilliSemitones);

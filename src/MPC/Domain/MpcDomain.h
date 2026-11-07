@@ -125,6 +125,8 @@ struct MidiNoteEvent {
     std::uint8_t ratchet = 1;
     // Signed microtiming offset from the quantized step, in project ticks.
     std::int32_t nudgeTicks = 0;
+    // Per-note semitone shift applied to the routed Drum Pad voice at playback.
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
 
 struct Pattern {

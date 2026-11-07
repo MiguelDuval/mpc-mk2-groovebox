@@ -469,7 +469,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioSetPadSampleName(
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
-    private static native void nativeAudioTriggerPadWithTuningOffset(
+    private static native boolean nativeAudioTriggerPadWithTuningOffset(
             int pad, int velocity, int tuningOffsetMilliSemitones);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
@@ -5686,11 +5686,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 int note = baseNote + noteIndex;
                 float semitones = note - 60; // relative to Middle C
                 Button performBtn = actionButton("N" + note, v -> {
-                    nativeAudioTriggerPadWithTuningOffset(
+                    boolean recorded = nativeAudioTriggerPadWithTuningOffset(
                             selectedPad, 100, Math.round(semitones * 1000.0f));
-                    setBottomStatus("PAD PERFORM: LIVE N" + note + " · pad "
-                            + (selectedPad + 1) + " · " + semitones
-                            + " st · not recorded");
+                    setBottomStatus("PAD PERFORM: " + (recorded ? "REC " : "LIVE ")
+                            + "N" + note + " · pad " + (selectedPad + 1)
+                            + " · " + semitones + " st");
                 });
                 performBtn.setMinWidth(dp(64));
                 performBtn.setMinHeight(dp(64));
