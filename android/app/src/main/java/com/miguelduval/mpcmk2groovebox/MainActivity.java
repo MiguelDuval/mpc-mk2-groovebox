@@ -5599,7 +5599,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeMidiSetSixteenLevelTuneMode(mode == SIXTEEN_LEVEL_MODE_TUNE);
         showLevels16Page();
         setBottomStatus(mode == SIXTEEN_LEVEL_MODE_TUNE
-                ? "16 LEVELS • TUNE MODE • 0 TO +15 ST"
+                ? "16 LEVELS • TUNE MODE • −3 TO +12 ST • PAD 4 ORIGINAL"
                 : "16 LEVELS • VELOCITY MODE • 1 TO 127");
     }
 
@@ -5621,7 +5621,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         LinearLayout page = page();
         LinearLayout header = row();
         header.addView(sectionLabelView(
-                "SOURCE PAD " + (selectedPad + 1) + " • " + modeName,
+                (tuneMode ? "ORIGINAL PAD " : "SOURCE PAD ")
+                        + (selectedPad + 1) + " • " + modeName,
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(56), dp(34)));
@@ -5649,9 +5650,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int colIdx = 0; colIdx < 4; colIdx++) {
                 int levelIndex = rowIdx * 4 + colIdx;
                 int velocity = 1 + (levelIndex * 126) / 15;
-                int tuningOffsetMilliSemitones = levelIndex * 1000;
+                int tuningOffsetSemitones = levelIndex - 3;
+                int tuningOffsetMilliSemitones = tuningOffsetSemitones * 1000;
                 String valueLabel = tuneMode
-                        ? (levelIndex == 0 ? "0 st" : "+" + levelIndex + " st")
+                        ? (tuningOffsetSemitones > 0 ? "+" : "")
+                                + tuningOffsetSemitones + " st"
                         : "VEL " + velocity;
                 Button levelBtn = actionButton(
                         "L" + (levelIndex + 1) + "\n" + valueLabel, v -> {
@@ -5660,8 +5663,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                 selectedPad, 100, tuningOffsetMilliSemitones);
                         setBottomStatus("16 LEVELS: " + (recorded ? "REC" : "LIVE")
                                 + " • pad " + (selectedPad + 1)
-                                + " • tune " + (levelIndex == 0 ? "0" : "+" + levelIndex)
-                                + " st");
+                                + " • tune " + (tuningOffsetSemitones > 0 ? "+" : "")
+                                + tuningOffsetSemitones + " st");
                     } else {
                         nativeAudioTriggerPad(selectedPad, velocity);
                         setBottomStatus("16 LEVELS: pad " + (selectedPad + 1)
@@ -18575,10 +18578,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             Math.round((Math.max(1, Math.min(127, value1)) - 1)
                                     * 15.0f / 126.0f)));
                     final boolean recorded = nativeAudioTriggerPadWithTuningOffset(
-                            value0, 100, levelIndex * 1000);
+                            value0, 100, (levelIndex - 3) * 1000);
+                    final int tuningOffset = levelIndex - 3;
                     setBottomStatus("16 LEVEL • TUNE • "
                             + (recorded ? "REC" : "LIVE")
-                            + " • +" + levelIndex + " ST");
+                            + " • " + (tuningOffset > 0 ? "+" : "")
+                            + tuningOffset + " ST");
                 } else {
                     nativeAudioTriggerPad(value0, value1);
                 }

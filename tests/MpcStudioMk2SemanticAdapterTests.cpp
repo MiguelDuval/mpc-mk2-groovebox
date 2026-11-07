@@ -31,19 +31,25 @@ int main(){
   const auto tuneLowest = tuneLevels.handlePad(pad(0));
   assert(!tuneLowest.consumed && tuneLowest.targetPadIndex == 4);
   assert(tuneLowest.tuningMode && tuneLowest.velocity == 100);
-  assert(tuneLowest.tuningOffsetMilliSemitones == 0);
+  assert(tuneLowest.tuningOffsetMilliSemitones == -3000);
+  const auto tuneOriginal = tuneLevels.handlePad(pad(3));
+  assert(tuneOriginal.tuningMode && tuneOriginal.targetPadIndex == 4);
+  assert(tuneOriginal.tuningOffsetMilliSemitones == 0);
   const auto tuneHighest = tuneLevels.handlePad(pad(15));
   assert(!tuneHighest.consumed && tuneHighest.targetPadIndex == 4);
   assert(tuneHighest.tuningMode && tuneHighest.velocity == 100);
-  assert(tuneHighest.tuningOffsetMilliSemitones == 15000);
+  assert(tuneHighest.tuningOffsetMilliSemitones == 12000);
+  const auto tuneOneAboveOriginal = tuneLevels.handlePad(pad(4));
+  assert(tuneOneAboveOriginal.tuningMode
+          && tuneOneAboveOriginal.tuningOffsetMilliSemitones == 1000);
   tuneLevels.setSixteenLevelTuneMode(false);
   const auto tuneHighestRelease = tuneLevels.handlePad(padOff(15));
   assert(!tuneHighestRelease.consumed && tuneHighestRelease.targetPadIndex == 4);
   assert(tuneHighestRelease.tuningMode
-          && tuneHighestRelease.tuningOffsetMilliSemitones == 15000);
+          && tuneHighestRelease.tuningOffsetMilliSemitones == 12000);
   const auto tuneLowestRelease = tuneLevels.handlePad(padOff(0));
   assert(tuneLowestRelease.tuningMode
-          && tuneLowestRelease.tuningOffsetMilliSemitones == 0);
+          && tuneLowestRelease.tuningOffsetMilliSemitones == -3000);
 
 
   MpcStudioMk2SemanticAdapter pressSnapshots;

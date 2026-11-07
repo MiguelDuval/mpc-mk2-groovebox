@@ -256,8 +256,10 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         r.targetPadIndex = lastPadIndex_;
         if (sixteenLevelTuneMode_.load(std::memory_order_acquire)) {
             r.tuningMode = true;
+            // MPC 16 Levels Tune centers the original pitch at physical Pad 4.
+            // Pads 1–3 descend by semitone; Pads 5–16 rise by semitone.
             r.tuningOffsetMilliSemitones =
-                    static_cast<std::int32_t>(e.padIndex) * 1000;
+                    (static_cast<std::int32_t>(e.padIndex) - 3) * 1000;
             r.velocity = 100;
         } else {
             r.velocity = static_cast<std::uint8_t>(
