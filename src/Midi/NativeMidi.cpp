@@ -385,6 +385,24 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetPadPerformContext
             static_cast<std::int32_t>(octaveShift));
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiGetPadPerformSemitoneOffset(
+        JNIEnv* /* env */, jclass /* clazz */,
+        jint padIndex, jint scaleIndex, jint octaveShift)
+{
+    if (padIndex < 0 || padIndex >= 16
+            || !mpc::studio::pad_perform::isValidScaleIndex(scaleIndex)
+            || octaveShift < mpc::studio::pad_perform::kMinimumOctaveShift
+            || octaveShift > mpc::studio::pad_perform::kMaximumOctaveShift) {
+        return 0;
+    }
+
+    return static_cast<jint>(mpc::studio::pad_perform::semitoneOffset(
+            static_cast<std::uint8_t>(padIndex),
+            static_cast<std::int32_t>(scaleIndex),
+            static_cast<std::int32_t>(octaveShift)));
+}
+
 template <std::size_t Size>
 jbyteArray toJavaByteArray(
         JNIEnv* env,

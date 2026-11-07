@@ -407,12 +407,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int PAD_PERFORM_SCALE_MINOR_PENTATONIC = 4;
     private static final String[] PAD_PERFORM_SCALE_LABELS = {
             "CHROMATIC", "MAJOR", "NATURAL MINOR", "MAJOR PENTA", "MINOR PENTA"};
-    private static final int[][] PAD_PERFORM_SCALE_DEGREES = {
-            {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
-            {0, 2, 4, 5, 7, 9, 11},
-            {0, 2, 3, 5, 7, 8, 10},
-            {0, 2, 4, 7, 9},
-            {0, 3, 5, 7, 10}};
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
@@ -492,6 +486,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native void nativeMidiSetSixteenLevelTuneMode(boolean enabled);
     private static native void nativeMidiSetPadPerformContext(
             boolean enabled, int sourcePad, int scale, int octave);
+    private static native int nativeMidiGetPadPerformSemitoneOffset(
+            int padIndex, int scaleIndex, int octaveShift);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -5737,11 +5733,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private int padPerformSemitoneOffset(int padIndex) {
-        final int safeIndex = Math.max(0, Math.min(15, padIndex));
-        final int[] degrees = PAD_PERFORM_SCALE_DEGREES[padPerformScale];
-        final int scaleOffset = degrees[safeIndex % degrees.length]
-                + (safeIndex / degrees.length) * 12;
-        return Math.max(-48, Math.min(48, scaleOffset + padPerformOctave * 12));
+        return nativeMidiGetPadPerformSemitoneOffset(
+                padIndex, padPerformScale, padPerformOctave);
     }
 
     private void showPadPerformPage() {
