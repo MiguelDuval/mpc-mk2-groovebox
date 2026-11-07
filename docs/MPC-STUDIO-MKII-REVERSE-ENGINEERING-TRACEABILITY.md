@@ -9,6 +9,8 @@ Read this with [HARDWARE-MPC-STUDIO-MK2.md](HARDWARE-MPC-STUDIO-MK2.md), [MPC-ST
 
 For the MPC One / MPC 3.9 action-to-Studio physical gesture crosswalk, also read [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md). This is a product interaction bridge, not a replacement for the raw MIDI/SysEx tables below.
 
+The separate [MPC firmware reverse-engineering integration report](research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md) covers the original standalone MPC application's internal architecture and firmware-family research. Do not treat its Linux device-tree product codes, firmware hardware-type table or internal control-surface serial paths as the Studio MkII's USB-MIDI protocol. This document remains the authority for the external controller's candidate MIDI/SysEx mappings and their physical-validation status.
+
 ## 1. Scope firewall: what we extract
 
 The controller is an input/output device, not the application we are building. From hardware documents, support pages, tutorial videos and public research, retain only facts useful to our own host implementation:

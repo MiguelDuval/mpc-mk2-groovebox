@@ -567,3 +567,31 @@ Confidence: HIGH for the cited current MPC3 architecture/taxonomy.
 **Additional static findings:** the main ELF contains TouchMainPage/navigation/content/track-panel and TouchMainModeMixerProperties type-name anchors. Program Edit resource metadata comprises 10 TUI JSON pages, 66 tabs and 652 component entries; these counts describe stored schemas, not runtime availability. `Help.json` includes host/shared interaction terminology, so ACVS layout dimensions remain unconfirmed as physical screen geometry.
 
 **Report:** `docs/research/MPC-3.9.1-GEN1-FIRMWARE-STATIC-ANALYSIS.md`; structured data: `docs/research/MPC-3.9.1-GEN1-FIRMWARE-ANALYSIS.json`.
+
+
+---
+
+## 2026-11-06 — Public firmware reverse-engineering cross-reference
+
+**Research report:** [MPC Firmware Reverse-Engineering Research — Integration for MPC MkII Groovebox](research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md).
+
+**Question:** What new low-level MPC software and routing knowledge from the public TheKikGen and DeathCamel58 repositories can safely inform our Android groovebox?
+
+**Sources:**
+- [TheKikGen/MPC-LiveXplore](https://github.com/TheKikGen/MPC-LiveXplore), especially its MPC.settings example, MIDI/controller experiments, image-tool notes and autorun analysis.
+- [DeathCamel58/denon-reverse-engineering — MPC 3.9.1 Gen1 app analysis](https://github.com/DeathCamel58/denon-reverse-engineering/blob/0f7966516609e3de2b71e4aef21625bd8d94c57c/Writerside/topics/MPC-Application.md), plus its MPC and firmware-format notes.
+
+**New documented findings:**
+- The MPC.settings example separates MIDI device roles using Track, Global, Sync and Control flags, with an additional ignoreAuto state. It also records a separate AutoEnableForTracks setting. This is a useful future routing-design lead, not a factory-default schema and not proof that our current MkII adapter supports those roles.
+- The Global MIDI Learn Wiki page documents an XMM mapping model with source message type/channel/value, target control, Toggle/Momentary/Fixed button behavior, Note, absolute CC, two relative-CC modes and reverse. The author says one mapping field remains incompletely understood; this is a 2022 undocumented standalone feature and a design checklist only, not an XMM interoperability contract.
+- A separate LiveXplore page analyzes the **internal MPC Live controller**: Public/Private ALSA ports, internal button/pad LED SysEx and a 128×32 OLED command. These are not the external MPC Studio MkII's public MIDI protocol or its 160×80 LCD. Keep these hardware domains strictly separate.
+- The MPC.settings Wiki page describes a saved device/application XML preference file, five Browser folder shortcuts and an example 1280×800 StandaloneWindowBounds value. This is not our project-file schema and not a validated Android screen-pixel reference.
+- The MPC 3 first-analysis Wiki gives Gen1 v3 Linux/Yocto details and a separate **3.7.0 Gen2** example with three uncompressed partitions and a rootfs offset. The latter is not evidence for 3.9.1 Gen2; it reinforces exact-image hash/format validation before accepting the older local Gen2 handoff.
+- The MPC 3.9.1 Gen1 application analysis reports JUCE, embedded Pure Data, SQLite references and Crashpad/Sentry. This confirms JUCE as a relevant reference point but does not justify adding Pd, replacing Tracktion Engine or adopting SQLite for our project format.
+- Standalone product identity is read from device-tree data; system, storage and control-surface serials are distinct concepts. Do not confuse those values with the USB-MIDI identity of the external Studio MkII.
+- The app's product-code table is broader than the device list in the inspected firmware image. A recognized code or display label is not proof that an image supports that product or that an external controller sends that ID.
+- MPC 2.x and 3.x packaging/build systems differ. The cited app analysis is explicitly Gen1; it is not a Gen2 binary inspection.
+
+**Confidence / limits:** these are third-party static/configuration findings, not physical Studio MkII observations or runtime tests in our app. The older Gen2 handoff recorded on the historical main line has unresolved image-hash and extraction-status inconsistencies. The integration report records these conflicts and the required re-audit; do not use those Gen2 claims as implementation facts.
+
+**Repository decision:** preserve the existing Android/MIDI/hardware/domain/audio/UI/persistence boundaries. Keep the current dedicated MkII adapter unchanged. When external MIDI routing reaches its roadmap stage, evaluate role-separated Track Input, Global/Control and Sync routing as a separate, tested feature. Continue using the official MPC Standalone OS 3.9 manual and existing local Gen1 analysis for UI behavior; the public binary research is secondary evidence only.

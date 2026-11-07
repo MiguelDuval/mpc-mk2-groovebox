@@ -75,6 +75,13 @@ https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts
 MPC Studio MkII practical mapping:
 https://github.com/gstepniewski/MPC-Studio-Mk2-Ableton-Midi-Remote-Script
 
+MPC firmware reverse-engineering integration:
+[docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md)
+
+Public firmware research sources:
+https://github.com/TheKikGen/MPC-LiveXplore
+https://github.com/DeathCamel58/denon-reverse-engineering
+
 MPC project file research:
 https://github.com/kurtjcu/MPC-project-file-definitions
 

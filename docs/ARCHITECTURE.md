@@ -23,6 +23,10 @@ The domain model must use semantic controls, not raw MIDI numbers.
 
 The UI must dispatch semantic actions rather than MIDI bytes.
 
+## Firmware research boundary
+
+The [public MPC firmware reverse-engineering integration](research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md) is secondary research about the original standalone MPC application. It does not change this Android layer graph or the selected Tracktion/Oboe audio path. In particular, keep standalone device-tree identity separate from the external Studio MkII USB-MIDI identity, and keep global MIDI/control/sync roles separate from the current dedicated MkII controller adapter.
+
 ## First vertical slice
 
 MPC Studio pad
