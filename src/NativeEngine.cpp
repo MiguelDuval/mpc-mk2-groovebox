@@ -4647,6 +4647,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
                     + " tick=" + std::to_string(deletedTick));
 }
 
+// Close the List Edit JNI linkage block before the Hardware MIDI bridge's
+// private C++ state and its separate JNI export block.
+} // extern "C"
+
 // ---------------------------------------------------------------------------
 // Hardware MIDI bridge — MPC Studio MkII controller input
 // ---------------------------------------------------------------------------
