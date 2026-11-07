@@ -1,5 +1,6 @@
 #pragma once
 #include "MPC/MpcStudioMk2InputDecoder.h"
+#include <array>
 #include "MPC/Sequencer/MpcTouchStripPolicy.h"
 #include <cstdint>
 #include <optional>
@@ -34,6 +35,9 @@ class MpcStudioMk2SemanticAdapter final {
 public:
     std::optional<SemanticAction> handleControl(const InputEvent&) noexcept;
     PadRoutingResult handlePad(const InputEvent&) noexcept;
+    [[nodiscard]] std::uint8_t padTargetForPhysicalPad(
+            std::uint8_t physicalPadIndex) const noexcept;
+    [[nodiscard]] std::optional<PadRoutingResult> heldRepeatPad() const noexcept;
     [[nodiscard]] bool shiftHeld() const noexcept { return shiftHeld_; }
     [[nodiscard]] bool modeHeld() const noexcept { return modeHeld_; }
     [[nodiscard]] bool locateHeld() const noexcept { return locateHeld_; }
@@ -60,6 +64,17 @@ public:
         return touchStripTouched_;
     }
 private:
+    struct PadPressSnapshot final {
+        bool active = false;
+        bool consumed = false;
+        bool repeating = false;
+        bool hasTarget = false;
+        std::uint8_t targetPadIndex = 0xFF;
+        std::uint8_t velocity = 0;
+        std::uint64_t order = 0;
+    };
+    std::array<PadPressSnapshot, 16> padPresses_{};
+    std::uint64_t padPressOrder_ = 0;
     std::optional<SemanticAction> handleButton(std::uint8_t,bool,std::int64_t) noexcept;
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
     std::optional<SemanticAction> handleJogPress(bool) noexcept;
@@ -70,8 +85,6 @@ private:
     bool fullLevel_=false, halfLevel_=false;
     bool padMuteMode_=false, trackMuteMode_=false, sixteenLevel_=false;
     std::uint8_t lastPadIndex_=0xFF;
-    std::uint8_t repeatPadIndex_=0xFF;
-    bool repeatPadHeld_=false;
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;
     bool eraseHeld_=false;

@@ -839,7 +839,7 @@ The Erase button LED mirrors the active state. Physical MkII verification remain
 
 The reverse-engineered MPC Studio MkII reports pressure-sensitive pad aftertouch on the pad MIDI channel. The semantic adapter exposes this as **PadAftertouch**.
 
-Aftertouch is a continuous high-rate signal, so it does not enter the bounded semantic-action queue. The latest pressure is carried into a native realtime-safe atomic per-pad expression state. In the current sampler mapping, pressure 0 leaves the saved pad filter cutoff unchanged and pressure 127 lowers the active voice cutoff by three octaves. Project state, sequence data and recorded automation are not changed.
+Aftertouch is a continuous high-rate signal, so it does not enter the bounded semantic-action queue. The latest pressure is carried into a native realtime-safe atomic per-pad expression state. In the current sampler mapping, pressure 0 leaves the saved pad filter cutoff unchanged and pressure 127 lowers the active voice cutoff by three octaves. Project state, sequence data and recorded automation are not changed. The physical-key press snapshot keeps pressure and its zero/reset event mapped to the same Program Pad through 16 Levels and intervening mode changes.
 
 This is an application-level musical mapping, not a claim about an Akai factory destination. Physical MkII verification remains required.
 
