@@ -7,7 +7,7 @@
 **Implementation branch at catalog creation:** feature/mpc-one-ui-fidelity  
 **Purpose:** Connect each documented user action to its source, the firmware evidence that may clarify it, the current Android implementation, and a test/acceptance path.
 
-This is the action-oriented companion to [MPC3-9-OS-KNOWLEDGE-BASE.md](MPC3-9-OS-KNOWLEDGE-BASE.md), [MPC3-REFERENCE-INDEX.md](MPC3-REFERENCE-INDEX.md), and [MPC3-UI-SCREEN-BLUEPRINT.md](MPC3-UI-SCREEN-BLUEPRINT.md). Read this catalog before implementing a substantial MPC-style interaction. It is intended to reduce repeated research and make the next action in a user workflow explicit.
+This is the action-oriented companion to [MPC3-9-OS-KNOWLEDGE-BASE.md](MPC3-9-OS-KNOWLEDGE-BASE.md), [MPC3-REFERENCE-INDEX.md](MPC3-REFERENCE-INDEX.md), and [MPC3-UI-SCREEN-BLUEPRINT.md](MPC3-UI-SCREEN-BLUEPRINT.md). Use it as a quick lookup for substantial MPC-style interactions; it must not become a prerequisite research task for every small change.
 
 > **Visual-reference guidance (non-blocking):** For substantial visual redesigns and milestone acceptance, consult the closest relevant context in [the MPC UI screenshot catalog](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) and inspect the local asset(s) from [the reference gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) when readily available. If the exact asset is unavailable, note the gap and continue. Routine implementation does not require screenshot archaeology or new before/after evidence per commit.
 
