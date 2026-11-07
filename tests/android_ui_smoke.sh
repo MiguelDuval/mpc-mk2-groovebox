@@ -13390,7 +13390,11 @@ PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
 
 project_marker_count() {
   local marker="$1" timeout_seconds="${2:-5}" logs
-  logs="$(adb_bounded "$timeout_seconds" shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  # Use a fixed adb timeout (5s) for logcat -d; the timeout_seconds parameter
+  # is the remaining wait time for the polling loop, not the adb command timeout.
+  # Passing a short remaining time to adb_bounded causes logcat to be killed
+  # before it can complete on slow CI runners, missing the marker.
+  logs="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null || true)"
   grep -F -c -- "$marker" <<<"$logs" || true
 }
 
