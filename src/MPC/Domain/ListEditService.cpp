@@ -373,11 +373,21 @@ ListEditService::ModifyResult ListEditService::setTick(
 
     const std::uint32_t id = pattern.notes[eventIndex].eventId;
     const std::int32_t oldValue = pattern.notes[eventIndex].tick;
-    auto undo = [&pattern, id, oldValue]() -> bool {
-        auto* event = findByEventId(pattern, id);
-        if (!event) return false;
-        event->tick = oldValue;
-        sortByTick(pattern);
+    const std::size_t oldIndex = eventIndex;
+    auto undo = [&pattern, id, oldValue, oldIndex]() -> bool {
+        auto it = std::find_if(pattern.notes.begin(), pattern.notes.end(),
+                [id](const MidiNoteEvent& event) { return event.eventId == id; });
+        if (it == pattern.notes.end()) return false;
+
+        // Restore the event to its pre-edit position before leaving all
+        // equal-tick neighbours in their original stable order.
+        MidiNoteEvent restored = *it;
+        pattern.notes.erase(it);
+        restored.tick = oldValue;
+        const std::size_t insertionIndex = std::min(oldIndex, pattern.notes.size());
+        pattern.notes.insert(
+                pattern.notes.begin() + static_cast<std::ptrdiff_t>(insertionIndex),
+                restored);
         return true;
     };
     auto redo = [&pattern, id, tick]() -> bool {
