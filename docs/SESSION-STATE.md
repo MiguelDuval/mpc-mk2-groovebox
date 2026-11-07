@@ -1,3 +1,18 @@
+# ACTIVE PROCESS OVERRIDE — 2026-11-07
+
+The project now operates under [FAST-DELIVERY-MODE.md](FAST-DELIVERY-MODE.md). This policy overrides historical instructions below that require full emulator CI after every slice, stop all work for unrelated failing tests, or continue multiple stacked development branches.
+
+**Canonical working line:** `checkpoint/mpc-ui-reference-and-product-20261030` — verify its live GitHub HEAD at the beginning of every session.  
+**Main:** keep untouched.  
+**Default delivery:** GitHub Actions fast lane → build and upload debug APK.  
+**Full test/emulator lane:** deliberate milestone/high-risk/release acceptance only; trigger with PR label `full-validation` or commit marker `[full-validation]`.  
+**Product priority:** complete the first end-to-end instrument workflow using existing MIDI, sampler, sequencer and persistence components.  
+**Failure rule:** a test-harness or runner failure does not block unrelated product work. Do not delete/weaken assertions; classify, record once and continue.
+
+All status records below this block are historical checkpoints. Re-fetch live branch, PR, workflow and artifact state before relying on any old SHA, run number or next-action list.
+
+---
+
 # Live checkpoint — 2026-11-06
 
 **Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  

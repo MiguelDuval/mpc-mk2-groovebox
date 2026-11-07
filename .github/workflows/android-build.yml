@@ -6,12 +6,31 @@ on:
       - main
       - "foundation/**"
       - "work/**"
+      - "feature/**"
+      - "checkpoint/**"
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+    inputs:
+      validation_mode:
+        description: "Fast APK build or full milestone acceptance"
+        required: true
+        default: fast
+        type: choice
+        options:
+          - fast
+          - full
 
 concurrency:
-  group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  # Let critical acceptance checks finish; newer commits wait in the same group.
-  cancel-in-progress: false
+  group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ github.event.inputs.validation_mode || 'fast' }}
+  # Cancel obsolete fast builds; preserve a deliberately requested full milestone run.
+  cancel-in-progress: ${{ github.event.inputs.validation_mode != 'full' }}
 
 permissions:
   contents: read
@@ -20,8 +39,11 @@ jobs:
   android-debug:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
+    env:
+      RUN_FULL_VALIDATION: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.validation_mode == 'full') || contains(github.event.pull_request.labels.*.name, 'full-validation') || contains(github.event.head_commit.message, '[full-validation]') }}
     steps:
       - name: Enable KVM group permissions
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -41,7 +63,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v6
         with:
-          submodules: recursive
+          submodules: false
+
+      - name: Initialize required Oboe submodule only
+        shell: bash
+        run: git submodule update --init --depth 1 third_party/oboe
 
       - name: Setup Java 17
         uses: actions/setup-java@v5
@@ -94,6 +120,7 @@ jobs:
           fi
 
       - name: Test AudioEngine header compile
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -104,6 +131,7 @@ jobs:
             -o build/native-tests/audio_engine_header_compile_tests.o
 
       - name: Test MPC Studio MkII MIDI decoder
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -118,6 +146,7 @@ jobs:
           build/native-tests/mpc_input_decoder_tests
 
       - name: Test MPC Studio MkII Note Repeat timing
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -126,6 +155,7 @@ jobs:
           build/native-tests/mpc_note_repeat_scheduler_tests
 
       - name: Test MPC Studio MkII Note Repeat idle wake policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -136,6 +166,7 @@ jobs:
           build/native-tests/mpc_note_repeat_wake_policy_tests
 
       - name: Test MPC Studio MkII step-edit routing
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -144,6 +175,7 @@ jobs:
           build/native-tests/mpc_step_edit_routing_tests
 
       - name: Test MPC Studio MkII Step Edit parameter policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -152,6 +184,7 @@ jobs:
           build/native-tests/mpc_step_edit_parameter_policy_tests
 
       - name: Test MPC Studio MkII Locate policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -160,6 +193,7 @@ jobs:
           build/native-tests/mpc_locate_policy_tests
 
       - name: Run focused Android unit policy tests
+        if: env.RUN_FULL_VALIDATION == 'true'
         timeout-minutes: 20
         run: |
           gradle --no-daemon :app:testDebugUnitTest \
@@ -179,6 +213,7 @@ jobs:
             --tests com.miguelduval.mpcmk2groovebox.MpcTrackProgramPolicyTest
 
       - name: Test MPC Studio MkII semantic routing
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -187,6 +222,7 @@ jobs:
           build/native-tests/mpc_mk2_semantic_adapter_tests
 
       - name: Test shared waveform peak extraction
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -199,6 +235,7 @@ jobs:
           build/native-tests/waveform_tests
 
       - name: Test PCM WAV sample decoder
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -211,6 +248,7 @@ jobs:
           build/native-tests/wav_sample_tests
 
       - name: Test sample playback regions
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -219,6 +257,7 @@ jobs:
           build/native-tests/sample_region_tests
 
       - name: Test sample crop
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -227,6 +266,7 @@ jobs:
           build/native-tests/sample_crop_tests
 
       - name: Test sample loop and region policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -235,6 +275,7 @@ jobs:
           build/native-tests/sample_loop_region_policy_tests
 
       - name: Test sample chop plans
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -243,6 +284,7 @@ jobs:
           build/native-tests/sample_chop_tests
 
       - name: Test recording threshold
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -251,6 +293,7 @@ jobs:
           build/native-tests/recording_threshold_tests
 
       - name: Test sample layer tuning parameters
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -262,6 +305,7 @@ jobs:
           build/native-tests/sample_layer_tuning_tests
 
       - name: Test sample layer pan parameters
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -273,6 +317,7 @@ jobs:
           build/native-tests/sample_layer_pan_tests
 
       - name: Test sample layer gain parameters
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -284,6 +329,7 @@ jobs:
           build/native-tests/sample_layer_parameters_tests
 
       - name: Test sample envelope and filter parameters
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -295,6 +341,7 @@ jobs:
           build/native-tests/sample_envelope_filter_tests
 
       - name: Test sample playback cursor
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -303,6 +350,7 @@ jobs:
           build/native-tests/sample_playback_cursor_tests
 
       - name: Test audio output policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -311,6 +359,7 @@ jobs:
           build/native-tests/audio_output_policy_tests
 
       - name: Test sample layer velocity ranges
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -322,6 +371,7 @@ jobs:
           build/native-tests/sample_layer_velocity_range_tests
 
       - name: Test MPC pattern operations
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -333,6 +383,7 @@ jobs:
           build/native-tests/mpc_pattern_ops_tests
 
       - name: Test MPC pattern scheduler
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -345,6 +396,7 @@ jobs:
           build/native-tests/mpc_pattern_scheduler_tests
 
       - name: Test MPC ratchet expansion
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -357,6 +409,7 @@ jobs:
           build/native-tests/mpc_ratchet_expander_tests
 
       - name: Test MPC sequencer cursor
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -365,6 +418,7 @@ jobs:
           build/native-tests/mpc_sequencer_cursor_tests
 
       - name: Test MPC sequencer pad routing
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -376,6 +430,7 @@ jobs:
           build/native-tests/mpc_sequencer_pad_router_tests
 
       - name: Test bounded audio trigger queue
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -384,6 +439,7 @@ jobs:
           build/native-tests/audio_trigger_queue_tests
 
       - name: Test composed sequencer playback
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -392,6 +448,7 @@ jobs:
           build/native-tests/mpc_sequencer_playback_tests
 
       - name: Test sequencer to audio trigger bridge
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -400,6 +457,7 @@ jobs:
           build/native-tests/mpc_sequencer_audio_bridge_tests
 
       - name: Test MPC sequencer runtime
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -413,6 +471,7 @@ jobs:
           build/native-tests/mpc_sequencer_runtime_tests
 
       - name: Test MPC project state
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -425,6 +484,7 @@ jobs:
           build/native-tests/mpc_project_state_tests
 
       - name: Test versioned project save/load and Arrangement Pattern placements
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -437,6 +497,7 @@ jobs:
           build/native-tests/mpc_project_persistence_tests
 
       - name: Test sequence transport clock
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -449,6 +510,7 @@ jobs:
           build/native-tests/mpc_sequence_transport_tests
 
       - name: Test sequence live launcher
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -457,6 +519,7 @@ jobs:
           build/native-tests/mpc_sequence_launcher_tests
 
       - name: Test sequence recorder
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -469,6 +532,7 @@ jobs:
           build/native-tests/mpc_sequence_recorder_tests
 
       - name: Test sequencer playback session lifecycle
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -482,6 +546,7 @@ jobs:
           build/native-tests/mpc_sequence_playback_session_tests
 
       - name: Test semantic drum-pad MIDI lookup
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -493,6 +558,7 @@ jobs:
           build/native-tests/drum_program_ops_tests
 
       - name: Test MPC drum program domain
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -504,6 +570,7 @@ jobs:
           build/native-tests/drum_program_domain_tests
 
       - name: Test MPC Studio MkII Touch Strip policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -512,6 +579,7 @@ jobs:
           build/native-tests/mpc_touch_strip_policy_tests
 
       - name: Test MPC Studio MkII Erase policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -520,6 +588,7 @@ jobs:
           build/native-tests/mpc_erase_policy_tests
 
       - name: Test MPC Studio MkII Pad Aftertouch policy
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -528,6 +597,7 @@ jobs:
           build/native-tests/mpc_pad_aftertouch_policy_tests
 
       - name: Compile and run MPC edit history tests
+        if: env.RUN_FULL_VALIDATION == 'true'
         run: |
           set -euo pipefail
           mkdir -p build/native-tests
@@ -548,6 +618,7 @@ jobs:
           if-no-files-found: error
 
       - name: Validate Android UI smoke syntax and evidence contract
+        if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -611,6 +682,7 @@ jobs:
           PY
 
       - name: Run Android emulator smoke test
+        if: env.RUN_FULL_VALIDATION == 'true'
         timeout-minutes: 35
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -625,7 +697,7 @@ jobs:
           script: timeout --signal=TERM --kill-after=10s 32m bash tests/android_ui_smoke.sh
 
       - name: Upload MPC UI visual evidence
-        if: always()
+        if: always() && env.RUN_FULL_VALIDATION == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: mpc-ui-visual-evidence

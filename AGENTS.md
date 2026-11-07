@@ -4,14 +4,16 @@ This repository has one canonical project brief:
 
 **[`docs/PROJECT_MASTER_PROMPT.md`](docs/PROJECT_MASTER_PROMPT.md)**
 
+> **Active execution mode:** read [`docs/FAST-DELIVERY-MODE.md`](docs/FAST-DELIVERY-MODE.md) first. It overrides older instructions below wherever they require a full test/emulator run after every slice, require fixing unrelated test-harness failures before product work, or encourage stacked feature branches. Default to one canonical working line and the fast APK lane.
+
 Before any implementation work, every coding agent must also read **[`docs/SESSION-STATE.md`](docs/SESSION-STATE.md)** and **[`docs/DEVELOPMENT-OPERATING-PROTOCOL.md`](docs/DEVELOPMENT-OPERATING-PROTOCOL.md)**, then verify their mutable status claims against live GitHub state. SESSION-STATE is a checkpoint, not a substitute for inspecting the active branch, PR, CI or source.
 
 ## Mandatory rules
 
-1. **Preserve `main` as the stable reference.** Experimental implementation belongs on feature branches.
+1. **Preserve `main` as the stable reference.** Use the single live canonical checkpoint branch recorded in `docs/SESSION-STATE.md` for ordinary active implementation; isolate a second branch only for genuinely independent work or a separate writer.
 2. **Read before editing.** Inspect current source, callers, relevant docs and recent commits before changing an existing subsystem.
-3. **Build after meaningful changes.** Check the real GitHub Actions result; do not claim success from source inspection alone.
-4. **Fix failures before unrelated features.**
+3. **Build the APK through the fast GitHub Actions lane after a coherent implementation batch.** Reserve full native/JVM/emulator validation for milestone or high-risk changes.
+4. **Fix only blockers to the current product path.** Classify CI failures; do not stop unrelated product work for a flaky test harness, emulator runner or non-critical defect.
 5. **Keep architecture boundaries intact:** Android platform, MIDI transport, MPC hardware adapter, MPC domain, audio engine, UI and persistence must remain separable.
 6. **The application display is mandatory landscape/horizontal.** Do not introduce portrait-first or portrait-only product layouts.
 7. **Protect realtime audio.** No avoidable blocking I/O, allocations or UI work in the audio callback.
@@ -19,8 +21,8 @@ Before any implementation work, every coding agent must also read **[`docs/SESSI
 9. **Physical hardware is the authority.** Reverse-engineered mappings remain unconfirmed until tested on the actual MPC Studio MkII.
 10. **Do not copy proprietary Akai code, firmware resources or artwork.** Use documented behavior and original implementation/graphics.
 11. **Keep changes small and traceable.** Prefer one coherent objective per branch/commit.
-12. **Resolve the current blocker first.** If the current feature branch has a failing latest relevant CI run, investigate and fix that failure before unrelated feature work. Never hide or weaken a meaningful acceptance assertion to obtain a green build.
-13. **Use the cheapest sufficient test first.** Run focused tests during iteration; run full emulator/CI acceptance at a meaningful slice boundary and verify it against the exact resulting HEAD.
+12. **A red full-validation run is a diagnostic, not an automatic stop.** Fix product/build defects that block the current slice or risk audio/data integrity. Log and defer unrelated harness/environment failures; never falsify results or weaken meaningful assertions.
+13. **Use test levels deliberately.** Fast APK build by default; focused tests only for directly affected logic; full native/JVM/emulator validation at deliberate milestones or high-risk changes.
 14. **One writer per branch.** Do not let ChatGPT/GitHub tools, Cline, or another agent concurrently mutate the same branch or same files. Parallelize only across isolated branches/worktrees with explicit file ownership; integrate sequentially.
 15. **Measure visual geometry before changing it.** Use a fresh landscape screenshot and accessibility/UI bounds. Treat firmware layout units as evidence to interpret, not as phone pixel coordinates; do not guess the root cause.
 16. **Use the action catalog.** Before changing a user-visible MPC interaction, locate its ID in `docs/MPC3-USER-ACTION-CATALOG.md`; verify the official source, backend route and exact-SHA acceptance evidence. Add/update the row when behavior or status changes. Do not implement from a label or stale matrix alone.
@@ -67,8 +69,13 @@ Use these documents together:
 
 When these documents conflict with the current code, investigate and update the documentation rather than silently ignoring the discrepancy.
 
-For the full rules, architecture, roadmap and acceptance criteria, read `docs/PROJECT_MASTER_PROMPT.md`.
+For the current delivery rules, read `docs/FAST-DELIVERY-MODE.md`. For product architecture and acceptance criteria, read `docs/PROJECT_MASTER_PROMPT.md`.
 
 ## Current execution queue
 
 Follow the current, dated work queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`. Older dated blocks in that roadmap and `docs/SESSION-STATE.md` are historical context only; live PR/HEAD/Actions evidence takes precedence. Read `docs/SESSION-HISTORY-ARCHIVE.md` only when a specific regression or historical question requires it.
+
+
+## Current delivery override
+
+All agents must follow `docs/FAST-DELIVERY-MODE.md`. Do not revive historical instructions that require green full emulator CI after every small change. A fast-lane APK build is the normal iteration check; full validation is deliberate and milestone-based. Keep the working line consolidated and prioritize complete musical workflows.

@@ -1,3 +1,74 @@
+# ACTIVE EXECUTION QUEUE — 2026-11-07 (FAST PRODUCT DELIVERY MODE)
+
+> **This section is authoritative and supersedes all older queue/status blocks below.** Follow [FAST-DELIVERY-MODE.md](FAST-DELIVERY-MODE.md). Canonical working branch: `checkpoint/mpc-ui-reference-and-product-20261030`; verify its live HEAD before editing. Keep `main` untouched. Do not resume stale stacked feature/validation branches without an explicit decision to replace the canonical line.
+
+## Operating objective
+
+Deliver a playable local groovebox through complete musical workflows. Do not spend another development cycle on broad audits, repeated CI repairs, documentation expansion or branch consolidation unless one of those is the sole thing preventing the next playable slice.
+
+## Immediate queue
+
+### P0 — restore rapid product iteration
+
+1. Use the GitHub Actions fast lane for every ordinary push: compile/package the Android APK and upload it. No full test suite or emulator smoke by default.
+2. Keep expensive tests available in the explicit full-validation lane; trigger only for milestone/high-risk/release acceptance.
+3. Do not recursively clone JUCE, Tracktion Engine and Ableton Link while their CMake build options remain OFF. The CI fast lane initializes Oboe only.
+4. Do not block independent coding on an unrelated test-harness or runner failure.
+
+### P1 — finish the first complete instrument workflow
+
+Work from existing code; do not redesign the architecture before connecting the current components.
+
+Target user scenario:
+1. create/open a project;
+2. select a Drum Track and Program;
+3. load a real WAV into the intended Pad/Layer;
+4. trigger the Pad from the physical MPC Studio MkII with velocity preserved and audible output;
+5. record a MIDI pattern from the controller;
+6. edit the recorded notes and play them back;
+7. save, close/reopen and verify the musical state survives.
+
+Start at the first missing link in the live source, then implement sequentially. Prefer audio/MIDI/domain/UI integration and real feedback over extra configuration pages. If physical hardware is not available for a given session, implement the controller route and software-level checks, clearly label physical acceptance as pending, and continue.
+
+### P2 — expand complete MPC workflows
+
+After P1 is playable, finish high-value vertical slices in this order:
+1. Step Sequencer / Grid editing and transport;
+2. Sample Edit (waveform, trim, crop, chop, audition and assignment);
+3. Track / Arrangement editing and navigation;
+4. Pad Perform / 16 Levels;
+5. Pad Mixer / Channel Mixer only when real level/pan/routing backend exists;
+6. Project robustness and recovery;
+7. controller feedback (LEDs, LCD, Touch Strip) with real MkII tests when hardware is available.
+
+Do not treat a route, screen, decoder or native helper as complete until the user can invoke it and observe the real result. Keep unsupported functions explicitly unavailable rather than faked.
+
+## Definition of done for a product slice
+
+A slice is done when:
+- the intended user action is reachable through the real touch/controller route;
+- the correct app/domain/audio state changes;
+- the user receives truthful feedback;
+- unrelated musical state is preserved;
+- persistence is included when the action is meant to persist;
+- the fast APK build succeeds;
+- the known remaining limitations are explicit.
+
+A full emulator run is not a prerequisite for every slice. Use it at milestone acceptance. Physical MPC Studio MkII validation remains separate from emulator/software evidence.
+
+## Blocker policy
+
+Only stop the affected workstream for:
+- a compile/package failure that prevents installing or running the current APK;
+- a crash or unrecoverable app startup defect;
+- project corruption, destructive musical-data loss or broken save/load;
+- a realtime audio crash, deadlock, blocking operation or severe audio dropout risk;
+- a core MIDI/controller defect that prevents the current workflow from operating.
+
+Defer and document small visual issues, secondary control gaps, non-critical UI polish, isolated flaky smoke assertions and unrelated environment problems. Do not let them stop independent implementation.
+
+---
+
 # Implementation Roadmap
 
 > **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.

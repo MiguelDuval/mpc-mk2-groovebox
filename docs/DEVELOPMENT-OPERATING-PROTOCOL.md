@@ -1,8 +1,10 @@
 # Development Operating Protocol — MPC MkII Groovebox
 
+> **Active execution mode:** [`FAST-DELIVERY-MODE.md`](FAST-DELIVERY-MODE.md) is the highest-priority process contract. It supersedes any later historical paragraph in this file that requires full CI after every feature slice or blocks unrelated work on test-harness failures.
+
 **Status:** Canonical working-process contract  
-**Product branch:** `feature/mpc-one-ui-fidelity`  
-**Primary PR:** #23 — MPC One Main UI visual fidelity pass  
+**Canonical development branch:** `checkpoint/mpc-ui-reference-and-product-20261030` (verify live HEAD)  
+**Integration PR:** use the live milestone PR for this branch; do not assume old PR #23/#139 stacks are current  
 **Purpose:** Reduce repeated research and test churn while increasing the number of complete, verified musical workflows delivered per session.
 
 This document governs *how work is performed*. The project master prompt governs product/engineering principles. `docs/SESSION-STATE.md` is a short-lived checkpoint and must be verified against live GitHub state before it is trusted.
@@ -72,23 +74,26 @@ For each coherent feature slice:
 2. **Define:** state the user scenario, expected MPC-inspired behavior, current gap, relevant source files, real semantic/backend commands, acceptance checks, and what is explicitly out of scope.
    - For an MPC-style UI interaction, cite the catalog action ID; if no row exists, add one before implementation. Keep the official reference behavior, product-specific deviation, backend truth and test evidence distinct.
 3. **Trace:** read the current view, its listeners/callers, the authoritative state model, relevant backend operation and existing tests. Do not recreate source from memory.
-4. **Implement:** make the smallest coherent change that completes part of the user scenario. Keep one logical intent per commit and preserve existing domain/audio/MIDI paths.
-5. **Test narrowly first:** run source/contract checks and the smallest relevant unit or native test. Fix failures before adding unrelated work.
-6. **Verify the whole slice:** build a fresh APK; run Android UI smoke/emulator checks appropriate to the change; inspect real screenshot and accessibility/UI hierarchy; verify the action/state outcome, not only the visible control.
-7. **Inspect CI evidence:** confirm Actions belongs to the exact current SHA; verify success, APK artifact existence, artifact integrity where available, and required screenshots/XML files inside the downloaded archive. A green run with missing requested evidence is a reporting/evidence defect and should be fixed.
-8. **Close the loop:** update the roadmap/status matrix and `docs/SESSION-STATE.md` at the end of a meaningful milestone. Record commit, workflow URL/result, artifact name/checksum where available, tests, visual evidence, hardware status, and the next bounded task.
+4. **Implement:** complete a coherent, user-visible vertical slice. Prefer multiple compatible improvements in one implementation batch; do not stop after an audit or plan.
+5. **Fast feedback:** build/package a debug APK through the fast Actions lane. Run a focused test only when it directly covers changed high-risk logic. Do not launch the complete suite by default.
+6. **Triage, then continue:** classify red checks as product, harness, runner or non-critical. Stop only the affected path for a genuine compile/package failure, data-integrity defect, realtime audio risk or core workflow failure. Continue independent product work when the issue is unrelated.
+7. **Milestone acceptance:** run the full native/JVM/emulator lane only for a deliberate milestone, high-risk change or release candidate. Inspect the exact-SHA APK and visual artifacts from that run.
+8. **Close the loop:** update the roadmap and `docs/SESSION-STATE.md` after a meaningful product milestone, not after every micro-commit. Record concrete behavior, branch/HEAD, fast APK artifact, known defects, tests actually run, physical hardware status and the next product slice.
 
 Keep the number of expensive full builds proportional to the amount of change. A small isolated view change can use a fast relevant test before the end-to-end build. Changes to Activity lifecycle, navigation, persistence, permissions, audio, MIDI, or device integration need broader tests sooner. Never skip the final required CI verification simply to save time.
 
 ### 4.1 Fast feedback, test economics, and failure triage
 
-- Start with the smallest test that can answer the current question: a targeted unit/native test, source-contract test, or isolated UI scenario. Do not run unrelated Browser/Arrangement/Track workflows just because the only available command happens to run everything.
-- Keep one reusable implementation of each UI acceptance scenario. Prefer selecting a scenario by an argument/environment variable or extracting a small helper over copying a second version of the flow.
-- Full Android build + emulator smoke + artifact inspection remains mandatory at the acceptance boundary for a meaningful user-visible slice. A targeted green test is not a substitute for the final current-SHA integration run.
-- When a run fails, classify it before changing code: (a) product defect, (b) test-fixture/setup defect, (c) brittle test assumption, (d) environment/tool failure. Use the failing step, UI hierarchy, screenshot and logs to determine which category applies. Fix the cause; never delete the check, lower its assertion, or call a build successful when it failed.
-- UI tests must operate the real interface. If a target is inside a scrollable container, scroll to it using the current accessibility hierarchy before asserting visibility/actionability. Do not assume a control is visible merely because its view exists in source.
-- Avoid repeated full builds for documentation-only and narrowly scoped changes when local/source validation is sufficient; however, respect repository branch/PR rules and never report a new SHA as integration-verified until its actual workflow result is known.
-- Keep failure output bounded: report the failing step, root cause evidence, exact SHA/run URL and minimal relevant log excerpt, not the whole giant shell log.
+- The default CI lane compiles/packages the APK and uploads it. It does not run the complete native/JVM suite or Android emulator smoke.
+- Focused checks are optional and selective: use them only when they directly test the current change or protect a high-risk invariant.
+- Full validation is a deliberate milestone gate, triggered by the `full-validation` PR label or `[full-validation]` commit marker. It runs the existing tests; it is not repeated after every small commit.
+- A red full-validation run must first be classified as product defect, test-harness defect, runner/environment defect or non-critical issue.
+- A real product/build defect that blocks the current slice must be fixed. A flaky marker, stale UI hierarchy, emulator boot issue, timing race or unrelated assertion does not stop independent product development.
+- Do not repeatedly rerun the same failing workflow without a code/configuration change. Capture the failing step, relevant log excerpt and root cause once, then continue on unaffected work.
+- Keep every existing meaningful test and assertion. Do not delete, fake or weaken tests to manufacture a green result. The policy changes execution frequency and blocker scope, not the requirement to preserve data integrity and realtime safety.
+- Do not add duplicate UI smoke scenarios. Reuse the existing scenario only when full validation is intentionally run.
+- When full validation is required, verify the result against the exact current SHA and inspect artifacts from that same run. An APK from a failed full run is an intermediate build, not a release acceptance.
+
 
 ## 5. Acceptance contract: evidence over appearance
 
@@ -125,7 +130,7 @@ Use small independently verifiable slices if all of the above cannot be delivere
 
 ## 7. Branch, code and repository safety
 
-- Continue on `feature/mpc-one-ui-fidelity` and PR #23 unless the owner explicitly authorizes a different destination.
+- Continue on the single live canonical branch `checkpoint/mpc-ui-reference-and-product-20261030` unless the owner explicitly selects a replacement. Do not independently continue stale stacked PR branches.
 - Never modify `main` for this work; no reset, rebase, history rewrite or force-push.
 - Do not merge or retarget PR #23 as part of routine UI development.
 - One agent/writer owns a branch at a time. Do not have ChatGPT's GitHub mutations and Cline edit the same branch/files concurrently. Parallel tasks require isolated branches/worktrees, explicit file ownership, and serial integration.
@@ -133,7 +138,7 @@ Use small independently verifiable slices if all of the above cannot be delivere
 - Keep the realtime callback free of UI work, file I/O, allocations and blocking operations.
 - Do not add paid tools, API dependencies, cloud services, or new required credentials. Prefer current GitHub/ChatGPT integration, repository tests and the existing Actions workflow.
 - Make no claim that physical hardware has been verified without a physical test result.
-- Fix any failure introduced by the slice before moving on.
+- Fix failures introduced by the slice when they block the current user workflow or threaten data/audio integrity. Defer non-critical defects explicitly and keep moving.
 
 ## 8. Free-tier and context-efficiency rules
 
@@ -146,7 +151,7 @@ The process must work within a limited ChatGPT context and usage budget:
 - Do not run broad public research when the current repository already records an adequate, cited official reference. Research externally when behavior is uncertain, version-sensitive, or absent from the local reference index.
 - Do not add paid services or require a paid ChatGPT plan. If a task exceeds the current session/tool capability, make bounded progress and record the next action in the state file instead of pretending it was completed.
 - Prefer one complete vertical slice and its evidence over numerous tiny status-only commits.
-- Follow the dated current execution queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`; older task labels lower in the file can be historical. If CI is red, unblock the current failure before picking an unrelated feature.
+- Follow the active queue at the top of `docs/IMPLEMENTATION-ROADMAP.md`. A red full-validation CI run does not automatically block unrelated product work; classify it and stop only the affected path.
 - Use the smallest relevant test while iterating, then one full verification at the slice boundary. Avoid adding a second copy of a UI smoke scenario when a focused mode can reuse the existing implementation.
 
 ## 9. Required session checkpoint
@@ -180,3 +185,8 @@ A slice is ready to hand off when:
 - the next bounded task is recorded.
 
 Do not continue polishing the same screen indefinitely once its core acceptance checks pass; move to the next highest-value user workflow.
+
+
+## 12. Active process override
+
+Follow `FAST-DELIVERY-MODE.md` whenever any older paragraph in this protocol appears stricter or contradictory. Product progress continues through unrelated harness/environment failures. Full validation is milestone-based, never the default after every commit.

@@ -1,5 +1,7 @@
 # PROJECT MASTER PROMPT — MPC Studio MkII Groovebox
 
+> **Current operating mode (2026-11-07):** Follow [`FAST-DELIVERY-MODE.md`](FAST-DELIVERY-MODE.md). This mode takes precedence over older instructions in this file that make full emulator CI, unrelated test repair, exhaustive documentation or branch-stack integration a prerequisite for every small change. Default to fast APK delivery, selective tests and product-first vertical slices.
+
 ## 0. Purpose
 
 You are an engineering agent working on **MPC Studio MkII Groovebox**, an Android standalone-style music production application centered on the **Akai MPC Studio MkII** controller.
@@ -162,18 +164,17 @@ Before changing an existing subsystem:
 
 Do not reconstruct a file from memory when its current repository version can be read.
 
-### 4.5 After editing
+### 4.5 After editing — fast delivery mode
 
-After meaningful changes:
+After a coherent implementation batch:
 
-1. build;
-2. inspect build output;
-3. run the smallest relevant test;
-4. check GitHub Actions;
-5. record failures and evidence;
-6. only then proceed to the next layer.
+1. build/package the debug APK through the GitHub Actions fast lane;
+2. inspect the build result and APK artifact;
+3. run a focused test only when it directly covers changed high-risk logic and gives useful feedback;
+4. classify failures before deciding whether they block work;
+5. continue with the next independent product task when a failure is limited to unrelated test infrastructure or a non-critical issue.
 
-If a build fails, fix the build before adding unrelated functionality.
+Full native/JVM/emulator validation is reserved for milestone acceptance, release candidates and high-risk changes. A failing test harness does not block unrelated product implementation. A real compile/package failure, data-corruption defect or realtime audio-safety defect does block the affected path.
 
 ---
 
