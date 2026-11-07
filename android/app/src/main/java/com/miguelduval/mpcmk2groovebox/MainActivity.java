@@ -5464,7 +5464,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         currentPage = "LIST_EDIT";
         navigationController.navigate(MpcUiState.Mode.LIST_EDIT);
         navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
-        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.NONE);
         pageTitle.setText("LIST EDIT");
         content.removeAllViews();
 
@@ -5584,6 +5584,29 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             if (nativePatternGetEventId(selectedPad, i) == eventId) return i;
         }
         return -1;
+    }
+
+    private void moveListEditSelectionByDelta(int delta) {
+        final int count = nativePatternGetEventCount(selectedPad);
+        if (count <= 0) {
+            setBottomStatus("LIST EDIT • no MIDI note events");
+            return;
+        }
+        final int current = findListEditEventIndex(selectedListEditEventId);
+        final int next = current < 0
+                ? (delta < 0 ? count - 1 : 0)
+                : Math.max(0, Math.min(count - 1, current + delta));
+        final long nextId = nativePatternGetEventId(selectedPad, next);
+        if (nextId <= 0L) {
+            setBottomStatus("LIST EDIT • event identity unavailable");
+            return;
+        }
+        selectedListEditEventId = nextId;
+        setBottomStatus(String.format(
+                Locale.ROOT, "LIST EDIT • EVENT %d / %d",
+                next + 1, count));
+        refreshListEditPage();
+        refreshMpcFunctionBar();
     }
 
     private EditText addListEditNumberField(
@@ -18534,6 +18557,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.DATA_DIAL_PRESS:
                 if (navigationController.state().mode()
+                        == MpcUiState.Mode.LIST_EDIT) {
+                    showListEditEventEditor();
+                    return;
+                }
+                if (navigationController.state().mode()
                         == MpcUiState.Mode.PAD_MIXER
                         && padMixerView != null) {
                     cyclePadMixerDialFocus();
@@ -19033,6 +19061,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void handleHardwareDialDelta(int delta, boolean fine) {
         if (delta == 0) return;
+        if (navigationController.state().mode() == MpcUiState.Mode.LIST_EDIT) {
+            moveListEditSelectionByDelta(delta);
+            return;
+        }
         if (hardwareLocateActive) {
             final int denominator = Math.max(1, nativeSequenceGetDenominator());
             final long beatTicks = Math.max(

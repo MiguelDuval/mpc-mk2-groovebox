@@ -493,14 +493,18 @@ ListEditService::ModifyResult ListEditService::editEventById(
         return result;
     }
 
-    auto* target = findByEventId(pattern, eventId);
-    if (target == nullptr) {
+    const auto target = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [eventId](const MidiNoteEvent& event) {
+                return event.eventId == eventId;
+            });
+    if (target == pattern.notes.end()) {
         result.error = "event ID not found";
         return result;
     }
     const MidiNoteEvent oldEvent = *target;
     const auto oldIndex = static_cast<std::size_t>(
-            std::distance(pattern.notes.begin(), target));
+            target - pattern.notes.begin());
     if (oldEvent.tick == tick
             && oldEvent.durationTicks == durationTicks
             && oldEvent.note == note
