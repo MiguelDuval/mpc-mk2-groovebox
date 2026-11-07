@@ -373,6 +373,18 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetSixteenLevelTuneM
     semanticAdapter.setSixteenLevelTuneMode(enabled == JNI_TRUE);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetPadPerformContext(
+        JNIEnv* /* env */, jclass /* clazz */,
+        jboolean enabled, jint sourcePadIndex, jint scaleIndex, jint octaveShift)
+{
+    semanticAdapter.setPadPerformContext(
+            enabled == JNI_TRUE,
+            static_cast<std::int32_t>(sourcePadIndex),
+            static_cast<std::int32_t>(scaleIndex),
+            static_cast<std::int32_t>(octaveShift));
+}
+
 template <std::size_t Size>
 jbyteArray toJavaByteArray(
         JNIEnv* env,

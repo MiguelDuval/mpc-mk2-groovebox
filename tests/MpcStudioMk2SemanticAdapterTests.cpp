@@ -1,4 +1,5 @@
 #include "MPC/MpcStudioMk2SemanticAdapter.h"
+#include "MPC/MpcPadPerformPolicy.h"
 #include <cassert>
 #include <cstdint>
 using namespace mpc::studio;
@@ -14,6 +15,54 @@ InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
 InputEvent strip(std::uint8_t v){return {InputEventType::TouchStrip,0,33,v};}
 void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){assert(a);assert(a->type==t);}
 int main(){
+  using namespace mpc::studio::pad_perform;
+  assert(semitoneOffset(0, 0, 0) == 0);
+  assert(semitoneOffset(15, 0, 0) == 15);
+  assert(semitoneOffset(1, 1, 0) == 2);
+  assert(semitoneOffset(7, 1, 0) == 12);
+  assert(semitoneOffset(15, 1, 0) == 26);
+  assert(semitoneOffset(2, 2, 0) == 3);
+  assert(semitoneOffset(4, 3, 0) == 9);
+  assert(semitoneOffset(1, 4, 0) == 3);
+  assert(semitoneOffset(0, 1, -2) == -24);
+  assert(semitoneOffset(15, 1, 2) == 48);
+
+  MpcStudioMk2SemanticAdapter padPerform;
+  padPerform.setPadPerformContext(true, 5, 1, 1);
+  const auto padPerformRoot = padPerform.handlePad(pad(0));
+  assert(!padPerformRoot.consumed && padPerformRoot.tuningMode);
+  assert(padPerformRoot.targetPadIndex == 5
+          && padPerformRoot.tuningOffsetMilliSemitones == 12000);
+  const auto padPerformSecond = padPerform.handlePad(pad(1));
+  assert(padPerformSecond.tuningMode && padPerformSecond.targetPadIndex == 5);
+  assert(padPerformSecond.tuningOffsetMilliSemitones == 14000);
+  padPerform.setPadPerformContext(false, 5, 1, 1);
+  const auto padPerformExit = padPerform.handleControl(btn(52));
+  typeOf(padPerformExit, SemanticActionType::NavigateMain);
+  const auto padPerformRelease = padPerform.handlePad(padOff(1));
+  assert(padPerformRelease.tuningMode
+          && padPerformRelease.targetPadIndex == 5
+          && padPerformRelease.tuningOffsetMilliSemitones == 14000);
+  const auto afterPadPerform = padPerform.handlePad(pad(2));
+  assert(!afterPadPerform.tuningMode && afterPadPerform.targetPadIndex == 2);
+
+  // Leaving Pad Perform before the first new hardware hit must reset the old
+  // mode before a newly selected 16 Levels Tune mode is applied.
+  MpcStudioMk2SemanticAdapter modeTransition;
+  static_cast<void>(modeTransition.handlePad(pad(4)));
+  modeTransition.setPadPerformContext(true, 5, 1, 0);
+  const auto mappedDuringPerform = modeTransition.handlePad(pad(0));
+  assert(mappedDuringPerform.tuningMode && mappedDuringPerform.targetPadIndex == 5);
+  modeTransition.setPadPerformContext(false, 5, 1, 0);
+  modeTransition.setSixteenLevelTuneMode(true);
+  const auto levelToggle = modeTransition.handleControl(btn(40));
+  typeOf(levelToggle, SemanticActionType::SixteenLevelState);
+  assert(levelToggle->value0 == 1);
+  const auto tuneOriginalAfterExit = modeTransition.handlePad(pad(3));
+  assert(tuneOriginalAfterExit.tuningMode
+          && tuneOriginalAfterExit.targetPadIndex == 4
+          && tuneOriginalAfterExit.tuningOffsetMilliSemitones == 0);
+
   MpcStudioMk2SemanticAdapter a;
   static_cast<void>(a.handleControl(btn(114))); auto r=a.handlePad(pad(1)); typeOf(r.action,SemanticActionType::NavigateGrid); assert(r.consumed);
   MpcStudioMk2SemanticAdapter b; static_cast<void>(b.handleControl(btn(49))); auto bank=b.handleControl(btn(36)); typeOf(bank,SemanticActionType::PadBankChanged); assert(bank->value0==5);

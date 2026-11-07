@@ -39,6 +39,11 @@ public:
     std::optional<SemanticAction> handleControl(const InputEvent&) noexcept;
     PadRoutingResult handlePad(const InputEvent&) noexcept;
     void setSixteenLevelTuneMode(bool enabled) noexcept;
+    void setPadPerformContext(
+            bool enabled,
+            std::int32_t sourcePadIndex,
+            std::int32_t scaleIndex,
+            std::int32_t octaveShift) noexcept;
     [[nodiscard]] std::uint8_t padTargetForPhysicalPad(
             std::uint8_t physicalPadIndex) const noexcept;
     [[nodiscard]] std::optional<PadRoutingResult> heldRepeatPad() const noexcept;
@@ -85,12 +90,16 @@ private:
     std::optional<SemanticAction> handleJog(std::uint8_t) noexcept;
     std::optional<SemanticAction> handleJogPress(bool) noexcept;
     std::optional<SemanticAction> modePadAction(std::uint8_t) const noexcept;
+    void applyPendingPerformanceModeReset() noexcept;
     bool shiftHeld_=false, modeHeld_=false, locateHeld_=false, locateLatched_=false;
     std::int64_t locatePressTimestampNanos_=0;
     bool noteRepeatHeld_=false, noteRepeatLatched_=false;
     bool fullLevel_=false, halfLevel_=false;
     bool padMuteMode_=false, trackMuteMode_=false, sixteenLevel_=false;
     std::atomic<bool> sixteenLevelTuneMode_{false};
+    // Packed immutable snapshot shared between UI/JNI control and MIDI input threads.
+    std::atomic<std::uint32_t> padPerformConfig_{0};
+    std::atomic<bool> resetPerformanceModePending_{false};
     std::uint8_t lastPadIndex_=0xFF;
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;

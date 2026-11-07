@@ -236,6 +236,26 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         return rememberPress(r);
     }
 
+    const auto padPerformConfig =
+            padPerformConfig_.load(std::memory_order_acquire);
+    if ((padPerformConfig & 1u) != 0u) {
+        const auto sourcePad = static_cast<std::uint8_t>(
+                (padPerformConfig >> 1u) & 0x0Fu);
+        const auto scaleIndex = static_cast<std::int32_t>(
+                (padPerformConfig >> 5u) & 0x07u);
+        const auto octaveShift = static_cast<std::int32_t>(
+                (padPerformConfig >> 8u) & 0x07u)
+                + pad_perform::kMinimumOctaveShift;
+        r.targetPadIndex = sourcePad;
+        r.tuningMode = true;
+        r.velocity = static_cast<std::uint8_t>(
+                fullLevel_ ? 127u : halfLevel_ ? 64u : 100u);
+        r.tuningOffsetMilliSemitones =
+                pad_perform::semitoneOffset(
+                        e.padIndex, scaleIndex, octaveShift) * 1000;
+        return rememberPress(r);
+    }
+
     if (noteRepeatActive()) {
         lastPadIndex_ = e.padIndex;
         r.repeating = true;
@@ -322,6 +342,20 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 || n == "Erase";
         if (exitsLocate && locateLatched_) {
             locateLatched_ = false;
+        }
+    }
+    if (pressed) {
+        const bool exitsPadPerform =
+                n == "Mode" || n == "Main" || n == "Browse"
+                || n == "TrackSelect" || n == "ProgramSelect"
+                || n == "SampleSelect" || n == "SampleStart"
+                || n == "SampleEnd" || n == "Tune" || n == "Quantize"
+                || n == "TCOnOff" || n == "Zoom" || n == "Copy"
+                || n == "Erase" || n == "NoteRepeat" || n == "Level16"
+                || n == "PadMute";
+        if (exitsPadPerform) {
+            padPerformConfig_.store(0u, std::memory_order_release);
+            resetPerformanceModePending_.store(true, std::memory_order_release);
         }
     }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }
