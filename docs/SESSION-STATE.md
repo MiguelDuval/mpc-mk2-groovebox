@@ -1,23 +1,22 @@
-# Live checkpoint — 2026-11-06
+# Live checkpoint — 2026-11-07
 
-## Live verification — 2026-11-06, after checkpoint branch advanced
+## Live verification — 2026-11-07, 14:59 UTC
 
-**Primary PR #23:** OPEN, not merged. `feature/mpc-one-ui-fidelity` HEAD `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d` → `fix/ui-shell-format-width-startup` base `5f562e54e2cf8235041590933232a3836d74a16a`. Latest verified exact-head success remains Android Build #3402 / run `40528666946`; this is historical acceptance for PR #23's own HEAD, not the consolidated branch.
+**Primary PR #23:** OPEN, not merged. Product head `feature/mpc-one-ui-fidelity` at `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` → base `fix/ui-shell-format-width-startup` at `5f562e54e2cf8235041590933232a3836d74a16a`. Latest confirmed exact-head green remains Android Build #3402 / run [40528666946](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/40528666946). The live commit-run lookup returned no newer PR-triggered run for that product SHA.
 
-**Consolidated PR #133:** OPEN / Draft, `checkpoint/mpc-ui-reference-and-product-20261030` HEAD `453a1a90756bf3f21477605b58403eac572270b9`, based on PR #23's product SHA. The previous checkpoint line `4f1eab9694259f69e0d11527688aee0b9063db21` is an ancestor, not the current checkpoint head.
+**Consolidated PR #133:** OPEN / Draft; `checkpoint/mpc-ui-reference-and-product-20261030` at `d3e1c50e9e800029890318d71deacbd67c3733ad` → base `ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d`.
 
-**Latest checkpoint workflow:** Android Build #3720 / run `42233435515`, exact SHA `453a1a90756bf3f21477605b58403eac572270b9`, FAILURE at step 15 `Run focused Android unit policy tests`. Steps 1–14 passed; later compile/test/build/emulator steps were skipped. Javac found three invalid Java declarations for the hardware JNI bridge (the methods lacked the `native` modifier) and List Edit ADD treated the JNI `String` result as `int`. No APK or visual-evidence artifact was produced.
+**Repair PR #137:** OPEN / Draft; `fix/checkpoint-list-edit-samp007-livebase-20261106` at `a818c838b8cfde2b88da31ac1448d3f47342430c` → base `checkpoint/mpc-ui-reference-and-product-20261030` at `453a1a90756bf3f21477605b58403eac572270b9`. It is 7 commits ahead and 0 behind its base. Its prior exact-HEAD run was Build #3724 / run [42236257246](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42236257246).
 
-**Superseded PR #136 / old-base run:** PR #136 remains a Draft on `fix/checkpoint-list-edit-and-samp007-20261106`, head `82cdb0dfe8db93e9751884a90525e7c73cab8b3c`, but it was created against stale checkpoint base `4f1eab9694259f69e0d11527688aee0b9063db21`. Its Build #3723 / run `42234075205` failed at APK assembly because that old base's `src/NativeEngine.cpp` ended immediately after List Edit JNI, leaving the `extern "C"` block opened at line 4349 unclosed at EOF (compiler reported line 4648). The current checkpoint at `453a1a` contains the complete subsequent Hardware MIDI bridge tail; #3723 is not evidence against the current base and produced no artifacts.
+**Build #3724 failure:** steps 1–51 passed, including focused Android unit policy tests and all native tests. Step 52, Assemble debug APK, failed compiling `src/NativeEngine.cpp`: line 4781 expected a closing brace for the `extern "C" {` opened at line 4349. Inspection found a second Hardware MIDI bridge linkage block opened at line 4672, but the List Edit JNI block was not closed after `nativePatternDeleteEvent`. APK upload and emulator smoke were skipped; the artifact lookup returned no artifacts.
 
-**Fresh-base follow-up:** isolated branch `fix/checkpoint-list-edit-samp007-livebase-20261106` was created from exact current checkpoint SHA `453a1a90756bf3f21477605b58403eac572270b9`. It contains:
-- `MainActivity.java`: declares the three Hardware MIDI bridge JNI methods as instance `native` methods (matching the C++ `jobject` signatures); fixes List Edit ADD's `String` return and captures a final per-row `eventIndex` for callbacks; publishes a fresh SAMPLE hierarchy when the cursor returns to idle.
-- The existing `tests/android_ui_smoke.sh` (not a duplicate): imports the corrected U+2192 Sample region parsers, source guard, fresh View-tree uptime/provenance assertions and strict SAMP-007 real-touch/cursor-progress/idle checks. Existing native region/frame assertions remain.
-- The roadmap and action catalog distinguish historical SAMP-008/009 evidence from current exact-head revalidation.
+**Forward fix:** commit `a818c838b8cfde2b88da31ac1448d3f47342430c` adds the missing `} // extern "C"` immediately after `nativePatternDeleteEvent`, before the Hardware MIDI bridge's file-scope includes, private anonymous namespace and separate JNI export block. This changes no JNI implementation, runtime behavior or test assertion. The commit diff is limited to this four-line source addition.
 
-Static source checks on the code checkpoint passed for the three JNI declarations, List Edit String/index captures, idle snapshot scheduling, smoke UTF-8/BOM, fresh snapshot helpers, U+2192 parser and restored NativeEngine hardware tail. Exact full Android Build and emulator/evidence acceptance are still PENDING; do not mark SAMP-007/008/009 complete on this branch yet.
+**CI status for the fix commit:** the commit is live at PR #137 HEAD. The GitHub Actions commit-run and combined-status lookups have not yet surfaced a run/check for this SHA; therefore exact-head compilation, APK assembly, emulator smoke and evidence inspection remain PENDING. Do not treat the static linkage-block count (2 opens / 2 closes) as a substitute for the full build.
 
-`cancel-in-progress: false` is confirmed unchanged. `main` and PR #23 are untouched. No merge, reset, rebase, force-push or history rewrite. Physical MPC Studio MkII validation remains NOT RUN.
+**Acceptance:** SAMP-007/008/009, Browser USER FOLDER/FAVORITE and the full Project SAVE/OPEN lifecycle remain PENDING on this repair head until one exact-SHA full workflow and its artifacts are green. Physical MPC Studio MkII validation remains NOT RUN.
+
+`cancel-in-progress: false` is confirmed in `.github/workflows/android-build.yml`. `main` and PR #23 are untouched. No merge, reset, rebase, force-push or history rewrite.
 
 ---
 
