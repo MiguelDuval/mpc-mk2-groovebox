@@ -329,6 +329,12 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
     return std::nullopt;
 }
 
+void invalidateNoteRepeatRecordingTarget() noexcept {
+    if (noteRepeatScheduler) {
+        noteRepeatScheduler->setRecordingTrack(0xFF);
+    }
+}
+
 } // namespace mpc::midi
 
 template <std::size_t Size>

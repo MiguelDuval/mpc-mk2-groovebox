@@ -66,6 +66,7 @@ private:
     SequenceRecordQueue& recordQueue_;
 
     std::atomic<std::uint8_t> recordingTrackIndex_{0xFF};
+    std::atomic<std::uint32_t> recordingWriters_{0};
     std::atomic<bool> enabled_{false};
     std::atomic<bool> padHeld_{false};
     std::atomic<std::uint8_t> padIndex_{0};

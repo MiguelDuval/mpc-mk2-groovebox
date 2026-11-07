@@ -26,6 +26,7 @@
 #include "MPC/Sequencer/MpcLocatePolicy.h"
 #include "MPC/Sequencer/MpcErasePolicy.h"
 #include "MPC/Sequencer/MpcStepEditParameterPolicy.h"
+#include "Midi/NativeMidi.h"
 
 namespace {
 
@@ -53,6 +54,7 @@ jstring toJString(JNIEnv* env, const std::string& text) {
 }
 
 void stopSequenceForMutation() {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     auto& core = mpc::MpcCore::instance();
     auto& state = core.projectState();
     const auto position = sequenceSession().positionTicks();
@@ -3349,6 +3351,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
         return toJString(env, "Track selection failed");
     }
     auto& state = mpc::MpcCore::instance().projectState();
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
         return toJString(
                 env,
@@ -3393,6 +3396,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto audioResult = core.audio().start();
@@ -3445,6 +3449,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3472,6 +3477,7 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3524,6 +3530,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
     if (advanceResult.wrapped
             && queuedIndex >= 0
             && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
+        mpc::midi::invalidateNoteRepeatRecordingTarget();
         const bool wasRecording = core.sequenceRecorder().active();
         if (wasRecording) {
             core.sequenceRecorder().finish(
@@ -4251,6 +4258,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrack
         return toJString(env, "Track arm failed: no selected track");
     }
 
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     if (core.sequenceRecorder().active()) {
         core.sequenceRecorder().finish(
                 state,
