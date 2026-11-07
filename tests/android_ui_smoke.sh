@@ -13544,7 +13544,8 @@ PY
 }
 
 tap_mpc_menu_tile() {
-  local row="$1" col="$2" description page render_before shell_before
+  local row="$1" col="$2" target_xml="${3:-/tmp/mpc-groovebox-project-current-view-hierarchy.xml}"
+  local description page render_before shell_before capture_timeout=10
   case "$row:$col" in
     3:3) description="MPC Menu PROJECT"; page="PROJECT" ;;
     0:0) description="MPC Menu MAIN"; page="MAIN" ;;
@@ -13557,10 +13558,15 @@ tap_mpc_menu_tile() {
   if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"; then return 1; fi
   if [[ "$page" == "PROJECT" ]]; then
     if ! wait_for_new_project_marker "MPC_PROJECT_RENDER_COMPLETE summary=" "$render_before" 45; then return 1; fi
+    # The first heavy Project pre-draw can take longer than the ordinary page
+    # settle window. Capture it once, with a bounded 45s allowance, and let the
+    # caller retain that exact fresh hierarchy instead of waiting for a second
+    # pre-draw that the unchanged page is not required to produce.
+    capture_timeout=45
   else
     if ! wait_for_new_project_marker "MPC_SHELL_STATE_END mode=MAIN" "$shell_before" 45; then return 1; fi
   fi
-  capture_project_persistence_view_tree "$page" "/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
+  capture_project_persistence_view_tree "$page" "$target_xml" "$capture_timeout"
 }
 
 tap_project_toolbar_menu() {
@@ -13734,14 +13740,14 @@ fi
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
-if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
-if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
-# The first Project pre-draw can arrive after the ordinary 10s UI settle window.
-# Build #3792 recorded the valid fresh marker 10.7s after PROJECT_RENDER_COMPLETE;
-# keep provenance/page assertions strict while giving this heavy first route 20s.
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_ROUTE_XML" 20; then
-  echo "ERROR: Project route did not publish fresh Android View-tree XML"; exit 1
+# Capture the first rendered Project page directly into its immutable route-evidence path.
+# tap_mpc_menu_tile already verifies the native render marker and the fresh Android
+# View tree (including Open/Save controls). Reusing that exact snapshot avoids
+# demanding a second pre-draw from an unchanged page and never weakens freshness.
+if ! tap_mpc_menu_tile 3 3 "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: measured Menu PROJECT touch or fresh Project View-tree capture failed"; exit 1
 fi
+if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
