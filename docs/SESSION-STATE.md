@@ -1,83 +1,69 @@
-# Live checkpoint — 2026-11-06
+# Live checkpoint — 2026-11-07
 
-**Canonical working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
-**Branch HEAD:** `453a1a90756bf3f21477605b58403eac572270b9` (local, pushed to origin)  
-**Product baseline:** `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
-**Main:** not modified. **Physical Akai MPC Studio MkII validation:** PENDING.
+**Repository:** `MiguelDuval/mpc-mk2-groovebox` (GitHub)  
+**Authoritative CI/CD:** GitHub Actions, workflow [`.github/workflows/android-build.yml`](../.github/workflows/android-build.yml)  
+**Active branch:** `feature/firmware-informed-midi-list-edit-20261106`  
+**Current HEAD checked:** `225056974dfb9ec52095f0323c5ff5548fbc9d3e`  
+**Active PR:** [#139 — integrate: 34-commit MPC MkII Groovebox consolidation](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/139), OPEN / DRAFT  
+**PR base:** `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`  
+**PR head:** `225056974dfb9ec52095f0323c5ff5548fbc9d3e`; 34 commits ahead / 0 behind at the last PR inspection. Re-check live GitHub state before relying on this.  
+**Main:** unchanged. **Physical Akai MPC Studio MkII acceptance:** NOT RUN.
 
-## Consolidation result so far
+## GitHub-only platform contract
 
-A dedicated checkpoint branch now carries the local MPC 3.x screenshot catalog, mandatory visual-reference rules and the verified feature slices listed below. This is the single branch to continue from while the consolidated build is being accepted. Old PRs remain as historical/source records; do not develop new slices on their stacks.
+This project is developed and hosted on GitHub. GitHub Actions is the only authoritative CI/CD system and the only accepted source of the deliverable APK. The active Android Build workflow is `.github/workflows/android-build.yml`. The expected artifacts are `app-debug.apk` and `mpc-ui-visual-evidence`.
 
-| Integrated slice | Source exact SHA / evidence | Status on checkpoint |
-|---|---|---|
-| MPC visual screenshot catalog | PR #129; 82 VIS contexts, 402 source-image records (370 downloaded / 32 failed), 248 PDF page captures, 281 embedded crops | Integrated; 32 retrieval gaps remain explicit |
-| P0 Pad/Track Mute + Reserved routes | Product SHA `f734930cae403d0794e3d4b504e4bf8f5f7c6e84`; Build #3465 run `40591850947`, PR-head Build #3466 run `40660926245` | Integrated; source emulator acceptance green |
-| Native Track Solo | SHA `06d08f38d2789a0c62cf64b23cdd8e8dd2b420cd`; Build #3468 run `40663060996` | Integrated; source emulator/native acceptance green |
-| Grid inverse zoom + touch proof | PR #123 SHA `b11c2a4ce55a21528f056e740df108fb81d30b9b` Build #3457 run `40578192003`; PR #117 Build #3413 run `40547525120`; PR #114 Build #3399 run `40527004496` | Integrated; combined exact-head verification pending |
-| Arrangement pan/zoom proof | SHA `25f62d07d8e06e45847cca02f002066d10a4ac3d`; Build #3458 run `40578350114` | Integrated; combined exact-head verification pending |
-| Back navigation context + truthful MIDI state | PR #110 Build #3412 run `40547076817`; PR #112 Build #3400 run `40527456461` | Integrated; source runs green, hardware remains pending |
-| Project Save As evidence capture | PR #115 Build #3403 run `40535592616` | Integrated; source run green |
-| Browser local folders / file size / modified date | PR #80 Build #3374 run `40461592533`; PR #111 Builds #3394/#3395 runs `40518877443`, `40518880896` | Core code/test blobs and acceptance blocks already present; combined exact-head verification pending |
-| Browser picker cancellation | SHA `e707ffd026210cef3a022d743741f5f1f631b749`; Build #3424 run `40562838515` | Integrated; positive selection assignment and hardware SAF remain separate |
-| Sample Edit CH4/8/16 evidence preservation | SHA `ade77f513404112a251ad65cbd445e33003af599`; Build #3514 run `40895016008` | Integrated; combined exact-head verification pending |
+An APK uploaded by a failed workflow is only an intermediate candidate. Final acceptance requires a successful full workflow on the exact reported HEAD, including native/JVM tests, APK assembly/upload, emulator smoke and visual-evidence upload; then inspect both artifacts from that same run and compute the SHA-256 of the APK file itself. Do not confuse the ZIP artifact digest with the APK SHA-256. Local builds do not replace this acceptance gate.
 
-## Held changes
+## Latest exact-HEAD GitHub Actions result
 
-- PR #126 WAV export codec is NOT integrated. Its latest source run #3480 / `40710623733` failed at `MpcProjectState.cpp:209` on `-Werror=unused-variable` (`oldKind`); the decoder step itself passed. Its source also expects an `AudioEngine::exportSampleToWav` route absent from the checkpoint's current AudioEngine API. A temporary untested `encodeWav` addition to `WavSample.cpp/.h` was reverted. Re-evaluate as a fresh isolated feature only after defining the current product export API.
-- PR #127 Browser XML assertion repair remains held; Build #3516 failed. Inspect the exact failing step and current checkpoint assertions before importing.
-- PR #116 picker-cancel follow-up remains held after its exact source run #3411 failed; PR #119 is the accepted cancel-path source instead.
-- Do not merge or copy an entire old sample-lifecycle branch just to bring over individual fixes.
+- **Workflow:** Android Build #3770 — [run 42369284196](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42369284196)
+- **Tested SHA:** `225056974dfb9ec52095f0323c5ff5548fbc9d3e` on `feature/firmware-informed-midi-list-edit-20261106`
+- **Conclusion:** **FAILURE**, job `android-debug`, emulator smoke step 56. Do not call this HEAD green or release-ready.
+- Passed: focused native/JVM test steps, List Edit tests, APK assembly (step 53), APK upload (step 54), smoke syntax/evidence preflight (step 55), and visual-evidence upload (step 57).
+- APK artifact: `app-debug.apk`, ID `13573233946`, 11,179,341 bytes. GitHub ZIP-artifact digest: `sha256:447daaf84b1c8c65eb8a8abf8b25c762d3974d36d32fe06224fd86722ba09f64`. This is not the APK file's own SHA-256; compute that after downloading and inspecting the archive.
+- Visual evidence artifact: `mpc-ui-visual-evidence`, ID `13573971750`, 16,927,706 bytes, archive digest `sha256:8fb50468b7a6764b439ae97b434488105e2d075746b2ec43cda68322efaf819d`.
+- The APK and evidence were uploaded by the failed run; the candidate is not accepted until the full emulator smoke passes on the exact SHA and artifacts are inspected.
 
-## Current session fixes (2026-11-04 to 2026-11-06)
+### Observed smoke failure — legacy v1 Project reopen
 
-- **fix(test): repair all UTF-8 encoding defects in smoke preflight** (commit `17afe71f`). Fixed 115 arrow mojibake (в†’ → →), em dash, en dash, ellipsis and plus-minus mojibake patterns across the smoke test script. Verified bash -n passes, encoding guard passes, no BOM, strict UTF-8 decode OK, LF line endings.
+The final smoke path opened the version-1 project fixture after successful version-2 save/open/cancel/malformed-load assertions. The app log reported:
 
-- **fix(ui): add SAMPLE action to Main/Track View Function Bar after Browser sample assignment** (commit `1968a182`). After Browser assigns a WAV to the selected Pad/Layer there was no available SAMPLE action in the Main (and Track View) Function Bar, blocking the Browser → Sample Edit continuation. Added a `SAMPLE` function, enabled when `startupComplete && nativeAudioGetPadSampleFrameCount(selectedPad, selectedLayer) > 0`, that opens Sample Edit via `showSamplePage()`. Metronome stays RESERVED.
+- `PROJECT_OPEN_COMPLETE ... formatVersion=1 ... SEQUENCES=1 TRACKS=2 PATTERNS=2 PLACEMENTS=0 MIDI_NOTES=2`
+- `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN nodes=232 source=android-view-tree ...`
 
-- **fix(ui): refresh Function Bar synchronously in showMainPage()** (commit `c4726efb`). `showMainPage()` previously relied on the navigation listener's `runOnUiThread(updateMpcShellState)` to rebuild the Function Bar, which runs asynchronously after `showMainPage()` returns. When the smoke test returns to Main from the Menu and immediately taps SAMPLE, the Function Bar had not been refreshed yet. Added explicit `refreshMpcFunctionBar()` call at the end of `showMainPage()`.
+However, the smoke helper first logged a 30-second timeout waiting for a new native marker, and then reported:
 
-- **fix(ui): stop sample playback cursor updater when playback inactive** (commit `cfb834e6`). `startSamplePlaybackCursorUpdates()` scheduled `waveformUiHandler.postDelayed(this, 33L)` **unconditionally** at the end of every callback — even when no playback cursor exists (`totalFrames == 0` or `cursorFrame < 0`). This continuous ~30fps main-thread activity prevents Android UiAutomator's global idle detection from completing, causing subsequent `dump_device_ui`/`wait_for_ui_description` calls (after tapping SAMPLE to open Sample Edit) to time out.
-  - Fix: moved `postDelayed(this, 33L)` inside the `if (totalFrames > 0 && cursorFrame >= 0 && cursorFrame < totalFrames)` block so it only reschedules when genuine playback is active. Added `return;` in the `else` block to stop scheduling when playback is not active.
-  - Added `stopSamplePlaybackCursorUpdates()` method that removes callbacks and resets playhead when navigating away from Sample page.
-  - Added `stopSamplePlaybackCursorUpdates()` calls to `showMainPage()`, `showBrowserPage()`, `showSequencePage()`, `showRecordPage()`, `showMutePage()` and `showMixPage()`.
+- `ERROR: no fresh Android View-tree snapshot for app page MAIN`
+- `ERROR: v1-loaded Main View tree missing`
 
-- **feat: add List Edit pattern event CRUD with native API and UI page** (commit `4f1eab96`). Implemented MENU-008 List Edit as a real feature page (not decorative):
-  - **Native layer (NativeEngine.cpp):** Added 10 JNIEXPORT functions for pattern event CRUD: `nativePatternGetEventCount`, `nativePatternGetEventNote/Velocity/Duration/Tick` (getters), `nativePatternSetEventNote/Velocity/Duration/Tick` (setters), `nativePatternAddEvent`, `nativePatternDeleteEvent`. All operate on the active Drum track's first pattern via `resolveEditPattern()` helper. Include bounds checking, playback-blocking, same-pitch collision rejection, and stable sort by tick.
-  - **Java layer (MainActivity.java):** Added 10 `private static native` declarations matching the C++ signatures. Added `showListEditPage()` and `refreshListEditPage()` methods building a List Edit page with event list (tick, note, velocity, duration), per-row edit buttons, ADD/DEL actions, and BACK navigation. Added `LIST_EDIT` case to `navigateToMode()` switch. Added `listEditEventList` field.
+**Root cause is not yet established.** The ready marker appears immediately after the wait timed out, so investigate the ordering/baseline/capture race between the marker wait, app-owned tree publication and the freshness validator. Do not simply increase timeouts, reuse stale XML, weaken snapshot-provenance checks or alter Project decoding without evidence. Inspect the exact helper, marker baselines, timestamps and archived XML/logs first.
 
-- **feat: add 16 Levels, Pad Perform UI pages and hardware MIDI bridge** (commit `534778b1`):
-  - **Native layer (NativeEngine.cpp):** Added 3 JNIEXPORT functions for hardware MIDI bridge: `nativeOnMidi` (receives raw MIDI bytes from controller, decodes via `MpcStudioMk2InputDecoder`, routes pad hits through `MpcStudioMk2SemanticAdapter` with 16 Levels velocity scaling, queues hardware actions), `nativeConsumeHardwareAction` (drains queued actions for Java side), `nativeConsumeSequenceLauncherPad` (returns queued launcher pad). Added `PadTrigger=64` to `SemanticActionType` enum.
-  - **Java layer (MainActivity.java):** Added 3 `private static native` declarations for hardware bridge. Added `PAD_TRIGGER` case in `applyHardwareAction()` to trigger pad audio with hardware-scaled velocity. Added `showLevels16Page()` (4x4 velocity grid, 1-127 range) and `showPadPerformPage()` (4x4 chromatic note grid). Added `LEVELS_16` and `PAD_PERFORM` cases to `navigateToMode()`.
-  - **Java constants (MpcStudioMk2SemanticActions.java):** Added `PAD_TRIGGER=64`.
-  - **C++ header (MpcStudioMk2SemanticAdapter.h):** Added `PadTrigger=64` to `SemanticActionType`.
+## Immediate execution order
 
-## CI status (PR #133)
+1. Fix the specific legacy-v1 Main hierarchy freshness failure in the existing smoke harness, preserving all current freshness/provenance and Project-state assertions.
+2. Run focused tests and shell/smoke preflight; commit the coherent fix on the active feature branch.
+3. Push to GitHub and inspect the resulting GitHub Actions run on the exact new SHA. Require full SUCCESS and inspect both artifacts from that same run.
+4. Once CI is unblocked, resume the product campaign: bring the MPC 3.9 UI/workspaces to the required functional and visual standard, then complete missing musical functions in real vertical slices. Do not sink the session into endless polish; do not move into new features while a current red CI blocker remains.
+5. Keep hardware acceptance separate; emulator evidence does not certify a physical MPC Studio MkII.
 
-| Build | Run | HEAD | Steps 1-54 | Step 55 (emulator smoke) |
-|---|---|---|---|---|
-| #3697 | 41922886590 | `c4726efb` | SUCCESS | FAILED (cursor 33ms polling) |
-| #3698 | 41930588812 | `31bfd617` | SUCCESS | FAILED (same root cause) |
-| #3720 | 42233435515 | `453a1a90` | FAILED (Java compile) | not reached |
+## Product and engineering constraints
 
-**Build #3720 failure root cause:** Duplicate JNI declarations in MainActivity.java (hardware bridge methods declared without `native` keyword and competing with AndroidMidiBridge declarations). Fixed by removing duplicates from MainActivity — they correctly exist only in AndroidMidiBridge.
+- Primary physical surface: Akai MPC Studio MkII. Standalone touchscreen-only operation is secondary.
+- Target interaction and visual reference: MPC Standalone OS 3.9 / MPC 3.x, with the mandatory local `VIS-001`–`VIS-082` inspection gate.
+- Preserve the Android, transport, Studio MkII adapter, domain, audio/sequencer and persistence boundaries.
+- Keep unsupported features honestly RESERVED/UNAVAILABLE; do not create decorative fake controls or pretend a route works.
+- No changes to `main`; no force-push, reset, rebase, squash or history rewrite. One writer owns the active branch.
+- All future reports must identify exact GitHub repository/branch/HEAD/PR, Actions run and artifact identities. A successful compile or APK upload is not a successful release.
 
-**Next:** Push all fixes to origin/checkpoint/mpc-ui-reference-and-product-20261030 and re-run Android Build #3720+ to verify Java compile passes.
+## Historical notes
 
-## Mandatory visual-reference rule
-
-Every agent must open the relevant `VIS-001`–`VIS-082` entry in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and visually inspect its local image/page capture from `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md` before changing/reviewing/accepting a screen. Record VIS IDs, asset paths, and before/after evidence. MPC Standalone OS 3.9 is primary; older images are supplementary. Missing direct screenshots must be called out; no visual-reference gate is waived by a green test.
-
-## Next actions
-
-1. Open a Draft consolidation PR from `checkpoint/mpc-ui-reference-and-product-20261030` to `feature/mpc-one-ui-fidelity` to trigger the Android workflow on the integrated exact HEAD.
-2. Inspect exact-head workflow result, job steps, APK artifact and visual-evidence archive. Validate required markers for Mute, Solo, Grid, Arrangement, Browser, Sample Edit and Project Save As; do not claim acceptance before inspecting evidence.
-3. Fix only concrete failures on this checkpoint branch, rerun exact-head CI, then update this file with the resulting SHA/run/artifact identities.
-4. After green consolidated CI, decide whether to merge checkpoint PR into the product feature branch. Never change `main` as part of this consolidation.
+Everything below this live handoff is retained for engineering lineage. Older PR #133 / PR #23 status blocks, old branch names, CI run numbers and “next action” lists are historical unless independently reconfirmed against live GitHub.
 
 ---
 
-## Consolidated engineering checkpoint — 2026-10-30 (current handoff)
+
+## Historical consolidated engineering checkpoint — 2026-10-30 (superseded by the live 2026-11-07 state above) (current handoff)
 
 **Candidate branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
 **Immutable product starting point:** PR #23 product-code SHA `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d`. The consolidated candidate is a descendant of this SHA; the product branch and `main` were not changed.  
