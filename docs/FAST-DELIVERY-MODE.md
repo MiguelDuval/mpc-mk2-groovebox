@@ -135,3 +135,12 @@ Then expand to the next high-value workflow. Prefer completing one end-to-end pa
 - Do not ask the owner to adjudicate routine technical decisions already covered by this contract. Make the smallest reversible engineering choice and document it.
 - Give short milestone reports, not constant progress narration.
 - Never claim that the full workflow or physical controller was verified unless the corresponding evidence exists.
+
+
+## 9. Visual references and action catalog — useful, not blocking
+
+- Use the action catalog as a quick lookup for substantial interactions; do not make a new catalog row a prerequisite for routine implementation.
+- Use local MPC visual references for meaningful screen redesigns and milestone review when the relevant asset is readily available.
+- If a screenshot is missing, inaccessible or not an exact match, record the gap briefly and continue with the closest reference and current implementation.
+- Do not spend sessions downloading/reconstructing reference images, writing catalog metadata or capturing before/after evidence for every small commit.
+- Screenshots/XML are milestone evidence, not a daily development toll.

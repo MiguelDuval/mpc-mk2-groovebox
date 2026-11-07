@@ -101,7 +101,7 @@ For each feature, distinguish the following:
 
 | Dimension | Evidence required |
 |---|---|
-| Visual | Actual runtime screenshot at the intended orientation/resolution, with no audit diagnostics covering the product UI |
+| Visual | For major UI redesign/milestone: runtime screenshot at intended orientation/resolution. Routine functional slices do not require new screenshot evidence. |
 | Interaction | Touch and/or semantic hardware action reaches the correct handler; hit targets, focus and Back behavior are usable |
 | Musical state | Correct selected Sequence/Track/Program/Pad/Layer/file state, with the real domain/native command used where applicable |
 | Persistence/navigation | State survives expected context changes and returns; persisted settings are only claimed if storage is implemented and tested |
@@ -170,9 +170,9 @@ At the start, read `docs/SESSION-STATE.md`, then independently verify its branch
 
 Because a commit changes the branch HEAD, do not put an unverified future SHA into the file or claim its own resulting SHA is known before the commit exists. Always refetch live HEAD in the next session. `SESSION-STATE.md` is a checkpoint, never an authoritative substitute for GitHub.
 
-## 11. Mandatory visual-reference review
+## 11. Visual-reference review — milestone-based, non-blocking
 
-For every UI-facing implementation/review slice, the agent must select the relevant `VIS-001`–`VIS-082` item(s) from `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md` and open the actual local image/page capture listed in `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`. Compare the current screen and the resulting screen to the reference; record VIS ID(s), asset path/source, and before/after visual evidence in the PR/checkpoint. Prefer official MPC Standalone OS 3.9 evidence; older OS and third-party images are supplementary and must be identified as such. Explicitly record missing exact-screen evidence and never silently skip the gate. This applies to all agents and branches, regardless of prior plans or green tests. Reference materials are documentation-only and must not be bundled into the APK.
+For substantial screen redesigns and milestone acceptance, consult the closest relevant `VIS-001`–`VIS-082` context and inspect the local asset when it is readily available. Prefer official MPC Standalone OS 3.9 evidence; older OS/third-party images are supplementary. If an exact screenshot is missing or inaccessible, note the gap and continue with the best available reference. Do not block functional implementation, require before/after screenshots for every micro-change, or spend a session reconstructing missing assets. Capture visual evidence at a meaningful UI milestone or during full acceptance. Keep reference assets out of the APK.
 
 ## 10. Stop conditions for a slice
 

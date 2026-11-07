@@ -10,9 +10,9 @@ This document is the project's canonical operating brief.
 
 Before making code changes, read this document and then consult the more specific repository documents it points to. Treat repository evidence, build results, physical hardware tests, and current source code as higher-confidence evidence than assumptions.
 
-For any MPC-style UI action, also consult `docs/MPC3-USER-ACTION-CATALOG.md` before implementing. Use its action ID, official source anchors, firmware evidence, current implementation mapping and acceptance path; extend the catalog when a new user intent is not already covered.
+For a substantial MPC-style UI action, use an existing relevant row in `docs/MPC3-USER-ACTION-CATALOG.md` as a quick reference when available. Do not delay implementation to create catalog entries for routine changes; update the catalog at a meaningful milestone. Use real backend semantics, not labels.
 
-**Mandatory visual gate:** before changing or accepting any user-visible screen or control, select the relevant `VIS-001`–`VIS-082` context in `docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md`, open and inspect its actual local image/page capture through `docs/MPC3-UI-REFERENCE-ASSETS/INDEX.md`, and compare it to the current/proposed UI. Use MPC Standalone OS 3.9 as primary authority. Record VIS IDs, asset paths, and before/after evidence in the PR/checkpoint. If a direct screenshot is unavailable, document the best reference and the gap; do not silently skip this step. Automated tests do not replace this check.
+**Visual-reference guidance (non-blocking):** for substantial screen redesigns and milestone acceptance, consult the closest relevant `VIS-001`–`VIS-082` context and inspect the local asset if readily available. MPC Standalone OS 3.9 remains the preferred authority. If the exact asset is missing or inaccessible, note the gap and continue using the best available evidence. Do not delay functional implementation, require screenshots/XML on every micro-commit, or spend sessions reconstructing missing references.
 
 The project must be developed incrementally, with every important layer independently testable.
 

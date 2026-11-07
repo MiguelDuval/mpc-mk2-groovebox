@@ -9,7 +9,7 @@
 
 This is the action-oriented companion to [MPC3-9-OS-KNOWLEDGE-BASE.md](MPC3-9-OS-KNOWLEDGE-BASE.md), [MPC3-REFERENCE-INDEX.md](MPC3-REFERENCE-INDEX.md), and [MPC3-UI-SCREEN-BLUEPRINT.md](MPC3-UI-SCREEN-BLUEPRINT.md). Read this catalog before implementing a substantial MPC-style interaction. It is intended to reduce repeated research and make the next action in a user workflow explicit.
 
-> **Mandatory visual evidence gate:** Before implementing or accepting any user-facing action, open the corresponding visual context(s) from [the MPC UI screenshot catalog](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) and inspect the local asset(s) linked through [the reference gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md). Record VIS ID(s) and before/after proof. A passing action test does not establish visual fidelity.
+> **Visual-reference guidance (non-blocking):** For substantial visual redesigns and milestone acceptance, consult the closest relevant context in [the MPC UI screenshot catalog](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) and inspect the local asset(s) from [the reference gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md) when readily available. If the exact asset is unavailable, note the gap and continue. Routine implementation does not require screenshot archaeology or new before/after evidence per commit.
 
 ## 1. Scope and truthfulness contract
 
@@ -42,12 +42,12 @@ A status never means that a visible label alone proves a working feature.
 
 ## 2. How an agent must use this catalog
 
-For each UI action being changed:
+For a substantial UI action, when the catalog lookup is immediately relevant:
 
 1. Find the action ID below and read its source references (S-xx) and relevant firmware evidence (F-xx).
 2. Check the linked knowledge-base/blueprint section and current implementation files. Treat the live source and latest GitHub Actions evidence as more authoritative than a stale status cell.
 3. Trace the real view/listener, current UI state, semantic/domain operation and tests before editing. Do not create duplicate musical state in the view.
-4. If the action is missing from the catalog, add an entry before implementing it. Record what is known, what is uncertain, intended state change, backend dependency and acceptance scenario.
+4. If the action is missing, implement the smallest safe behavior first unless its semantics are genuinely ambiguous. Add/update the catalog at a meaningful milestone; do not block a routine implementation on documentation.
 5. Implement the smallest vertical slice; validate the changed state, navigation/return behavior and relevant persistence. For musical edits, check preservation of unrelated events and Undo/Redo where supported.
 6. Update this catalog and the relevant roadmap/status matrix when status changes. Record the exact tested SHA and run. Keep physical-controller verification separate from emulator evidence.
 
