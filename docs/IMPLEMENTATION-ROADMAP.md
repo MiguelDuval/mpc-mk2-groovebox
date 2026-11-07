@@ -318,7 +318,7 @@ Branch: `feature/mpc-one-ui-fidelity`
 
 ## MPC Studio MkII hardware-control slice
 
-This supplements Stages 1, 2 and 7; it does **not** replace the roadmap sequence.
+The MPC Studio MkII hardware-control slice is the primary product interaction track. Stages 1, 2 and 7 provide the audio/sequencer and on-screen workspace foundations required by that controller-first workflow; their existence does not demote the physical controller to an optional later phase. Implement the MkII P0 controls before standalone touchscreen-only refinements.
 
 ### Hardware semantic routing — P0
 
