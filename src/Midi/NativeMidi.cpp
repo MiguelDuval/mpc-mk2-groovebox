@@ -64,9 +64,30 @@ mpc::sequencer::MpcNoteRepeatScheduler& repeatScheduler() {
         noteRepeatScheduler =
                 std::make_unique<mpc::sequencer::MpcNoteRepeatScheduler>(
                         core.audio(),
-                        core.sequenceTransportClock());
+                        core.sequenceTransportClock(),
+                        core.sequenceRecordQueue());
     }
     return *noteRepeatScheduler;
+}
+
+std::uint8_t currentRecordableDrumTrack(mpc::MpcCore& core) noexcept {
+    if (!core.sequenceTransportClock().snapshot().playing) {
+        return 0xFF;
+    }
+
+    const auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()
+            || trackIndex >= mpc::domain::kMaxSequenceTracks) {
+        return 0xFF;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (!track.recordArmed || track.kind != mpc::domain::TrackKind::Drum) {
+        return 0xFF;
+    }
+    return static_cast<std::uint8_t>(trackIndex);
 }
 
 bool enqueueSemanticAction(
@@ -196,6 +217,8 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                             .activeDrumProgram()
                             .pad(padRouting.targetPadIndex);
                     if (!pad.muted) {
+                        scheduler.setRecordingTrack(
+                                currentRecordableDrumTrack(core));
                         scheduler.setPad(
                                 padRouting.targetPadIndex,
                                 padRouting.velocity);
@@ -206,6 +229,8 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             } else if (!semanticAdapter.noteRepeatLatched()) {
                 const auto heldPad = semanticAdapter.heldRepeatPad();
                 if (semanticAdapter.noteRepeatActive() && heldPad.has_value()) {
+                    scheduler.setRecordingTrack(
+                            currentRecordableDrumTrack(core));
                     scheduler.setPad(heldPad->targetPadIndex, heldPad->velocity);
                 } else {
                     scheduler.clearPad();

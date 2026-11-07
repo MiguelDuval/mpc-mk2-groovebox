@@ -98,7 +98,7 @@ public:
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads
                     || event.velocity > 127
-                    || event.pressed > 1) {
+                    || event.pressed > kSequenceRecordNoteHit) {
                 continue;
             }
 
@@ -117,7 +117,53 @@ public:
                 continue;
             }
 
-            if (event.pressed != 0u) {
+            if (event.pressed == kSequenceRecordNoteHit) {
+                if (event.velocity == 0u) {
+                    continue;
+                }
+
+                auto& pattern = track.patterns.front();
+                const auto loopLength = static_cast<std::int64_t>(
+                        std::max<std::int32_t>(1, pattern.lengthTicks));
+                const auto normalizedStart = event.tick % loopLength;
+                const auto duration = std::clamp<std::int64_t>(
+                        std::max<std::int64_t>(
+                                1,
+                                std::min<std::int64_t>(
+                                        state.activeSequence().quantizeGridTicks,
+                                        loopLength)),
+                        1,
+                        loopLength);
+
+                domain::MidiNoteEvent note;
+                note.tick = static_cast<std::int32_t>(normalizedStart);
+                note.durationTicks = static_cast<std::int32_t>(duration);
+                note.note = trackProgram->pad(padIndex).midiNote;
+                note.velocity = event.velocity;
+                note.probability = 127;
+                note.ratchet = 1;
+
+                if (state.activeSequence().timingCorrectEnabled) {
+                    quantizeAndSwing(
+                            note,
+                            static_cast<std::int32_t>(loopLength),
+                            state.activeSequence().quantizeGridTicks,
+                            state.activeSequence().swingPercent);
+                }
+
+                if (mode_ == PatternRecordMode::Replace
+                        && !replaceCleared_[trackIndex]) {
+                    pattern.notes.clear();
+                    replaceCleared_[trackIndex] = true;
+                }
+
+                pattern.notes.push_back(note);
+                touchedTracks[trackIndex] = true;
+                ++recorded;
+                continue;
+            }
+
+            if (event.pressed == kSequenceRecordNoteOn) {
                 if (!held_[trackIndex][padIndex]) {
                     held_[trackIndex][padIndex] = true;
                     startTicks_[trackIndex][padIndex] = event.tick;

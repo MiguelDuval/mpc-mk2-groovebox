@@ -5,6 +5,7 @@
 #include "MPC/Domain/MpcDomain.h"
 
 #include <algorithm>
+#include <android/log.h>
 
 namespace mpc::sequencer {
 
@@ -17,9 +18,11 @@ std::int64_t nowNanos() noexcept {
 
 MpcNoteRepeatScheduler::MpcNoteRepeatScheduler(
         audio::AudioEngine& audio,
-        MpcSequenceTransportClock& clock) noexcept
+        MpcSequenceTransportClock& clock,
+        SequenceRecordQueue& recordQueue) noexcept
         : audio_(audio),
           clock_(clock),
+          recordQueue_(recordQueue),
           worker_(&MpcNoteRepeatScheduler::run, this) {
 }
 
@@ -35,6 +38,7 @@ void MpcNoteRepeatScheduler::setEnabled(bool enabled) noexcept {
     enabled_.store(enabled, std::memory_order_release);
     if (!enabled) {
         padHeld_.store(false, std::memory_order_release);
+        recordingTrackIndex_.store(0xFF, std::memory_order_release);
     }
     wake();
 }
@@ -55,13 +59,53 @@ void MpcNoteRepeatScheduler::setPad(
 
     // The first hit is immediate. Subsequent hits are scheduled against
     // the same transport clock/grid instead of the Android UI timer.
-    audio_.triggerPad(padIndex, velocity);
+    triggerHit(padIndex, velocity, nowNanos());
     wake();
+}
+
+void MpcNoteRepeatScheduler::setRecordingTrack(
+        std::uint8_t trackIndex) noexcept {
+    recordingTrackIndex_.store(
+            trackIndex < domain::kMaxSequenceTracks ? trackIndex : 0xFF,
+            std::memory_order_release);
 }
 
 void MpcNoteRepeatScheduler::clearPad() noexcept {
     padHeld_.store(false, std::memory_order_release);
+    recordingTrackIndex_.store(0xFF, std::memory_order_release);
     wake();
+}
+
+void MpcNoteRepeatScheduler::triggerHit(
+        std::uint8_t padIndex,
+        std::uint8_t velocity,
+        std::int64_t timestampNanos) noexcept {
+    audio_.triggerPad(padIndex, velocity);
+
+    const auto trackIndex =
+            recordingTrackIndex_.load(std::memory_order_acquire);
+    const auto transport = clock_.snapshot();
+    if (trackIndex >= domain::kMaxSequenceTracks) {
+        return;
+    }
+    if (!transport.playing) {
+        // Do not carry a formerly armed track into the next transport pass.
+        recordingTrackIndex_.store(0xFF, std::memory_order_release);
+        return;
+    }
+
+    const SequenceRecordEvent captured{
+            clock_.positionAtTimestamp(timestampNanos),
+            trackIndex,
+            padIndex,
+            velocity,
+            kSequenceRecordNoteHit};
+    if (!recordQueue_.tryEnqueue(captured)) {
+        __android_log_print(
+                ANDROID_LOG_WARN,
+                "MpcMk2Groovebox",
+                "Note Repeat recording queue full; generated hit was not recorded");
+    }
 }
 
 void MpcNoteRepeatScheduler::setRepeatGridIndex(
@@ -185,9 +229,10 @@ void MpcNoteRepeatScheduler::run() noexcept {
         if (now >= nextDue) {
             if (enabled_.load(std::memory_order_acquire)
                     && padHeld_.load(std::memory_order_acquire)) {
-                audio_.triggerPad(
+                triggerHit(
                         padIndex_.load(std::memory_order_acquire),
-                        velocity_.load(std::memory_order_acquire));
+                        velocity_.load(std::memory_order_acquire),
+                        nowNanos());
             }
 
             nextDue = nextDueFromTransport(Clock::now(), snapshot);

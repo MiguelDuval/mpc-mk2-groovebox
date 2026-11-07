@@ -784,12 +784,12 @@ The MkII path now has a native semantic-adapter layer between MIDI decoding and 
 
 Routed at this checkpoint: Mode+implemented-page shortcuts, Main/Browse, Track/Sequence selection, Data Dial direction/press, Plus/Minus adjustment, Pad Bank state, Full Level/Half Level, 16 Level Velocity, Pad/Track Mute contexts and targets, transport, stopped Step/Bar navigation, Tap Tempo, launcher-bank selection, Sample Start/End/Tune contextual Touch Strip control, Quantize/Timing Correct and native clock-synchronous Note Repeat performance.
 
-Not declared complete: generated Note Repeat hit recording into the sequence record queue, full LCD product pages, Locate marker/event navigation, program/track-type browsing, Undo/Redo and the remaining P1 editing commands. Physical MkII verification remains required before a control is marked CONFIRMED.
+Generated Note Repeat hits now enter the existing SequenceRecordQueue as one-shot drum-note events and materialize directly into the armed Pattern through MpcSequenceRecorder. Full LCD product pages, Locate marker/event navigation, program/track-type browsing, Undo/Redo and the remaining P1 editing commands remain incomplete. Physical MkII verification remains required before a control is marked CONFIRMED.
 
 
 ## 2026-10-01 Note Repeat rate checkpoint
 
-The Touch Strip now has an explicit Note Repeat context. While Note Repeat is active, the strip selects one of eight bounded musical rates (five straight divisions plus three triplet divisions); the selected rate is stored in the native repeat scheduler independently from the Sequence recording/Timing Correct grid.
+The Touch Strip now has an explicit Note Repeat context. While Note Repeat is active, the strip selects one of eight bounded musical rates (five straight divisions plus three triplet divisions); the selected rate is stored in the native repeat scheduler independently from the Sequence recording/Timing Correct grid. Each immediate and clock-generated hit now produces one queued drum-note event when the active Drum Track is armed and transport is playing; the sequence recorder applies its normal Program note map, Timing Correct/swing and default note duration. The repeat worker writes only to the bounded control-side record queue and never calls into the project model or audio callback.
 
 The hardware feedback path mirrors that state through the dedicated Note Repeat division LED bank. Leaving Note Repeat active returns the strip to its normal context-sensitive parameter path.
 

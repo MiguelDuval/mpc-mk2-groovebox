@@ -295,7 +295,7 @@ void testMalformedEventFieldsCannotCreateInvalidNotes() {
     // must not create a note, and a non-boolean pressed field is ignored.
     assert(queue.tryEnqueue({100, 0, 0, 200, 1}));
     assert(queue.tryEnqueue({200, 0, 0, 0, 0}));
-    assert(queue.tryEnqueue({250, 0, 0, 100, 2}));
+    assert(queue.tryEnqueue({250, 0, 0, 100, 3}));
 
     // A malformed note-off must not close an otherwise valid held note.
     assert(queue.tryEnqueue({300, 0, 1, 100, 1}));
@@ -311,6 +311,40 @@ void testMalformedEventFieldsCannotCreateInvalidNotes() {
     assert(note.velocity == 100);
 }
 
+
+void testClockedRepeatHitRecordsAsOnePatternNote() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.quantizeGridTicks = 120;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({
+            360, 0, 5, 117, mpc::sequencer::kSequenceRecordNoteHit}));
+    assert(queue.tryEnqueue({
+            600, 0, 5, 83, mpc::sequencer::kSequenceRecordNoteHit}));
+
+    assert(recorder.drain(state, queue) == 2);
+    const auto& notes = track.patterns.front().notes;
+    assert(notes.size() == 2);
+    assert(notes[0].tick == 360);
+    assert(notes[0].durationTicks == 120);
+    assert(notes[0].note == state.activeDrumProgram().pad(5).midiNote);
+    assert(notes[0].velocity == 117);
+    assert(notes[1].tick == 600);
+    assert(notes[1].durationTicks == 120);
+    assert(notes[1].note == state.activeDrumProgram().pad(5).midiNote);
+    assert(notes[1].velocity == 83);
+
+    assert(recorder.finish(state, queue, 720) == 0);
+    assert(track.patterns.front().notes.size() == 2);
+}
 
 void testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes() {
     mpc::MpcProjectState state;
@@ -389,6 +423,7 @@ int main() {
     testDrainSortsOnlyThePatternThatReceivedRecordedNotes();
     testArmedTrackUsesItsOwnDrumProgramMapping();
     testMalformedEventFieldsCannotCreateInvalidNotes();
+    testClockedRepeatHitRecordsAsOnePatternNote();
     testSequenceSwitchAbortsRecordingWithoutCrossSequenceNotes();
     testProjectReplacementAbortsEvenWhenPersistentIdsMatch();
     return 0;
