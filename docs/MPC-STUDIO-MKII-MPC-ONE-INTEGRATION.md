@@ -122,7 +122,7 @@ The raw-value details and full protocol tables remain in the [Studio MkII Revers
 | Q-Link knobs / Q-Link button | No physical bank of eight Studio knobs. Studio has one Data Dial and one one-dimensional Touch Strip. | Use field focus + Data Dial/+/- and a contextual Touch Strip for supported parameters. UI macro bindings require real parameter destinations. | This is not full physical Q-Link parity. Never invent knobs or present unsupported macro controls as working. |
 | Looper | Studio Mode+Pad 14 (printed Looper destination). | Route to Looper only if a real loop record/playback domain is implemented. | RESERVED until backend exists; never rebrand it XYFX, Arrangement or another unrelated route. |
 | Song Mode / Linear Arrangement | Studio Mode+Pad 10 is the legacy Song destination. MPC 3.9 uses a Linear Arranger / Arrangement context. | Route to the MPC 3.9 Arrangement only by an explicit product mapping using the actual Pattern-placement model; the two labels are not automatically equivalent. | Arrangement and placements have foundations, but Song-specific behavior is not the same contract and must not be inferred from the key label. |
-| List Editor | Studio Mode+Pad 4. | Open a real event-list editor only after event display, selection, mutation and acceptance exist. | RESERVED; do not route to Grid/Step as a cosmetic substitute. |
+| List Editor | Studio Mode+Pad 4. | Open the native event-list workspace for the active Track/Pattern. | PARTIAL: native MIDI note event listing, selection, Add/Edit/Delete and Undo/Redo are implemented. Event IDs are runtime-only; physical Studio gesture acceptance is NOT RUN. |
 
 ## 5. Studio Mode+Pad destination bridge
 
@@ -133,7 +133,7 @@ Mode on the Studio is a modifier: hold Mode and press one pad to select the prin
 | Mode + Pad 1 | Track View | Supported Track context/view for current Track | Preserve Track and transport. |
 | Mode + Pad 2 | Grid Editor | SEQ → GRID | Real Grid route; verify physical destination. |
 | Mode + Pad 3 | Wave Editor | Selected Sample waveform / Sample Edit | Partial sample workflow; no separate legacy desktop page requirement. |
-| Mode + Pad 4 | List Editor | Future event-list editor | RESERVED until real editor and operations exist. |
+| Mode + Pad 4 | List Editor | LIST EDIT | PARTIAL implementation; verify the physical Studio gesture and state preservation on hardware. |
 | Mode + Pad 5 | Sample Edit | Sample/Track Edit for selected Pad/Layer | Partial; preserve the target. |
 | Mode + Pad 6 | Program Edit | Track Edit / supported Program editor | Track-type dependent; unsupported editors remain RESERVED. |
 | Mode + Pad 7 | Pad Mixer | Supported Pad Mixer / parameter context | Level/Pan/Tune foundations; not full FX/routing parity. |

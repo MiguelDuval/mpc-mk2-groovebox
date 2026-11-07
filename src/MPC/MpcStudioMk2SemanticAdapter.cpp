@@ -164,8 +164,12 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
             return r;
         }
         r.targetPadIndex=lastPadIndex_;
-        r.velocity=static_cast<std::uint8_t>(
-                1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
+        // MPC 16 Levels velocity matrix, hardware Pad 1 at bottom-left:
+        // 7,15,23,31 / 39,47,55,63 / 71,79,87,95 / 103,111,119,127.
+        const auto rowFromBottom = static_cast<unsigned>(e.padIndex) / 4u;
+        const auto columnFromLeft = static_cast<unsigned>(e.padIndex) % 4u;
+        r.velocity = static_cast<std::uint8_t>(
+                7u + rowFromBottom * 32u + columnFromLeft * 8u);
         return r;
     }
 

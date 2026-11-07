@@ -13420,7 +13420,10 @@ snapshot_browser_view_tree_marker_baseline() {
 }
 
 capture_project_persistence_view_tree() {
-  local page="$1" target_xml="$2" timeout_seconds="${3:-10}" marker before remote
+  # Project Open may publish its fresh MAIN View tree ~13s after DocumentsUI
+  # settles on a loaded emulator. Keep provenance/freshness checks intact,
+  # but allow 20s before treating a delayed asynchronous tree as missing.
+  local page="$1" target_xml="$2" timeout_seconds="${3:-20}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;

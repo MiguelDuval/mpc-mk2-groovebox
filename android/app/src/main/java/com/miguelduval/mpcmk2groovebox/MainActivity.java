@@ -5804,8 +5804,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout page = page();
         LinearLayout header = row();
-        header.addView(sectionLabelView("SOURCE PAD " + (selectedPad + 1)
-                        + "  •  TYPE: VELOCITY",
+        Button sourcePadButton = actionButton(
+                String.format(Locale.ROOT, "PAD %02d", selectedPad + 1),
+                v -> showLevels16SourcePadChooser());
+        sourcePadButton.setContentDescription(
+                "16 Levels select source Pad " + (selectedPad + 1));
+        header.addView(sourcePadButton,
+                new LinearLayout.LayoutParams(dp(82), dp(34)));
+        header.addView(sectionLabelView("TYPE: VELOCITY  •  7–127",
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
@@ -5819,17 +5825,22 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
-        // Build 4x4 grid of level pads
+        // Physical MPC Pad 1 is bottom-left. Values rise left-to-right,
+        // bottom-to-top, matching the reference 16 Level matrix.
         for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
             LinearLayout levelRow = row();
             for (int colIdx = 0; colIdx < 4; colIdx++) {
-                int levelIndex = rowIdx * 4 + colIdx;
-                int velocity = 1 + (levelIndex * 126) / 15;
-                Button levelBtn = actionButton("L" + (levelIndex + 1), v -> {
+                final int physicalPadIndex = (3 - rowIdx) * 4 + colIdx;
+                final int velocity = 7 + physicalPadIndex * 8;
+                Button levelBtn = actionButton(Integer.toString(velocity), v -> {
                     nativeAudioTriggerPad(selectedPad, velocity);
-                    setBottomStatus("16 LEVELS: pad " + (selectedPad + 1)
-                            + " velocity " + velocity);
+                    setBottomStatus("16 LEVELS: source Pad " + (selectedPad + 1)
+                            + " • velocity " + velocity);
                 });
+                levelBtn.setContentDescription(String.format(
+                        Locale.ROOT,
+                        "16 Levels physical Pad %d fixed velocity %d source Pad %d",
+                        physicalPadIndex + 1, velocity, selectedPad + 1));
                 levelBtn.setMinWidth(dp(64));
                 levelBtn.setMinHeight(dp(64));
                 levelRow.addView(levelBtn, new LinearLayout.LayoutParams(
@@ -5842,6 +5853,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         content.addView(page);
+    }
+
+    private void showLevels16SourcePadChooser() {
+        final String[] choices = new String[16];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = String.format(Locale.ROOT, "PAD %02d", i + 1);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("SELECT SOURCE PAD")
+                .setSingleChoiceItems(choices, selectedPad, (dialog, which) -> {
+                    selectedPad = which;
+                    dialog.dismiss();
+                    setBottomStatus("16 LEVELS • SOURCE PAD " + (selectedPad + 1));
+                    showLevels16Page();
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
     }
 
     // ------------------------------------------------------------------

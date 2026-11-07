@@ -321,8 +321,8 @@ No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry 
 - Step. **SEQUENCE CONTEXT IMPLEMENTED — selected-track Step entry point is available; detailed step note editing remains next.**
 - Track Edit. **BOUNDED SEMANTIC WORKSPACE IMPLEMENTED — GLOBAL / SAMPLES / AMP ENV are backed by existing Drum semantics; LFO / MODS / EFFECTS and Edit All Layers remain reserved. MPC-style top TRACK/PAD context and persistent bottom tabs now match the documented Track Edit geometry.**
 - mixers. **FOUNDATION IMPLEMENTED — compact Pad Mix view with direct level control; full Track/Pad mixer remains later.**
-- 16 Levels. **SEMANTIC VELOCITY SLICE IMPLEMENTED — Level16 captures the last played pad as the source sample, uses the 16 physical positions as fixed velocity steps from 1 to 127, and keeps note-on/note-off bound to the same source pad for recording. Tune/Filter/Layer/Attack/Decay parameter variants remain future slices.**
-- Pad Perform.
+- 16 Levels. **VELOCITY SLICE IMPLEMENTED — the selected/last-played Pad is the source; all 16 physical positions trigger it at documented MPC values 7, 15, 23 … 127 (Pad 1 bottom-left; Pad 16 top-right), independent of strike force. The touch grid mirrors this physical ordering and exposes source-Pad selection. Tune is RESERVED for recording: the live engine has a transient tuning override, but SequenceRecordEvent currently has no note-variation field, so Tune must not be presented as record-safe until the event/persistence path is extended. Filter/Layer/Attack/Decay remain RESERVED.**
+- Pad Perform. **PARTIAL — chromatic 12-TET note triggering uses a transient per-voice tuning override and does not modify persistent Pad tuning. The MPC 3.9 Custom Scale/Chords/Progressions/Aftertouch controls shown in VIS-051 are not implemented and remain RESERVED; no scale/chord parity claim.**
 - Q-Link.
 
 ## 2026-10-06 Main geometry fidelity increment
