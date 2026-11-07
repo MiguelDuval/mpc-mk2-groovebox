@@ -627,10 +627,16 @@ int main() {
             if (n.eventId == idToDelete) found = true;
         }
         assert(found);
+        assert(pattern.notes[0].velocity == 100);
+        assert(pattern.notes[1].eventId == idToDelete);
+        assert(pattern.notes[1].velocity == 110);
+        assert(pattern.notes[2].velocity == 120);
 
-        // Redo should delete it again
+        // Redo should delete it again without disturbing the remaining order.
         assert(history.redo());
         assert(pattern.notes.size() == 2);
+        assert(pattern.notes[0].velocity == 100);
+        assert(pattern.notes[1].velocity == 120);
         found = false;
         for (const auto& n : pattern.notes) {
             if (n.eventId == idToDelete) found = true;

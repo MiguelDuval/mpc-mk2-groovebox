@@ -174,10 +174,16 @@ ListEditService::ModifyResult ListEditService::deleteEvent(
 
     const MidiNoteEvent deletedEvent = pattern.notes[eventIndex];
     const std::uint32_t targetId = deletedEvent.eventId;
-    auto undo = [&pattern, deletedEvent]() -> bool {
+    const std::size_t deletedIndex = eventIndex;
+    auto undo = [&pattern, deletedEvent, deletedIndex]() -> bool {
         if (findByEventId(pattern, deletedEvent.eventId) != nullptr) return false;
-        pattern.notes.push_back(deletedEvent);
-        sortByTick(pattern);
+
+        // Undo must restore the exact original order, including the position
+        // among otherwise identical notes that share the same tick.
+        const std::size_t insertionIndex = std::min(deletedIndex, pattern.notes.size());
+        pattern.notes.insert(
+                pattern.notes.begin() + static_cast<std::ptrdiff_t>(insertionIndex),
+                deletedEvent);
         return true;
     };
     auto redo = [&pattern, targetId]() -> bool {
