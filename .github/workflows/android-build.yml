@@ -6,13 +6,11 @@ on:
       - main
       - "foundation/**"
       - "work/**"
-      - "feature/**"
-      - "checkpoint/**"
     paths-ignore:
       - "docs/**"
       - "**/*.md"
   pull_request:
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    types: [opened, synchronize, reopened, labeled, unlabeled, edited]
     paths-ignore:
       - "docs/**"
       - "**/*.md"
@@ -40,7 +38,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     env:
-      RUN_FULL_VALIDATION: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.validation_mode == 'full') || contains(github.event.pull_request.labels.*.name, 'full-validation') || contains(github.event.head_commit.message, '[full-validation]') }}
+      RUN_FULL_VALIDATION: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.validation_mode == 'full') || contains(github.event.pull_request.labels.*.name, 'full-validation') || contains(github.event.pull_request.title, '[full-validation]') || contains(github.event.head_commit.message, '[full-validation]') }}
     steps:
       - name: Enable KVM group permissions
         if: env.RUN_FULL_VALIDATION == 'true'

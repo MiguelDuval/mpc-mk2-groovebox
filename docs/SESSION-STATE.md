@@ -5,7 +5,7 @@ The project now operates under [FAST-DELIVERY-MODE.md](FAST-DELIVERY-MODE.md). T
 **Canonical working line:** `checkpoint/mpc-ui-reference-and-product-20261030` — verify its live GitHub HEAD at the beginning of every session.  
 **Main:** keep untouched.  
 **Default delivery:** GitHub Actions fast lane → build and upload debug APK.  
-**Full test/emulator lane:** deliberate milestone/high-risk/release acceptance only; trigger with PR label `full-validation` or commit marker `[full-validation]`.  
+**Full test/emulator lane:** deliberate milestone/high-risk/release acceptance only; trigger by adding PR label `full-validation` or appending `[full-validation]` to the milestone PR title.  
 **Product priority:** complete the first end-to-end instrument workflow using existing MIDI, sampler, sequencer and persistence components.  
 **Failure rule:** a test-harness or runner failure does not block unrelated product work. Do not delete/weaken assertions; classify, record once and continue.
 

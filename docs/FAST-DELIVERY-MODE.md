@@ -69,7 +69,7 @@ Run the complete native/JVM/UI-emulator suite only when at least one of these is
 - a release candidate is being prepared;
 - the owner explicitly asks for full verification.
 
-Trigger it by adding the `full-validation` label to the milestone PR, or by including `[full-validation]` in a commit message. A `workflow_dispatch` full mode is also available where GitHub exposes manual dispatch for the workflow.
+Trigger it by adding the `full-validation` label to the milestone PR or appending `[full-validation]` to its title. The PR workflow listens for label/title edits. A commit marker is also supported on push-triggered branches. A `workflow_dispatch` full mode is available where GitHub exposes manual dispatch for the workflow.
 
 Full validation is not run for every ordinary code change. Run it once at a meaningful milestone, not after every small commit.
 

@@ -70,7 +70,7 @@ Do not chase isolated visual details while a high-frequency workflow is still a 
 
 For each coherent feature slice:
 
-1. **Orient:** fetch the live branch HEAD, PR #23 state/base/head, recent commits, latest relevant Actions runs, and the known-good APK/artifact identity. Confirm all edits are on `feature/mpc-one-ui-fidelity`.
+1. **Orient:** fetch the live HEAD of `checkpoint/mpc-ui-reference-and-product-20261030`, the current milestone PR state/base/head, recent relevant commits, latest fast Actions run and latest APK artifact identity. Confirm only one writer owns the canonical branch.
 2. **Define:** state the user scenario, expected MPC-inspired behavior, current gap, relevant source files, real semantic/backend commands, acceptance checks, and what is explicitly out of scope.
    - For an MPC-style UI interaction, cite the catalog action ID; if no row exists, add one before implementation. Keep the official reference behavior, product-specific deviation, backend truth and test evidence distinct.
 3. **Trace:** read the current view, its listeners/callers, the authoritative state model, relevant backend operation and existing tests. Do not recreate source from memory.
