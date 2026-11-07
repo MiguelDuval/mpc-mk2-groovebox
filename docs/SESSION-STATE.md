@@ -1,48 +1,44 @@
-# Live checkpoint — 2026-11-07
+# Live checkpoint — 2026-11-07 16:28 CET
 
-**Repository:** `MiguelDuval/mpc-mk2-groovebox` (GitHub)  
-**Authoritative CI/CD:** GitHub Actions, workflow [`.github/workflows/android-build.yml`](../.github/workflows/android-build.yml)  
-**Active branch:** `feature/firmware-informed-midi-list-edit-20261106`  
-**Current HEAD checked:** `e277ec4dfc7cf8acf79009188a752354035e`  
-**Active PR:** [#139 — integrate: 34-commit MPC MkII Groovebox consolidation](https://github.com/MiguelDuval/mpc-mk2-groovebox/pull/139), OPEN / DRAFT  
-**PR base:** `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`  
-**PR head:** `e277ec4dfc7cf8acf79009188a752354035e`; 35 commits ahead / 0 behind at the last PR inspection. Re-check live GitHub state before relying on this.  
+**Repository:** MiguelDuval/mpc-mk2-groovebox.  
+**Primary product PR #23:** OPEN, head branch feature/mpc-one-ui-fidelity at ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d, base fix/ui-shell-format-width-startup at 5f562e54e2cf8235041590933232a3836d74a16. PR #23 is unchanged. Its last verified exact-head Android Build is #3402 / run 40528666946: 53/53 substantive steps successful, APK artifact 12746190315 (10,009,933 bytes; APK SHA-256 1bfb1f64254e6c2efda3b1f1118b169e4b648c35994b25c44524b77569a229aa), visual-evidence artifact 12746712856 (15,218,255 bytes). No newer run for this PR head was present in the live run listing.
+**Current integration candidate:** PR #139, OPEN / DRAFT, head branch feature/firmware-informed-midi-list-edit-20261106. Exact head before this forward fix: b693b02655306d2497f697d10090ac71a487bde6. The current checkpoint base branch ref is ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3; PR #139's merge base remains a029af66d423778d21607d6470b46bb8e4ca0b88, so the candidate is 45 commits ahead / 10 behind and GitHub reports it not mergeable. Do not rebase, merge, force-push or rewrite history. Keep it a separate validation candidate.
+**Current checkpoint workflow:** Build #3800 / run 42387293216 is in progress on checkpoint branch HEAD ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3; last observed at step 6, Setup Gradle 9.6. Do not write to the checkpoint branch while that run is active.
+**Separate repair PR #137:** OPEN / DRAFT, head 554193b835d3e43bc778375beea60fc9e7b79661. Its older Build #3724 failure was on 5bc8b07f... at C++ compile (missing close of the List Edit extern-C block); commit a818c838... added the close, and the current PR #137 head contains that correction. No exact-head workflow was found for 554193b. This repair stack is not being merged into PR #139 wholesale.
 **Main:** unchanged. **Physical Akai MPC Studio MkII acceptance:** NOT RUN.
 
 ## GitHub-only platform contract
 
-This project is developed and hosted on GitHub. GitHub Actions is the only authoritative CI/CD system and the only accepted source of the deliverable APK. The active Android Build workflow is `.github/workflows/android-build.yml`. The expected artifacts are `app-debug.apk` and `mpc-ui-visual-evidence`.
+GitHub Actions is the only authoritative CI/CD system and the only accepted APK delivery path. A local build or an APK uploaded by a failed workflow is diagnostic only. Final acceptance requires one successful full workflow on the exact reported HEAD, including native/JVM tests, APK assembly/upload, emulator smoke and visual-evidence upload. Inspect both artifacts from that same successful run and compute the APK file's own SHA-256 separately from any artifact-archive digest.
 
-An APK uploaded by a failed workflow is only an intermediate candidate. Final acceptance requires a successful full workflow on the exact reported HEAD, including native/JVM tests, APK assembly/upload, emulator smoke and visual-evidence upload; then inspect both artifacts from that same run and compute the SHA-256 of the APK file itself. Do not confuse the ZIP artifact digest with the APK SHA-256. Local builds do not replace this acceptance gate.
+## Latest exact-head Android Build — PR #139
 
-## Latest exact-HEAD GitHub Actions result
+- Build #3791 / run 42382469230, exact SHA b693b02655306d2497f697d10090ac71a487bde6.
+- Job android-debug: steps 1–55 SUCCESS; step 56, Run Android emulator smoke test, FAILURE; step 57, Upload MPC UI visual evidence, SUCCESS. This is not a green build.
+- APK artifact 13578416781, 11,291,229 bytes. Downloaded file identified as an Android APK; SHA-256 4655f3d69e59bd9859231f9833e64670d4d6433b11d0fa1301497cb228991a54. Diagnostic only.
+- Evidence artifact 13578569037, 15,496,201 bytes; downloaded ZIP SHA-256 eea739e5c4550eddc0151d7396cb7d27b2095a7c84220415fdf4a4d340a0aa8a. PNG/XML were inspected.
+- SAMP-008 CROP passed: 3,840 source frames, crop start 1,000, resulting PCM 2,840 frames, native region reset 0..2,840.
+- SAMP-009 CH4/CH8/CH16 passed exact contiguous, non-overlapping native slices covering all 2,840 frames; evidence boundaries were 0/710/2,840, 0/355/2,840 and 0/177/2,840.
+- SAMP-010 zoom-in/out/reset and native Pad audition passed without sample-data mutation. Do not expand this work before primary Browser/Project acceptance is green.
+- Browser Favorite 1 assignment, independent SAF URI preferences and process-restart restoration passed. BROW-013 modified-date option, real metadata rendering, persistence and inverse restore passed. Browser WAV selection/audition/Pad assignment also passed. The run remains failed overall.
+- Project Save As → mutate → Open restored the initial two-Track/two-Placement model and exact domain SHA; direct SAVE overwrite changed the persisted domain SHA. The later Open of mpc-isolation-5273.mpcproj logged PROJECT_OPEN_COMPLETE with persistedDomainExact=true and domain SHA f7b2814435b816904dcce6e7c47e019aeb79620a46e4c9a5a4682d38ffd6c4af (3 Tracks / 3 Patterns / 3 Placements / 2 MIDI notes).
+- Failure: the smoke's 20-second wait expired at 15:03:00.440; the app emitted PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN at 15:03:00.516, 76 ms later. The app had loaded the project; the test exited before pulling the fresh Main XML. The archived project-current-view-hierarchy.xml was still page PROJECT (uptime 1,128,902 ms), and project-extended-open.png showed the DocumentsUI folder before the selected file returned. No fresh Main XML was archived for that failing Open.
+- Prior e277 fix already changed project_marker_count to a fixed 5-second bounded logcat read with -t 4096. Run #3791 shows a second, distinct boundary race: the final logcat -d snapshot can start before the marker and return after the deadline, with no subsequent read.
+- This commit adds one final bounded marker-count read after the wait loop. Acceptance still requires count > the original baseline; no cached-tree fallback, fabricated marker or relaxed XML provenance is introduced. Exact resulting SHA and workflow run will be recorded after GitHub confirms the forward commit.
 
-- **Workflow:** Android Build #3781 — [run pending](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs)
-- **Tested SHA:** `e277ec4dfc7cf8acf79009188a752354035e` on `feature/firmware-informed-midi-list-edit-20261106`
-- **Conclusion:** **PENDING** — fix for emulator smoke failure in legacy v1 Project reopen test. The fix addresses a race condition where `project_marker_count()` used the polling loop's remaining wait time as the adb timeout, causing logcat to be killed before completing on slow CI runners during the final iterations of the 30s wait for `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN`.
+## VIS-050 reference review — 16 Levels
 
-### Observed smoke failure — legacy v1 Project reopen (RESOLVED in this commit)
+Inspected the actual local MPC 3.9 reference image, not only its catalog entry: docs/MPC3-UI-REFERENCE-ASSETS/pdf/mpc-v39/page-080.jpg and figures/page-080-figure-01.jpg / figure-02.jpg. VIS-050 shows the 16 Levels modal with Active, Type, Pad and (for Tune) Original Pad controls. The current Android touch page is a product-specific 4×4 velocity-grid adaptation with source-Pad selection; it is not a pixel-for-pixel replica of that modal. Only Velocity is implemented; Tune remains RESERVED for recording because SequenceRecordEvent has no note-variation field; Filter/Layer/Attack/Decay remain RESERVED. Physical Studio MkII mapping is not accepted until hardware validation.
 
-The final smoke path opened the version-1 project fixture after successful version-2 save/open/cancel/malformed-load assertions. The app log reported:
+## Next acceptance order
 
-- `PROJECT_OPEN_COMPLETE ... formatVersion=1 ... SEQUENCES=1 TRACKS=2 PATTERNS=2 PLACEMENTS=0 MIDI_NOTES=2`
-- `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN nodes=232 source=android-view-tree ...`
+1. Verify the forward-fix commit and run on its exact SHA. Inspect the fresh app-owned MAIN XML after Project Open: page=MAIN, source=android-view-tree, positive generated-at-uptime-ms newer than the previous snapshot, non-empty nodes and the unique Main toolbar target.
+2. Continue the full Project path: Save As → mutate → Open, direct Save overwrite with changed serialized SHA, force-stop/relaunch/Open, Cancel Save As/Open state invariance, malformed-load preservation and placement-free v1 via the real picker.
+3. Keep Browser USER FOLDER and FAVORITE 1 real DocumentsUI touches, exact WAV, SAF permission and process-restart restoration strict.
+4. Reconfirm SAMP-008 and SAMP-009 on the same exact SHA. SAMP-007 has no pass record in #3791 and remains unaccepted. SAMP-010 was exercised in #3791 but stays isolated from further expansion.
+5. Only after a complete exact-head green workflow, move to the next roadmap gap. Physical MPC Studio MkII validation remains a separate NOT RUN gate.
 
-However, the smoke helper first logged a 30-second timeout waiting for a new native marker, and then reported:
-
-- `ERROR: no fresh Android View-tree snapshot for app page MAIN`
-- `ERROR: v1-loaded Main View tree missing`
-
-**Root cause:** The `project_marker_count()` function passed the remaining wait time (decreasing from 30s to 1-2s in the final polling iterations) as the `adb_bounded` timeout for `logcat -d`. On slow CI runners, `adb_bounded 1 shell logcat -d` timed out before logcat could complete, causing the marker to be missed even though it was being emitted by the app.
-
-**Fix applied:** `project_marker_count()` now uses a fixed 5s adb timeout for the logcat command, independent of the polling loop's remaining wait time. This preserves all freshness/provenance assertions while fixing the race condition.
-
-- Primary physical surface: Akai MPC Studio MkII. Standalone touchscreen-only operation is secondary.
-- Target interaction and visual reference: MPC Standalone OS 3.9 / MPC 3.x, with the mandatory local `VIS-001`–`VIS-082` inspection gate.
-- Preserve the Android, transport, Studio MkII adapter, domain, audio/sequencer and persistence boundaries.
-- Keep unsupported features honestly RESERVED/UNAVAILABLE; do not create decorative fake controls or pretend a route works.
-- No changes to `main`; no force-push, reset, rebase, squash or history rewrite. One writer owns the active branch.
-- All future reports must identify exact GitHub repository/branch/HEAD/PR, Actions run and artifact identities. A successful compile or APK upload is not a successful release.
+Workflow guardrails: .github/workflows/android-build.yml retains cancel-in-progress: false. PR #23 and main are untouched. The checkpoint branch is not being modified while Build #3800 is active. No merge, reset, rebase, force-push or history rewrite.
 
 ## Historical notes
 

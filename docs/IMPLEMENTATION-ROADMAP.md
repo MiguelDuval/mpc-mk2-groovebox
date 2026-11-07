@@ -1,41 +1,36 @@
 # Implementation Roadmap
 
-> **Live execution status — 2026-11-07:** the active line is `feature/firmware-informed-midi-list-edit-20261106`, PR #139, exact head `225056974dfb9ec52095f0323c5ff5548fbc9d3e`, targeting `checkpoint/mpc-ui-reference-and-product-20261030`. The latest exact-head GitHub Actions run is Android Build #3770 / [42369284196](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42369284196): APK assembly and artifact uploads passed, but emulator smoke failed on the legacy-v1 Project reopen Main hierarchy freshness assertion. See [SESSION-STATE.md](SESSION-STATE.md) for the exact logs/artifact identities. The APK from that failed run is not a release candidate. GitHub Actions is the only authoritative CI/CD and APK delivery path for this project.
+> **Live execution status — 2026-11-07 16:28 CET:** PR #23 remains the primary product branch and is unchanged at exact head ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d. The current isolated integration candidate is PR #139 on feature/firmware-informed-midi-list-edit-20261106, exact pre-fix head b693b02655306d2497f697d10090ac71a487bde6. Its latest exact-head Android Build #3791 / run 42382469230 failed only at emulator smoke step 56 after steps 1–55 passed; step 57 uploaded evidence. The latest checkpoint-base workflow #3800 / run 42387293216 is independently in progress on checkpoint HEAD ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3. GitHub Actions remains the only authoritative CI/CD and APK delivery path.
 
 ## CURRENT EXECUTION QUEUE — 2026-11-07
 
-### P0 — restore exact-head GitHub Actions acceptance
+### P0 — finish exact-head Project persistence acceptance
 
-1. Investigate the legacy-v1 Project reopen failure in `tests/android_ui_smoke.sh`. The log sequence shows a 30-second wait for a new `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN` marker timing out; the app then emits the marker and loads the v1 project, but the test reports no fresh Main View-tree snapshot.
-2. Inspect the current helper implementation, marker baseline capture, log ordering, generated-at-uptime/page/source provenance, and the actual archived XML. Establish whether this is a marker race, capture race or app-side publication defect before editing.
-3. Preserve strict fresh-snapshot semantics and all Project v1/v2 state/hash, cancellation and malformed-load assertions. No cached-tree fallback, blanket timeout inflation, removed assertion or fabricated success marker.
-4. Run focused native/JVM and shell syntax/evidence checks, then push the fix to the active GitHub branch. Verify the resulting exact-SHA Android Build through GitHub Actions.
-5. Require full workflow SUCCESS—including emulator smoke—and inspect `app-debug.apk` plus `mpc-ui-visual-evidence` from the same successful run. Compute the APK file's own SHA-256, separate from the ZIP artifact digest.
+1. **Fix the final marker-poll boundary race in the existing tests/android_ui_smoke.sh.** Run #3791 timed out after 20s at 15:03:00.440, then the app emitted the fresh MAIN hierarchy marker at 15:03:00.516. The prior e277 change already bounded logcat to 5s and 4,096 entries; the remaining race was that the final logcat -d snapshot began before the marker and no post-deadline snapshot ran. This commit performs one final bounded marker-count read after the loop and still requires count > the original baseline.
+2. Run the full Android Build on the resulting exact PR #139 head. Verify every job/step; do not count the earlier #3791 APK as accepted.
+3. On the new run, require a fresh app-owned MAIN XML after Project Open: page=MAIN, source=android-view-tree, positive and newer generated-at-uptime-ms, non-empty nodes, unique visible Main toolbar. No cached-tree fallback or relaxed provenance.
+4. Continue the complete Project lifecycle on the same exact SHA: SAVE AS → mutate → OPEN; direct SAVE overwrite must change serialized SHA; force-stop/relaunch/OPEN must restore it; Cancel Save As/Open must preserve canonical state SHA; malformed load must preserve model/context; placement-free v1 through the real picker must yield the canonical two-Track/zero-placement domain.
+5. Keep Browser USER FOLDER and FAVORITE 1 as real DocumentsUI touch/SAF flows with exact WAV selection, permission grant, Browser indexing and process-restart restoration. Reconfirm SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 on the same exact SHA. SAMP-007 has no pass record in #3791 and remains open. SAMP-010's own checks passed there but no additional SAMP-010 scope is authorized before primary Browser/Project acceptance is green.
+6. Require full workflow SUCCESS and inspect the APK plus PNG/XML evidence from that same successful run. Compute the APK file SHA-256 separately from the artifact ZIP digest. Only then close this P0 gate.
 
-### P1 — complete the MPC 3.9 UI/workspace baseline
+### P1 — complete MPC 3.9 visual and hardware fidelity
 
-After the current red CI blocker is fixed, audit the current UI against the canonical MPC 3.9 interaction/visual contract and the local `VIS-001`–`VIS-082` reference assets. Work screen by screen; no fake cards, inert tabs, misleading controls or placeholder pages counted as complete.
+- VIS-050 was visually inspected from the actual local page-080 reference and both extracted figures. The reference shows Active, Type, Pad and (for Tune) Original Pad controls. Current Android touch implementation is a 4×4 fixed-velocity adaptation with source-Pad chooser, not a pixel-identical modal. Velocity values 7,15,23…127 are covered by native adapter tests; Tune/Filter/Layer/Attack/Decay remain RESERVED where their persistent musical-event semantics do not exist.
+- Continue the screen-by-screen VIS-001…VIS-082 audit only after P0 is green. Record exact reference asset and fresh screenshot/XML for each changed screen.
+- Physical Akai MPC Studio MkII validation remains NOT RUN; emulator and adapter tests do not substitute for the controller.
 
-Priority workspaces include Main, Pad Perform, 16 Levels, Mute, Grid, Step Sequencer, List Edit, Arrangement, Track View/Edit, Browser, Sample Edit, Channel Mixer and Pad Mixer. Confirm actual navigation, layout, controller entry paths, state transitions, Back/context restoration, accessibility/touch bounds and persistence where expected. Do not regress the fixed 4×4 Pad contexts.
+### P2 — remaining product slices
 
-For every UI slice, name the VIS IDs, inspect the local visual source image, capture before/after emulator screenshots and UI hierarchies, and link the result to a real action-catalog ID and backend semantic. If the reference is missing, record the exact gap; do not make up a screenshot.
-
-### P2 — implement missing musical capabilities as real vertical slices
-
-Once the foundational UI routes are truthful and usable, identify the highest-value not-yet-implemented actions in `docs/MPC3-USER-ACTION-CATALOG.md` and implement them end to end. Prioritize real instrument behavior, not adding more decorative screens: MIDI/controller input, track/program/pad semantics, sequencer editing/playback, sample workflow, mixer routing, recording and transport as supported by current architecture.
-
-Every slice must include the domain/backend command, Android/controller route, realtime-safe audio behavior where relevant, unit/native tests, emulator interaction evidence, persistence tests when state is persisted, and exact-SHA GitHub Actions acceptance. Keep unsupported effects/instruments/controls RESERVED until their backend exists.
+- Keep the next roadmap items behind the P0 exact-head acceptance gate. Do not start unrelated UI or musical features while Project persistence acceptance is red.
+- BROW-013 modified-date display/persistence passed on exact SHA b693 in failed run #3791, but the full candidate is not accepted until the entire workflow is green.
 
 ### Engineering and branch guardrails
 
-- GitHub repository: `MiguelDuval/mpc-mk2-groovebox`; GitHub Actions only for authoritative CI and APK delivery.
-- Follow the active branch and PR recorded in `SESSION-STATE.md`; re-fetch live GitHub state at session start. Never assume an old PR/branch remains active.
-- Keep `main` untouched; no force-push, reset, rebase, squash or history rewrite. Use one writer per branch.
-- Preserve audio/MIDI/domain/persistence architecture and realtime safety. Do not replace real behavior with mock services.
-- Do not claim an APK is accepted unless the full exact-SHA GitHub Actions run is green and both APK and visual evidence artifacts have been inspected.
-- Physical Akai MPC Studio MkII verification remains separate from emulator/software acceptance.
-
----
+- Primary PR #23 remains OPEN and untouched: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Never write to main.
+- PR #139 is 45 commits ahead / 10 behind the current checkpoint branch (merge base a029af66d423778d21607d6470b46bb8e4ca0b88; current checkpoint ref ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3). GitHub reports the PR not mergeable. Do not rebase, merge, force-push or rewrite history; keep this branch as an isolated validation candidate pending owner-approved base reconciliation.
+- Build #3800 is active on the checkpoint branch. Do not commit to that branch while it runs.
+- Keep cancel-in-progress: false. One writer per branch; no concurrent Cline/ChatGPT writes to the same branch/files.
+- Do not weaken source, native, UI, persistence, visual-evidence or physical-controller assertions to obtain a green build.
 
 
 ## Historical consolidation notes — 2026-10-30 (superseded by the live 2026-11-07 queue)

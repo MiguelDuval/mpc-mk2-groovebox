@@ -2261,7 +2261,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
   fi
 done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
-    'open_project_document()' 'PROJECT_OPEN_REJECTED)' \
+    'open_project_document()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
@@ -13421,8 +13421,8 @@ snapshot_browser_view_tree_marker_baseline() {
 
 capture_project_persistence_view_tree() {
   # Project Open may publish its fresh MAIN View tree ~13s after DocumentsUI
-  # settles on a loaded emulator. Keep provenance/freshness checks intact,
-  # but allow 20s before treating a delayed asynchronous tree as missing.
+  # settles on a loaded emulator. Keep provenance/freshness checks intact;
+  # the marker waiter also performs a final bounded read at the deadline.
   local page="$1" target_xml="$2" timeout_seconds="${3:-20}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
@@ -13512,13 +13512,22 @@ PY_PROJECT_APP_VIEW_TREE
 
 wait_for_new_project_marker() {
   local marker="$1" before="$2" timeout_seconds="${3:-45}"
-  local deadline=$((SECONDS + timeout_seconds)) remaining count
+  local deadline=$((SECONDS + timeout_seconds)) remaining count final_count
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     count="$(project_marker_count "$marker" "$remaining")"
     if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
+  # logcat -d snapshots the buffer when each command starts. If the app emits
+  # the marker while the final bounded read is in flight, the loop can reach
+  # its deadline without seeing it. Re-read after that command returns; keep
+  # the same strict count > baseline freshness requirement.
+  final_count="$(project_marker_count "$marker")"
+  if [[ "$final_count" =~ ^[0-9]+$ ]] && (( final_count > before )); then
+    echo "Observed fresh Android View-tree marker on final bounded read: $marker"
+    return 0
+  fi
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
   adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
