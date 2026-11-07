@@ -1,9 +1,44 @@
 # Implementation Roadmap
 
-> **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.
+> **Live execution status — 2026-11-07:** the active line is `feature/firmware-informed-midi-list-edit-20261106`, PR #139, exact head `225056974dfb9ec52095f0323c5ff5548fbc9d3e`, targeting `checkpoint/mpc-ui-reference-and-product-20261030`. The latest exact-head GitHub Actions run is Android Build #3770 / [42369284196](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42369284196): APK assembly and artifact uploads passed, but emulator smoke failed on the legacy-v1 Project reopen Main hierarchy freshness assertion. See [SESSION-STATE.md](SESSION-STATE.md) for the exact logs/artifact identities. The APK from that failed run is not a release candidate. GitHub Actions is the only authoritative CI/CD and APK delivery path for this project.
+
+## CURRENT EXECUTION QUEUE — 2026-11-07
+
+### P0 — restore exact-head GitHub Actions acceptance
+
+1. Investigate the legacy-v1 Project reopen failure in `tests/android_ui_smoke.sh`. The log sequence shows a 30-second wait for a new `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN` marker timing out; the app then emits the marker and loads the v1 project, but the test reports no fresh Main View-tree snapshot.
+2. Inspect the current helper implementation, marker baseline capture, log ordering, generated-at-uptime/page/source provenance, and the actual archived XML. Establish whether this is a marker race, capture race or app-side publication defect before editing.
+3. Preserve strict fresh-snapshot semantics and all Project v1/v2 state/hash, cancellation and malformed-load assertions. No cached-tree fallback, blanket timeout inflation, removed assertion or fabricated success marker.
+4. Run focused native/JVM and shell syntax/evidence checks, then push the fix to the active GitHub branch. Verify the resulting exact-SHA Android Build through GitHub Actions.
+5. Require full workflow SUCCESS—including emulator smoke—and inspect `app-debug.apk` plus `mpc-ui-visual-evidence` from the same successful run. Compute the APK file's own SHA-256, separate from the ZIP artifact digest.
+
+### P1 — complete the MPC 3.9 UI/workspace baseline
+
+After the current red CI blocker is fixed, audit the current UI against the canonical MPC 3.9 interaction/visual contract and the local `VIS-001`–`VIS-082` reference assets. Work screen by screen; no fake cards, inert tabs, misleading controls or placeholder pages counted as complete.
+
+Priority workspaces include Main, Pad Perform, 16 Levels, Mute, Grid, Step Sequencer, List Edit, Arrangement, Track View/Edit, Browser, Sample Edit, Channel Mixer and Pad Mixer. Confirm actual navigation, layout, controller entry paths, state transitions, Back/context restoration, accessibility/touch bounds and persistence where expected. Do not regress the fixed 4×4 Pad contexts.
+
+For every UI slice, name the VIS IDs, inspect the local visual source image, capture before/after emulator screenshots and UI hierarchies, and link the result to a real action-catalog ID and backend semantic. If the reference is missing, record the exact gap; do not make up a screenshot.
+
+### P2 — implement missing musical capabilities as real vertical slices
+
+Once the foundational UI routes are truthful and usable, identify the highest-value not-yet-implemented actions in `docs/MPC3-USER-ACTION-CATALOG.md` and implement them end to end. Prioritize real instrument behavior, not adding more decorative screens: MIDI/controller input, track/program/pad semantics, sequencer editing/playback, sample workflow, mixer routing, recording and transport as supported by current architecture.
+
+Every slice must include the domain/backend command, Android/controller route, realtime-safe audio behavior where relevant, unit/native tests, emulator interaction evidence, persistence tests when state is persisted, and exact-SHA GitHub Actions acceptance. Keep unsupported effects/instruments/controls RESERVED until their backend exists.
+
+### Engineering and branch guardrails
+
+- GitHub repository: `MiguelDuval/mpc-mk2-groovebox`; GitHub Actions only for authoritative CI and APK delivery.
+- Follow the active branch and PR recorded in `SESSION-STATE.md`; re-fetch live GitHub state at session start. Never assume an old PR/branch remains active.
+- Keep `main` untouched; no force-push, reset, rebase, squash or history rewrite. Use one writer per branch.
+- Preserve audio/MIDI/domain/persistence architecture and realtime safety. Do not replace real behavior with mock services.
+- Do not claim an APK is accepted unless the full exact-SHA GitHub Actions run is green and both APK and visual evidence artifacts have been inspected.
+- Physical Akai MPC Studio MkII verification remains separate from emulator/software acceptance.
+
+---
 
 
-## CONSOLIDATED CHECKPOINT — 2026-10-30
+## Historical consolidation notes — 2026-10-30 (superseded by the live 2026-11-07 queue)
 
 **Working branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
 **Integration base:** exact product branch checkpoint `ac59c5e23f87680e69e311e25d2e45d7ab1b8f8d` (`feature/mpc-one-ui-fidelity`).  
@@ -46,7 +81,7 @@ The current single integration target is `checkpoint/mpc-ui-reference-and-produc
 
 **Important:** this is a consolidation candidate, not yet a green checkpoint. Its own exact-HEAD Android Build, full emulator smoke, screenshot/XML artifact inspection and artifact checksums are still pending. Do not use this branch as a release artifact until those gates pass. PR #126 (no exact-head green run), PR #127 (Build #3516 failed), PR #122 and PR #116 (failed exact-head runs) remain excluded.
 
-## CURRENT EXECUTION QUEUE — 2026-10-28 (live GitHub state and exact-SHA evidence govern)
+## Historical execution queue — 2026-10-28 (superseded; do not use as the current task list)
 
 ### P0 recovery — dedicated Mute workspace and truthful unavailable screens: EMULATOR ACCEPTANCE VERIFIED
 
