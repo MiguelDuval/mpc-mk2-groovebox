@@ -3396,11 +3396,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
         return toJString(env, "Track selection failed");
     }
     auto& state = mpc::MpcCore::instance().projectState();
-    if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
-        mpc::MpcCore::instance().editHistory().clear();
-        return toJString(
-                env,
-                state.trackStatus(static_cast<std::size_t>(trackIndex)));
+    const auto requestedTrack = static_cast<std::size_t>(trackIndex);
+    const auto previouslySelectedTrack = state.activeTrackIndex();
+    if (state.selectTrack(requestedTrack)) {
+        // A repeated selection is a UI focus/navigation event, not a structural
+        // context change. Preserve Undo/Redo history when the same Track is
+        // reselected (for example, when tapping an empty Arrangement timeline
+        // position on that Track). Invalidate history only when ownership changes.
+        if (previouslySelectedTrack != requestedTrack) {
+            mpc::MpcCore::instance().editHistory().clear();
+        }
+        return toJString(env, state.trackStatus(requestedTrack));
     }
     return toJString(env, "Track selection failed");
 }
