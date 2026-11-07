@@ -1,8 +1,8 @@
 # Development Operating Protocol — MPC MkII Groovebox
 
 **Status:** Canonical working-process contract  
-**Product branch:** `feature/mpc-one-ui-fidelity`  
-**Primary PR:** #23 — MPC One Main UI visual fidelity pass  
+**Active integration line (verified 2026-11-07):** `feature/firmware-informed-midi-list-edit-20261106`  
+**Current integration PR:** #139 — Draft consolidation into `checkpoint/mpc-ui-reference-and-product-20261030` (verify live GitHub state before every session)  
 **Purpose:** Reduce repeated research and test churn while increasing the number of complete, verified musical workflows delivered per session.
 
 This document governs *how work is performed*. The project master prompt governs product/engineering principles. `docs/SESSION-STATE.md` is a short-lived checkpoint and must be verified against live GitHub state before it is trusted.
@@ -23,6 +23,20 @@ At the start of each session, read these in order:
 **Live-repository precedence:** Current branch/PR/Actions/source evidence outranks stale session notes. When evidence disagrees, verify it, correct the relevant document, and record the discrepancy. Do not re-read hundreds of commits by default. Inspect the latest 20–50 commits and broaden the history only when answering a specific historical or regression question.
 
 When mapping MPC One / MPC 3.9 controls to Studio MkII gestures, consult [MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md](MPC-STUDIO-MKII-MPC-ONE-INTEGRATION.md) as the cross-device equivalence contract. Use the semantic map for the adapter action and the reverse-engineering traceability document for raw MIDI/SysEx and hardware evidence. The cross-device contract documents non-identical Shift gestures and missing hardware equivalents; do not silently remap them.
+
+## 1.1 GitHub-only CI/CD and APK delivery
+
+GitHub is the repository host and GitHub Actions is the sole authoritative CI/CD and APK delivery system. The existing workflow is `.github/workflows/android-build.yml`; do not invent or assume another pipeline.
+
+For the final APK acceptance:
+1. Identify the exact branch, commit SHA and PR on GitHub.
+2. Inspect the GitHub Actions run attached to that SHA, including all native/JVM tests, APK assembly/upload, emulator smoke and visual-evidence upload.
+3. Require the full workflow conclusion to be SUCCESS. APK assembly/upload success alone is insufficient.
+4. Download `app-debug.apk` from the exact successful run and compute the SHA-256 of the APK file inside the archive. Keep this separate from the GitHub ZIP artifact digest.
+5. Inspect `mpc-ui-visual-evidence` from that same run; verify the expected screenshots, UI hierarchy snapshots and logs.
+6. Record run URL/ID, tested SHA, artifact IDs/names, APK SHA-256, evidence contents and hardware-validation state in `SESSION-STATE.md`.
+
+A workflow that failed after uploading APK has produced an intermediate candidate, not an accepted release. Local builds are useful for focused feedback but do not replace the GitHub Actions APK deliverable. Do not add a second host, CI provider, runner setup or external release pipeline without explicit authorization.
 
 ## 2. Product scope: an autonomous local instrument
 
@@ -68,7 +82,7 @@ Do not chase isolated visual details while a high-frequency workflow is still a 
 
 For each coherent feature slice:
 
-1. **Orient:** fetch the live branch HEAD, PR #23 state/base/head, recent commits, latest relevant Actions runs, and the known-good APK/artifact identity. Confirm all edits are on `feature/mpc-one-ui-fidelity`.
+1. **Orient:** fetch the live branch HEAD, active PR state/base/head, recent commits, latest relevant GitHub Actions runs, and the known-good APK/artifact identity. Start from the branch named in `SESSION-STATE.md`, but verify it against GitHub before editing; do not assume an old PR/branch is still active.
 2. **Define:** state the user scenario, expected MPC-inspired behavior, current gap, relevant source files, real semantic/backend commands, acceptance checks, and what is explicitly out of scope.
    - For an MPC-style UI interaction, cite the catalog action ID; if no row exists, add one before implementation. Keep the official reference behavior, product-specific deviation, backend truth and test evidence distinct.
 3. **Trace:** read the current view, its listeners/callers, the authoritative state model, relevant backend operation and existing tests. Do not recreate source from memory.
@@ -125,7 +139,7 @@ Use small independently verifiable slices if all of the above cannot be delivere
 
 ## 7. Branch, code and repository safety
 
-- Continue on `feature/mpc-one-ui-fidelity` and PR #23 unless the owner explicitly authorizes a different destination.
+- Continue on the live owner-authorized integration branch/PR recorded in `SESSION-STATE.md`; at the 2026-11-07 checkpoint this is `feature/firmware-informed-midi-list-edit-20261106` / PR #139. Re-verify the live branch and PR before editing. Do not silently revert to an obsolete branch such as the historical PR #23 line.
 - Never modify `main` for this work; no reset, rebase, history rewrite or force-push.
 - Do not merge or retarget PR #23 as part of routine UI development.
 - One agent/writer owns a branch at a time. Do not have ChatGPT's GitHub mutations and Cline edit the same branch/files concurrently. Parallel tasks require isolated branches/worktrees, explicit file ownership, and serial integration.
