@@ -469,6 +469,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioSetPadSampleName(
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
+    private static native void nativeAudioTriggerPadWithTuningOffset(
+            int pad, int velocity, int tuningOffsetMilliSemitones);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -5673,9 +5675,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT, 1));
 
-        // Build 4x4 grid of perform pads (chromatic mapping from source pad note)
-        // Real note/pitch mapping: each pad sets semitone offset via nativeAudioSetPadTuning
-        // then triggers the source pad. This changes actual pitch output, not just UI text.
+        // Build a 4x4 chromatic performance grid. Pitch is a transient voice offset;
+        // it must never modify the saved tuning of the source Drum Program Pad.
+        // Pattern recording for per-note chromatic offsets is not implemented yet.
         int baseNote = 60; // Middle C as base
         for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
             LinearLayout levelRow = row();
@@ -5684,14 +5686,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 int note = baseNote + noteIndex;
                 float semitones = note - 60; // relative to Middle C
                 Button performBtn = actionButton("N" + note, v -> {
-                    String result = nativeAudioSetPadTuning(selectedPad, semitones);
-                    if (result != null) {
-                        setBottomStatus("PAD PERFORM: tuning failed - " + result);
-                        return;
-                    }
-                    nativeAudioTriggerPad(selectedPad, 100);
-                    setBottomStatus("PAD PERFORM: pad " + (selectedPad + 1)
-                            + " note " + note + " (" + semitones + " semitones)");
+                    nativeAudioTriggerPadWithTuningOffset(
+                            selectedPad, 100, Math.round(semitones * 1000.0f));
+                    setBottomStatus("PAD PERFORM: LIVE N" + note + " · pad "
+                            + (selectedPad + 1) + " · " + semitones
+                            + " st · not recorded");
                 });
                 performBtn.setMinWidth(dp(64));
                 performBtn.setMinHeight(dp(64));

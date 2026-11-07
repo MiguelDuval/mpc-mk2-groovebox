@@ -88,11 +88,13 @@ void MpcNoteRepeatScheduler::triggerHit(
         std::uint8_t padIndex,
         std::uint8_t velocity,
         std::int64_t timestampNanos) noexcept {
-    audio_.triggerPad(padIndex, velocity);
-
     recordingWriters_.fetch_add(1, std::memory_order_seq_cst);
     const auto trackIndex =
             recordingTrackIndex_.load(std::memory_order_seq_cst);
+
+    // A transport stop closes the gate and waits for this writer. Begin the
+    // fence before the audible trigger so Stop cannot miss an in-flight hit.
+    audio_.triggerPad(padIndex, velocity);
     const auto transport = clock_.snapshot();
     if (trackIndex >= domain::kMaxSequenceTracks) {
         recordingWriters_.fetch_sub(1, std::memory_order_seq_cst);

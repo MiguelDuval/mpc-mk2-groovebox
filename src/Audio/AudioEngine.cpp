@@ -348,7 +348,8 @@ public:
                     startVoice(
                             pending.padIndex,
                             pending.velocity,
-                            sampleRate);
+                            sampleRate,
+                            pending.tuningOffsetMilliSemitones);
                 }
 
                 --pendingTriggerCount_;
@@ -624,7 +625,8 @@ private:
     void startVoice(
             std::uint8_t padIndex,
             std::uint8_t velocity,
-            int32_t sampleRate) noexcept {
+            int32_t sampleRate,
+            std::int32_t tuningOffsetMilliSemitones) noexcept {
         std::size_t selectedIndex = nextVoiceIndex_[padIndex];
         for (std::size_t offset = 0; offset < kMaxPadVoices; ++offset) {
             const std::size_t candidate =
@@ -714,10 +716,11 @@ private:
             return;
         }
 
+        const auto savedTuningMilliSemitones =
+                tuningMilliSemitones_[padIndex].load(std::memory_order_relaxed);
         const float tuningSemitones =
                 static_cast<float>(
-                    tuningMilliSemitones_[padIndex].load(
-                        std::memory_order_relaxed))
+                        savedTuningMilliSemitones + tuningOffsetMilliSemitones)
                 / 1000.0f;
         const float semitoneRatio =
                 std::pow(2.0f, tuningSemitones / 12.0f);
@@ -1945,7 +1948,26 @@ void AudioEngine::triggerPadAtOffset(
             AudioTriggerEvent{
                 padIndex,
                 velocity,
-                clampedOffset}));
+                clampedOffset,
+                0}));
+}
+
+void AudioEngine::triggerPadWithTuningOffset(
+        std::uint8_t padIndex,
+        std::uint8_t velocity,
+        std::int32_t tuningOffsetMilliSemitones) {
+    if (padIndex >= kPadCount
+            || !isValidAudioTriggerVelocity(velocity)
+            || !isValidAudioTriggerTuningOffset(tuningOffsetMilliSemitones)) {
+        return;
+    }
+
+    static_cast<void>(triggerQueue_.tryEnqueue(
+            AudioTriggerEvent{
+                    padIndex,
+                    velocity,
+                    0,
+                    tuningOffsetMilliSemitones}));
 }
 
 std::string AudioEngine::openInputStream() {

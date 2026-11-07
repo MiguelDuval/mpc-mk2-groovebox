@@ -13,7 +13,18 @@ struct AudioTriggerEvent final {
     std::uint8_t padIndex = 0;
     std::uint8_t velocity = 0;
     std::int32_t offsetFrames = 0;
+    // Transient per-hit pitch offset; never written back into the Drum Program.
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
+
+// Keep transient pitch shifts bounded to four octaves in either direction.
+inline constexpr std::int32_t kMaxAudioTriggerTuningOffsetMilliSemitones = 48000;
+
+[[nodiscard]] inline constexpr bool isValidAudioTriggerTuningOffset(
+        std::int32_t offsetMilliSemitones) noexcept {
+    return offsetMilliSemitones >= -kMaxAudioTriggerTuningOffsetMilliSemitones
+            && offsetMilliSemitones <= kMaxAudioTriggerTuningOffsetMilliSemitones;
+}
 
 // This queue carries note-on events; velocity-zero note-off messages are not
 // valid here. Keep the public input boundary inside MIDI's 7-bit range.
@@ -29,7 +40,9 @@ struct AudioTriggerEvent final {
     return event.padIndex < padCount
             && isValidAudioTriggerVelocity(event.velocity)
             && event.offsetFrames >= 0
-            && event.offsetFrames <= maxOffsetFrames;
+            && event.offsetFrames <= maxOffsetFrames
+            && isValidAudioTriggerTuningOffset(
+                    event.tuningOffsetMilliSemitones);
 }
 
 template <typename T, std::size_t Capacity>

@@ -1077,6 +1077,23 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
 }
 
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTuningOffset(
+        JNIEnv* /* env */, jobject /* thiz */,
+        jint pad, jint velocity, jint tuningOffsetMilliSemitones)
+{
+    if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127
+            || !mpc::audio::isValidAudioTriggerTuningOffset(
+                    tuningOffsetMilliSemitones)) {
+        return;
+    }
+
+    mpc::audio::AudioEngine::instance().triggerPadWithTuningOffset(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(velocity),
+            static_cast<std::int32_t>(tuningOffsetMilliSemitones));
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioConfigureOutput(
         JNIEnv* env,

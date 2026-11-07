@@ -364,7 +364,7 @@ The repeat scheduler must remain clock-synchronous and must not depend on UI fra
 
 The project already has Note Repeat LED protocol support; state feedback should be emitted only when the semantic state changes.
 
-Status: **PERFORMANCE ROUTED to the native transport-clock scheduler; momentary and Shift-latched behavior are distinct; Touch Strip selects an independent repeat division; the Note Repeat button and division LEDs mirror semantic state. Generated repeat hits are currently performance-only and are not yet written to the sequence record queue**.
+Status: **PERFORMANCE ROUTED to the native transport-clock scheduler; momentary and Shift-latched behavior are distinct; Touch Strip selects an independent repeat division; the Note Repeat button and division LEDs mirror semantic state. Generated Note Repeat hits are enqueued as one-shot NoteHit events and committed by the armed Track recorder as Pattern notes**.
 
 Priority: **P0**.
 
