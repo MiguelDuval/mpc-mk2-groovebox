@@ -61,6 +61,11 @@ int main() {
     assert(ranged.completedCycles == 1);
     assert(rangedCursor.positionTicks() == 960);
 
+    rangedCursor.setPositionTicks(std::numeric_limits<std::int64_t>::min());
+    assert(rangedCursor.positionTicks() == 1792);
+    rangedCursor.setPositionTicks(std::numeric_limits<std::int64_t>::max());
+    assert(rangedCursor.positionTicks() == 2047);
+
     rangedCursor.setPositionTicks(100);
     assert(rangedCursor.positionTicks() == 2020);
 

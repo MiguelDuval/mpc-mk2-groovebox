@@ -43,17 +43,36 @@ public:
     }
 
     float process(float input) noexcept {
+        if (!std::isfinite(input)) {
+            state_ = 0.0f;
+            initialized_ = false;
+            return 0.0f;
+        }
+        if (!std::isfinite(state_)) {
+            state_ = 0.0f;
+            initialized_ = false;
+        }
+        if (!std::isfinite(alpha_)) {
+            alpha_ = 1.0f;
+            bypass_ = true;
+        }
         if (bypass_) {
+            state_ = input;
+            initialized_ = true;
             return input;
         }
-
         if (!initialized_) {
             state_ = input;
             initialized_ = true;
             return input;
         }
-
-        state_ += alpha_ * (input - state_);
+        const float nextState = state_ + alpha_ * (input - state_);
+        if (!std::isfinite(nextState)) {
+            state_ = 0.0f;
+            initialized_ = false;
+            return 0.0f;
+        }
+        state_ = nextState;
         return state_;
     }
 

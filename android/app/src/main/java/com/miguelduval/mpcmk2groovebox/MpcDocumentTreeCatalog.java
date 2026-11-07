@@ -50,15 +50,33 @@ final class MpcDocumentTreeCatalog {
                 DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                 DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                 DocumentsContract.Document.COLUMN_MIME_TYPE,
+                DocumentsContract.Document.COLUMN_SIZE,
+                DocumentsContract.Document.COLUMN_LAST_MODIFIED
+        };
+        String[] compatibilityProjection = {
+                DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                DocumentsContract.Document.COLUMN_MIME_TYPE,
                 DocumentsContract.Document.COLUMN_SIZE
         };
         List<MpcBrowserFile> files = new ArrayList<>();
-        try (Cursor cursor = resolver.query(childrenUri, projection, null, null, null)) {
+        Cursor queried;
+        try {
+            queried = resolver.query(childrenUri, projection, null, null, null);
+        } catch (IllegalArgumentException unsupportedOptionalColumn) {
+            // Some document providers reject optional metadata columns.
+            queried = resolver.query(childrenUri, compatibilityProjection, null, null, null);
+        }
+        if (queried == null) {
+            queried = resolver.query(childrenUri, compatibilityProjection, null, null, null);
+        }
+        try (Cursor cursor = queried) {
             if (cursor == null) return Collections.emptyList();
             int idCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DOCUMENT_ID);
             int nameCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_DISPLAY_NAME);
             int mimeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_MIME_TYPE);
             int sizeCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_SIZE);
+            int modifiedCol = cursor.getColumnIndex(DocumentsContract.Document.COLUMN_LAST_MODIFIED);
             if (idCol < 0 || nameCol < 0)
                 throw new IllegalStateException("Document provider omitted child ID or display name");
             while (cursor.moveToNext()) {
@@ -69,8 +87,11 @@ final class MpcDocumentTreeCatalog {
                 String id = cursor.getString(idCol);
                 if (id == null || id.trim().isEmpty()) continue;
                 long size = sizeCol < 0 || cursor.isNull(sizeCol) ? -1L : cursor.getLong(sizeCol);
+                long modifiedMs = modifiedCol < 0 || cursor.isNull(modifiedCol)
+                        ? -1L : cursor.getLong(modifiedCol);
                 Uri child = DocumentsContract.buildDocumentUriUsingTree(treeUri, id);
-                files.add(new MpcBrowserFile(child.toString(), name, mime, size, -1L));
+                files.add(new MpcBrowserFile(
+                        child.toString(), name, mime, size, -1L, modifiedMs));
             }
         }
         Collections.sort(files, (a,b) -> a.displayName().compareToIgnoreCase(b.displayName()));

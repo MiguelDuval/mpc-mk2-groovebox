@@ -16,44 +16,17 @@ The Android device is the visual/compute surface. The MPC Studio MkII is the pri
 - Ableton Link 4.0 — network tempo/transport synchronization.
 - Android MIDI service — USB/BLE/virtual MIDI transport.
 
-## Current development branches
+## Current development status
 
-- main — stable reference.
-- foundation/mpc-studio-mk2 — repository architecture/bootstrap.
-- feature/midi-transport — stable hardware/MIDI foundation reference.
-- feature/sampler — current sampler/audio implementation work.
+The repository contains an evolving Android/C++ groovebox implementation: MPC Studio MkII MIDI decoding/semantic routing, sample loading and editing foundations, sequencer and pattern operations, project persistence, local Browser flows and MPC-style UI workspaces. Individual capabilities have different evidence levels; consult the action catalog and live source rather than assuming every screen or backend is complete.
 
-## Current stage
+The immediate product objective is to connect the existing components into a complete instrument workflow: load a WAV, trigger it from the MPC Studio MkII, record/edit/play a pattern, and save/reopen the project.
 
-The current sampler branch builds on the MIDI foundation and adds:
+## Development workflow
 
-- PCM WAV decoding and bounded sample playback.
-- Per-pad / per-layer sample assignment with up to 8 layers.
-- Per-pad tuning, level and pan controls.
-- Per-layer velocity ranges (0–127) for velocity-split multi-samples.
-- Bounded microphone recording into RAM.
-- Independent microphone monitoring with separate Monitor On/Off controls.
-- Assignment of the last recording to a selected pad/layer.
-- Non-destructive per-pad/layer sample regions with a small diagnostic trim editor.
-- Control-thread crop of a selected region into an independent PCM buffer.
-- Deterministic 4/8/16-way non-destructive chopping of a selected sample region across pads 1-N.
-- Automated native decoder/region/chop/threshold tests plus Android UI hierarchy/interaction smoke coverage.
+Read [`AGENTS.md`](AGENTS.md), then [`docs/FAST-DELIVERY-MODE.md`](docs/FAST-DELIVERY-MODE.md). The fast GitHub Actions lane builds and uploads an APK for ordinary iteration. The expensive native/JVM/emulator suite is reserved for deliberate milestone, high-risk and release validation. Do not create parallel stacked branches or stop product work for unrelated test-harness failures.
 
-The full MPC-style sampler UI and waveform editor remain later stages; the current chop implementation is intentionally a small even-slicing foundation.
-
-## First hardware milestone
-
-Connect the MPC Studio MkII by USB OTG.
-
-The first diagnostic APK is intended to:
-
-1. list MIDI devices;
-2. select the MPC Studio MkII public port;
-3. show incoming MIDI messages;
-4. forward those messages to the native C++ boundary.
-
-Next hardware tests are pad velocity/aftertouch, RGB pad SysEx,
-button LEDs, touch-strip feedback, jog wheel and the 160x80 LCD.
+The active working branch is `checkpoint/mpc-ui-reference-and-product-20261030`; verify its live HEAD before every session. Keep `main` unchanged.
 
 ## Research references
 

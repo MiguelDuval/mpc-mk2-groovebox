@@ -126,13 +126,13 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadAftertouch) {
         const auto action = semanticAdapter.handleControl(*event);
+        const auto targetPadIndex =
+                semanticAdapter.padTargetForPhysicalPad(event->padIndex);
         if (action.has_value()
                 && action->type == mpc::studio::SemanticActionType::PadAftertouch
-                && action->value0 >= 0
-                && action->value0 < static_cast<std::int32_t>(
-                        mpc::domain::kMaxProgramPads)) {
+                && targetPadIndex < mpc::domain::kMaxProgramPads) {
             mpc::MpcCore::instance().audio().setPadAftertouch(
-                    static_cast<std::uint8_t>(action->value0),
+                    targetPadIndex,
                     static_cast<std::uint8_t>(
                             std::clamp(action->value1, 0, 127)));
         }
@@ -141,14 +141,9 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
-        if (event->padIndex < mpc::domain::kMaxProgramPads) {
-            core.audio().setPadAftertouch(event->padIndex, 0);
-        }
 
-        if (stepEditEnabled.load(std::memory_order_acquire)) {
-            if (!event->pressed) {
-                return std::nullopt;
-            }
+        if (stepEditEnabled.load(std::memory_order_acquire)
+                && event->pressed) {
             const auto page =
                     stepEditPage.load(std::memory_order_acquire);
             const auto stepIndex =
@@ -163,6 +158,13 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
         }
 
         const auto padRouting = semanticAdapter.handlePad(*event);
+        if (event->padIndex < mpc::domain::kMaxProgramPads) {
+            const auto expressionPad = padRouting.targetPadIndex
+                            < mpc::domain::kMaxProgramPads
+                    ? padRouting.targetPadIndex
+                    : semanticAdapter.padTargetForPhysicalPad(event->padIndex);
+            core.audio().setPadAftertouch(expressionPad, 0);
+        }
         if (padRouting.action.has_value()) {
             enqueueSemanticAction(*padRouting.action);
         }
@@ -202,7 +204,12 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                     }
                 }
             } else if (!semanticAdapter.noteRepeatLatched()) {
-                scheduler.clearPad();
+                const auto heldPad = semanticAdapter.heldRepeatPad();
+                if (semanticAdapter.noteRepeatActive() && heldPad.has_value()) {
+                    scheduler.setPad(heldPad->targetPadIndex, heldPad->velocity);
+                } else {
+                    scheduler.clearPad();
+                }
             }
 
             const std::uint8_t level =

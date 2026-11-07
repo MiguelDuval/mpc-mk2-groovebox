@@ -22,6 +22,9 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         case InputEventType::JogWheel: return handleJog(e.value);
         case InputEventType::JogPress: return handleJogPress(e.pressed);
         case InputEventType::PadAftertouch:
+            if (e.padIndex >= 16 || e.value > 127) {
+                return std::nullopt;
+            }
             return make(
                     Type::PadAftertouch,
                     static_cast<std::int32_t>(e.padIndex),
@@ -50,70 +53,147 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const I
         default: return std::nullopt;
     }
 }
+std::uint8_t MpcStudioMk2SemanticAdapter::padTargetForPhysicalPad(
+        std::uint8_t physicalPadIndex) const noexcept {
+    if (physicalPadIndex >= padPresses_.size()) {
+        return 0xFF;
+    }
+
+    const auto& snapshot = padPresses_[physicalPadIndex];
+    return snapshot.hasTarget
+            ? snapshot.targetPadIndex
+            : physicalPadIndex;
+}
+
+std::optional<PadRoutingResult>
+MpcStudioMk2SemanticAdapter::heldRepeatPad() const noexcept {
+    const PadPressSnapshot* latest = nullptr;
+    for (const auto& snapshot : padPresses_) {
+        if (snapshot.active
+                && snapshot.repeating
+                && (latest == nullptr || snapshot.order > latest->order)) {
+            latest = &snapshot;
+        }
+    }
+
+    if (latest == nullptr) {
+        return std::nullopt;
+    }
+
+    PadRoutingResult result;
+    result.repeating = true;
+    result.velocity = latest->velocity;
+    result.targetPadIndex = latest->targetPadIndex;
+    return result;
+}
+
 PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noexcept {
     PadRoutingResult r;
-    r.velocity=e.value;
-    r.targetPadIndex=e.padIndex;
-    if(e.type!=InputEventType::PadNote) return r;
-    if(!e.pressed){
-        if(copyMode_ != CopyMode::None){
-            r.consumed=true;
-            return r;
-        }
-        if(repeatPadHeld_){
-            r.repeating=true;
-            r.targetPadIndex=repeatPadIndex_;
-            if(!noteRepeatLatched_) {
-                repeatPadHeld_=false;
-            }
-            return r;
-        }
-        if(sixteenLevel_ && lastPadIndex_!=0xFF){
-            r.targetPadIndex=lastPadIndex_;
+    if (e.type != InputEventType::PadNote) {
+        r.velocity = e.value;
+        r.targetPadIndex = e.padIndex;
+        return r;
+    }
+
+    if (e.padIndex >= padPresses_.size()
+            || e.value > 127
+            || (e.pressed && e.value == 0)) {
+        r.consumed = true;
+        if (e.pressed && e.padIndex < padPresses_.size()) {
+            auto& snapshot = padPresses_[e.padIndex];
+            snapshot.active = true;
+            snapshot.consumed = true;
+            snapshot.repeating = false;
+            snapshot.hasTarget = false;
+            snapshot.targetPadIndex = 0xFF;
+            snapshot.velocity = 0;
+            snapshot.order = ++padPressOrder_;
         }
         return r;
     }
-    if(modeHeld_){ r.consumed=true; r.action=modePadAction(e.padIndex); return r; }
-    if(locateActive()){
-        r.consumed=true;
+
+    r.velocity = e.value;
+    r.targetPadIndex = e.padIndex;
+
+    if (!e.pressed) {
+        auto& snapshot = padPresses_[e.padIndex];
+        if (!snapshot.active) {
+            // An orphan Note Off must never be reinterpreted using the current
+            // 16 Levels/Repeat/Copy context or close a different held note.
+            r.consumed = true;
+            return r;
+        }
+
+        r.consumed = snapshot.consumed;
+        r.repeating = snapshot.repeating;
+        r.velocity = snapshot.velocity;
+        r.targetPadIndex = snapshot.targetPadIndex;
+        snapshot.active = false;
+        return r;
+    }
+
+    const auto rememberPress = [this, &e](PadRoutingResult result) noexcept {
+        auto& snapshot = padPresses_[e.padIndex];
+        snapshot.active = true;
+        snapshot.consumed = result.consumed;
+        snapshot.repeating = result.repeating;
+        snapshot.hasTarget = !result.consumed
+                && result.targetPadIndex < padPresses_.size();
+        snapshot.targetPadIndex = result.targetPadIndex;
+        snapshot.velocity = result.velocity;
+        snapshot.order = ++padPressOrder_;
+        return result;
+    };
+
+    if (modeHeld_) {
+        r.consumed = true;
+        r.action = modePadAction(e.padIndex);
+        return rememberPress(r);
+    }
+
+    if (locateActive()) {
+        r.consumed = true;
         if (const auto jumpSlot =
                     mpc::sequencer::locate::locatorSlotForJumpPad(e.padIndex);
                 jumpSlot >= 0) {
             r.action = make(Type::LocatePad, jumpSlot, 0);
-            return r;
+            return rememberPress(r);
         }
         if (const auto storeSlot =
                     mpc::sequencer::locate::locatorSlotForStorePad(e.padIndex);
                 storeSlot >= 0) {
             r.action = make(Type::LocatePad, storeSlot, 1);
-            return r;
+            return rememberPress(r);
         }
         r.action = make(Type::LocatePad, -1, 0);
-        return r;
+        return rememberPress(r);
     }
-    if(eraseHeld_){ r.consumed=true; r.action=make(Type::ErasePadTarget,e.padIndex); return r; }
-    if(copyMode_ != CopyMode::None){
-        r.consumed=true;
-        if(!e.pressed){
-            return r;
-        }
-        if(copyMode_ == CopyMode::Copy){
-            if(copySourcePad_ == 0xFF){
+
+    if (eraseHeld_) {
+        r.consumed = true;
+        r.action = make(Type::ErasePadTarget, e.padIndex);
+        return rememberPress(r);
+    }
+
+    if (copyMode_ != CopyMode::None) {
+        r.consumed = true;
+        if (copyMode_ == CopyMode::Copy) {
+            if (copySourcePad_ == 0xFF) {
                 copySourcePad_ = e.padIndex;
                 r.action = make(
                         Type::CopyPadSelection,
                         0,
                         static_cast<std::int32_t>(e.padIndex),
                         1);
-                return r;
+                return rememberPress(r);
             }
-            if(e.padIndex == copySourcePad_){
+            if (e.padIndex == copySourcePad_) {
                 r.action = make(
                         Type::CopyPadSelection,
                         0,
                         static_cast<std::int32_t>(e.padIndex),
                         0);
-                return r;
+                return rememberPress(r);
             }
             const auto bit = static_cast<std::uint16_t>(1u << e.padIndex);
             copyDestinationMask_ ^= bit;
@@ -122,7 +202,7 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
                     0,
                     static_cast<std::int32_t>(e.padIndex),
                     (copyDestinationMask_ & bit) != 0u ? 1 : 0);
-            return r;
+            return rememberPress(r);
         }
 
         const auto bit = static_cast<std::uint16_t>(1u << e.padIndex);
@@ -132,35 +212,50 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
                 1,
                 static_cast<std::int32_t>(e.padIndex),
                 (deletePadMask_ & bit) != 0u ? 1 : 0);
-        return r;
-    }
-    if(padMuteMode_){ r.consumed=true; r.action=make(Type::PadMuteTarget,e.padIndex); return r; }
-    if(trackMuteMode_){ r.consumed=true; r.action=make(Type::TrackMuteTarget,e.padIndex); return r; }
-
-    if(noteRepeatActive()){
-        lastPadIndex_=e.padIndex;
-        repeatPadIndex_=e.padIndex;
-        repeatPadHeld_=true;
-        r.repeating=true;
-        if(fullLevel_) r.velocity=127; else if(halfLevel_) r.velocity=64;
-        return r;
+        return rememberPress(r);
     }
 
-    if(sixteenLevel_){
-        if(lastPadIndex_==0xFF){
-            r.consumed=true;
-            r.action=make(Type::SixteenLevelState,0,-1);
-            return r;
+    if (padMuteMode_) {
+        r.consumed = true;
+        r.action = make(Type::PadMuteTarget, e.padIndex);
+        return rememberPress(r);
+    }
+    if (trackMuteMode_) {
+        r.consumed = true;
+        r.action = make(Type::TrackMuteTarget, e.padIndex);
+        return rememberPress(r);
+    }
+
+    if (noteRepeatActive()) {
+        lastPadIndex_ = e.padIndex;
+        r.repeating = true;
+        if (fullLevel_) {
+            r.velocity = 127;
+        } else if (halfLevel_) {
+            r.velocity = 64;
         }
-        r.targetPadIndex=lastPadIndex_;
-        r.velocity=static_cast<std::uint8_t>(
-                1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
-        return r;
+        return rememberPress(r);
     }
 
-    lastPadIndex_=e.padIndex;
-    if(fullLevel_) r.velocity=127; else if(halfLevel_) r.velocity=64;
-    return r;
+    if (sixteenLevel_) {
+        if (lastPadIndex_ == 0xFF) {
+            r.consumed = true;
+            r.action = make(Type::SixteenLevelState, 0, -1);
+            return rememberPress(r);
+        }
+        r.targetPadIndex = lastPadIndex_;
+        r.velocity = static_cast<std::uint8_t>(
+                1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
+        return rememberPress(r);
+    }
+
+    lastPadIndex_ = e.padIndex;
+    if (fullLevel_) {
+        r.velocity = 127;
+    } else if (halfLevel_) {
+        r.velocity = 64;
+    }
+    return rememberPress(r);
 }
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uint8_t note,bool pressed,std::int64_t timestampNanos) noexcept {
     const auto* b=findButton(note); if(!b) return std::nullopt;

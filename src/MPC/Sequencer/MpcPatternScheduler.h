@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 namespace mpc::sequencer {
@@ -50,7 +51,22 @@ struct RatchetExpansionResult final {
                     ? std::size_t{8}
                     : static_cast<std::size_t>(event.ratchetCount);
 
-        if (spanTicks < static_cast<std::int64_t>(count)) {
+        const auto countTicks = static_cast<std::int64_t>(count);
+        if (spanTicks < countTicks || event.offsetTicks < 0) {
+            result.invalid = true;
+            continue;
+        }
+
+        // Divide before multiplying. spanTicks can be INT64_MAX, so the
+        // original spanTicks * index intermediate could overflow even though
+        // the final quotient is within range.
+        const auto stepTicks = spanTicks / countTicks;
+        const auto remainderTicks = spanTicks % countTicks;
+        const auto lastIndex = static_cast<std::int64_t>(count - 1);
+        const auto maximumRelativeOffset = stepTicks * lastIndex
+                + (remainderTicks * lastIndex) / countTicks;
+        if (event.offsetTicks
+                > std::numeric_limits<std::int64_t>::max() - maximumRelativeOffset) {
             result.invalid = true;
             continue;
         }
@@ -61,13 +77,12 @@ struct RatchetExpansionResult final {
                 continue;
             }
 
+            const auto indexTicks = static_cast<std::int64_t>(index);
+            const auto relativeOffset = stepTicks * indexTicks
+                    + (remainderTicks * indexTicks) / countTicks;
             auto& expanded = output[result.written++];
             expanded = event;
             expanded.ratchetCount = 1;
-
-            const auto relativeOffset = static_cast<std::int64_t>(
-                    (spanTicks * static_cast<std::int64_t>(index)) /
-                    static_cast<std::int64_t>(count));
             expanded.offsetTicks = event.offsetTicks + relativeOffset;
         }
     }

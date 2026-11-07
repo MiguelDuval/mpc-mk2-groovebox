@@ -1,0 +1,245 @@
+{
+  "title": "Original source URLs for the catalog's direct screenshot images",
+  "source_document": "docs/MPC3-UI-VISUAL-REFERENCE-CATALOG.md",
+  "recovered_from_commit": "12c8cf7bfff66c8fd2481c424f24ed86bfb6bda5",
+  "note": "The catalog embeds local copies of these images. Keep original source attribution separately even after Markdown links are rewritten to repository-local assets.",
+  "image_count": 59,
+  "images": [
+    {
+      "alt": "MPC 3 Main — sequence, track, arrangement preview and function bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903713/original/tG8Q7SJWSKww5E-BtgLHjff7Z1Y0EL7Jkw.png?1764065208="
+    },
+    {
+      "alt": "MPC 3-family Main arrangement example on MPC Live III",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/A/AkaiMPCLiveIII_04-ajv0NghfxDb0Qn7EjFNP6tIDITCeULIC.jpg"
+    },
+    {
+      "alt": "MPC 3 XL Channel Strip and I-O routing",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69154227724/original/W4p-2vkRxIavIh5ZOK9e8ZvP0fZ0iVPVxA.png?1745834845="
+    },
+    {
+      "alt": "MPC 3 mode menu",
+      "source_url": "https://www.mpc-tutor.com/assets/mpc-menu-1024x639.png"
+    },
+    {
+      "alt": "Legacy MPC Main screen — comparison only, not MPC 3.9 target",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_02-1eS.kAqGJkEsbEBcA_yfgeJUvXCMWXIi.jpg"
+    },
+    {
+      "alt": "Official MPC Standalone Track View — track rows, monitor, level, mute/solo and Function Bar",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69128760784/original/ZxmnIeI0mSiXFQy513lN30sfQ0ai0ObVWg.png?1726736736="
+    },
+    {
+      "alt": "MPC Browser — Places tab and local storage locations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69177984964/original/iLqdSWSEhgtkBJkc5rRpi5_3L-xx41uWXg.png?1764935456="
+    },
+    {
+      "alt": "MPC Browser — Content categories",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719905/original/-BBHK1y9CkqUgmPuiShYZjuXKQpaFT1gFw.png?1754995552="
+    },
+    {
+      "alt": "MPC Browser — Expansions tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165719916/original/LpsBnLwwLU5Antxb5wdSSQK_9pafduji-Q.png?1754995559="
+    },
+    {
+      "alt": "MPC Browser — Sample Assign and sample pool",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165722181/original/w67qMx9X5NaS3yf3_Efh5FUtSujKqosltQ.png?1754997241="
+    },
+    {
+      "alt": "MPC Browser Options dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165716730/original/_c1kISWJxQzR99bZd8JmlBS0S0gVwNyBOg.png?1754993450="
+    },
+    {
+      "alt": "Pad Perform — custom note map and 4×4 pad interpretation",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69166324277/original/6NjC6-cRea38vgWsZYANVNmmRnv9QbtgLw.png?1755523845="
+    },
+    {
+      "alt": "Track Edit — sample layers and waveform",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69176903727/original/-0xrv1nhFLQ1XfkWCRFkoCgZQe0zfjr4LA.png?1764065223="
+    },
+    {
+      "alt": "MPC 3 Sample Edit — waveform, slice and process controls",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice05.png"
+    },
+    {
+      "alt": "MPC 3 envelope automation and performance status",
+      "source_url": "https://www.mpc-tutor.com/assets/slicemotion/slice24.png"
+    },
+    {
+      "alt": "Legacy Grid View — note grid with velocity lane; visual structure only",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69137425072/original/UbA7URmBzaEGtijRhATbUeKqQJQobByonw.png?1733155392="
+    },
+    {
+      "alt": "Legacy standalone MPC Sampler recording screen — interaction reference only",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/S/SampleSlicing_02-on3yRqdzNYbySPlbD3x43Dr_yKlI1RKX.jpg"
+    },
+    {
+      "alt": "Preferences — project load/save and autosave",
+      "source_url": "https://www.mpc-tutor.com/assets/autosave.jpg"
+    },
+    {
+      "alt": "MPC One Step Sequencer photographed on the hardware",
+      "source_url": "https://img.youtube.com/vi/uuNyLLg-cXs/maxresdefault.jpg"
+    },
+    {
+      "alt": "MPC waveform Chop mode and slice markers",
+      "source_url": "https://dt7v1i9vyp3mf.cloudfront.net/styles/news_large/s3/imagelibrary/M/MPCBasics_07-NswMBI0X4nQgTah8CIBrwSGbQ5xLHYQO.jpg"
+    },
+    {
+      "alt": "MPC One Next Sequence grid photographed on hardware",
+      "source_url": "https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221025/20221025034745.jpg"
+    },
+    {
+      "alt": "MPC Song Mode — sequence playlist and sequence tiles",
+      "source_url": "https://www.mpc-tutor.com/assets/song-mode-playlist-1024x640.png"
+    },
+    {
+      "alt": "MPC 3 Channel Mixer I/O, monitoring, sends and outputs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69192726532/original/_w6tJ-s7R-DyxGc1avFs6s8caU_uAq9B7Q.png?1780034221="
+    },
+    {
+      "alt": "MPC pad mixer routing matrix — older visual, not MPC 3.9 geometry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69136157082/original/dgGihnRKJXr_dvqLa512k-gmoref-QAe_Q.JPG?1732159501="
+    },
+    {
+      "alt": "MPC One Preferences — MIDI / Sync ports",
+      "source_url": "https://eu5.dh-cdn.net/uploads/db8181/original/3X/7/3/739f6d1d05b21c98e4cf4c2e8e8a9b23304aaad3.jpeg"
+    },
+    {
+      "alt": "MPC 3 Click/Metro dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69183338703/original/C9jY-JC1NZ48_45iDBSAU8uYXQh9eRCcMA.png?1770305858="
+    },
+    {
+      "alt": "MPC standalone XYFX touch grid",
+      "source_url": "https://heikkisiltala.net/wiki/_media/images/akai_mpc_live/effectsxypad02.jpg?tok=792f2b&w=800"
+    },
+    {
+      "alt": "MPC Program Edit Samples page — layer list",
+      "source_url": "https://www.mpc-tutor.com/assets/prog5.png"
+    },
+    {
+      "alt": "MPC Program Edit — per-pad sample-layer parameters",
+      "source_url": "https://www.mpc-tutor.com/assets/offset2.png"
+    },
+    {
+      "alt": "MPC One pad color / sample assignment grid",
+      "source_url": "https://cdn.mos.cms.futurecdn.net/oC9sLkM9L8r7nj9abQQTsj.jpg"
+    },
+    {
+      "alt": "MPC Q-Link parameter overview",
+      "source_url": "https://www.mpc-tutor.com/assets/qlink-2.png"
+    },
+    {
+      "alt": "MPC Save window — project, project as and other save formats",
+      "source_url": "https://www.mpc-tutor.com/assets/save.png"
+    },
+    {
+      "alt": "MPC One Browser shown on the physical hardware",
+      "source_url": "https://cdn.mos.cms.futurecdn.net/pFYHKeyGe33zd8ypBvFKoi.jpg"
+    },
+    {
+      "alt": "MPC One Sample Edit Trim screen photographed on the hardware",
+      "source_url": "https://cdn-ak.f.st-hatena.com/images/fotolife/M/Marronfieldsproduction/20221028/20221028035306.jpg"
+    },
+    {
+      "alt": "MPC One Sample Assign with sample pool and 4x4 pad assignment",
+      "source_url": "https://assets.st-note.com/img/1714572254880-afLUx6An8g.jpg"
+    },
+    {
+      "alt": "Legacy MPC waveform editor with automation lane and bottom actions",
+      "source_url": "https://ragtime.online/media/catalog/product/6/b/6bc500-crop-af798e-mpcone.jpg.auto.jpg"
+    },
+    {
+      "alt": "MPC Grid with piano-roll events, velocity lane and bottom edit functions",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69194801033/original/NcJsWEGW4E8GKzQShSO1Ex2Ek7wkMdv6Cg.png?1782213213="
+    },
+    {
+      "alt": "MPC Arpeggiator dialog with timing, action, pattern and latch settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69117558608/original/9s1MRfk1vI0K_6ubpYauxjR2bCN_UBPCSQ.png?1718116566="
+    },
+    {
+      "alt": "MPC standalone MIDI Sync preferences with input and output ports",
+      "source_url": "https://www.mpc-tutor.com/assets/preferences-midi-incoming-1024x640.png"
+    },
+    {
+      "alt": "MPC 3 Sequence Edit menu with Erase, Clear All, Clear Events, Trim and other sequence operations",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171567821/original/Gn_oosMLkpAb2-Jd4S9CQs8fcCCtzKUJ0g.jpeg?1759738112="
+    },
+    {
+      "alt": "MPC 3 Erase dialog with sequence, track, time range and event-type options",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568345/original/y9ooBl_93rautQ01WZCrR0X81Z86U1iGwg.png?1759738577="
+    },
+    {
+      "alt": "MPC 3 Erase Note mode with the eight-bank pad selection mask",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568606/original/TKMwaGq0Sqgh2kqcKpJd-Nzu3qgFJw4qaA.png?1759738674="
+    },
+    {
+      "alt": "MPC 3 Clear Sequence destructive confirmation dialog",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69171568002/original/p4XyPOCyXsuXuyqyDqTpVf9cmkKEgnK2jg.png?1759738294="
+    },
+    {
+      "alt": "MPC 3 Preferences — Hardware tab with Tap Tempo, Bank Button and Q-Link settings",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69161763950/original/pWP6-5PdcH9pY2cA4pGmjd4H5xZz47NkEw.png?1751856629="
+    },
+    {
+      "alt": "MPC 3 Preferences — Project Load/Save tab",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497633/original/losLbj-hGvLzhujOiTJoGEADHmkCLyMwlw.png?1757329912="
+    },
+    {
+      "alt": "MPC 3 New Project Behaviour selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497555/original/1B5Ebe8l-fxKf8RUdYXAAru39U1WG5118Q.png?1757329862="
+    },
+    {
+      "alt": "MPC 3 New Project Dialog selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69168497526/original/Go4z7ExFaEGKbgu1F2FPTXPQrara8DcZuQ.png?1757329832="
+    },
+    {
+      "alt": "MPC 3 Main Track Type selector affordance",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881223/original/OBU4OIPLsVppo0XE-rgOgxdwLUu5JvMD3Q.png?1732016692="
+    },
+    {
+      "alt": "MPC 3 Main Program context and Pad Perform entry",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69135881533/original/Gpm2HcY9ynQCsjxFsSc7T8t0VoLS4_Ldng.png?1732016882="
+    },
+    {
+      "alt": "MPC Browser with the Audition Auto Sync Warp level popover open",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715554/original/NWURoLiusABAG6rrubXbuxf-pmUkMGliKw.png?1754992557="
+    },
+    {
+      "alt": "MPC Browser search and six file-type filter icons",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165715626/original/ZgepHM1fsT3jM9N1rop6oSpx8F81swSJgQ.png?1754992624="
+    },
+    {
+      "alt": "MPC Browser favourite folder buttons 1 to 5",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69165717538/original/03TYqionEXfsV6ARKxTlp1yoNQCUSEZXXQ.png?1754993997="
+    },
+    {
+      "alt": "MPC 3 Preferences MIDI Sync port routing controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69151187913/original/qUWciG6cOb30KJXSUof5XWV_BAkPclk0yA.png?1743505244="
+    },
+    {
+      "alt": "MPC Standalone Sampler screen with input source, Arm, sample counter and Sample Slice Pad Tap Pad Hold tabs",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075163375/original/tP8Gznhoc4AujoPV18pa0M4lGw_Fi4F1pQ.png?1683839460="
+    },
+    {
+      "alt": "Akai MPC Sampler input-source and Monitor On Off controls",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69075165589/original/YFSMdgWyQKiv9I98J_Jl4nbGEHYgQBj7LA.png?1683841018="
+    },
+    {
+      "alt": "MPC Project Defaults settings including tempo, sequence bars, time signature and new-project dialog",
+      "source_url": "https://www.mpc-tutor.com/assets/mpcs-prefs2.png"
+    },
+    {
+      "alt": "MPC Preferences Project Load Save Auto Save and timeout selector",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310481/original/UHQkJ3Q7dOCU3OYKqq7-M1tT736gXs-XMg.png?1746635795="
+    },
+    {
+      "alt": "MPC Project Load Save Temporary File Location row",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69155310100/original/Eje2-0LPl4-jsEQVNg9NQ3UiBxhAMjIW3A.png?1746635653="
+    },
+    {
+      "alt": "MPC project auto-save progress modal",
+      "source_url": "https://s3.amazonaws.com/cdn.freshdesk.com/data/helpdesk/attachments/production/69141762232/original/FtmdsIpb1y5Th0qupBLf7AvPPW5lb_td2A.png?1736425797="
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 # MPC Studio MkII Physical Test Checklist
 
+**Current candidate acceptance:** use [MPC-STUDIO-MKII-CURRENT-HEAD-ACCEPTANCE.md](MPC-STUDIO-MKII-CURRENT-HEAD-ACCEPTANCE.md) for the dedicated current-HEAD procedure. Its tests are NOT RUN until performed on the real MkII with the exact candidate APK. The historical checked items below are tied to the 2026-09-24 APK record and must not be treated as acceptance of current HEAD.
+
 Run these tests with the public MIDI port. Use [MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md](MPC-STUDIO-MKII-REVERSE-ENGINEERING-TRACEABILITY.md) for the source, code and test path of each control.
 
 **Build-specific truthfulness:** The historical physical verification record below is dated 2026-09-24 and names the APK commit used for that session. It does not verify current HEAD. Re-run software preflight for the exact build being physically tested. MPC Desktop instructions in source materials are outside this checklist's scope; test the Android app as the MIDI host.

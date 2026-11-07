@@ -4,6 +4,7 @@ import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.MediaStore;
 
 import java.util.ArrayList;
@@ -24,13 +25,26 @@ final class MpcLocalAudioCatalog {
         }
 
         final Uri collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
-        final String[] projection = {
-                MediaStore.Audio.Media._ID,
-                MediaStore.Audio.Media.DISPLAY_NAME,
-                MediaStore.Audio.Media.MIME_TYPE,
-                MediaStore.Audio.Media.SIZE,
-                MediaStore.Audio.Media.DURATION
-        };
+        // RELATIVE_PATH is available on Android 10+ and lets Browser filter real folders.
+        final boolean hasRelativePath = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
+        final String[] projection = hasRelativePath
+                ? new String[]{
+                        MediaStore.Audio.Media._ID,
+                        MediaStore.Audio.Media.DISPLAY_NAME,
+                        MediaStore.Audio.Media.MIME_TYPE,
+                        MediaStore.Audio.Media.SIZE,
+                        MediaStore.Audio.Media.DURATION,
+                        MediaStore.MediaColumns.RELATIVE_PATH,
+                        MediaStore.MediaColumns.DATE_MODIFIED
+                }
+                : new String[]{
+                        MediaStore.Audio.Media._ID,
+                        MediaStore.Audio.Media.DISPLAY_NAME,
+                        MediaStore.Audio.Media.MIME_TYPE,
+                        MediaStore.Audio.Media.SIZE,
+                        MediaStore.Audio.Media.DURATION,
+                        MediaStore.MediaColumns.DATE_MODIFIED
+                };
         final List<MpcBrowserFile> files = new ArrayList<>();
         try (Cursor cursor = resolver.query(
                 collection, projection, null, null,
@@ -42,6 +56,8 @@ final class MpcLocalAudioCatalog {
             final int mimeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.MIME_TYPE);
             final int sizeColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE);
             final int durationColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION);
+            final int relativePathColumn =
+                    cursor.getColumnIndex(MediaStore.MediaColumns.RELATIVE_PATH);
 
             while (cursor.moveToNext()) {
                 final String name = cursor.getString(nameColumn);
@@ -54,9 +70,19 @@ final class MpcLocalAudioCatalog {
                 final long size = cursor.isNull(sizeColumn) ? -1L : cursor.getLong(sizeColumn);
                 final long duration = cursor.isNull(durationColumn)
                         ? -1L : cursor.getLong(durationColumn);
+                final String relativePath = relativePathColumn < 0
+                        || cursor.isNull(relativePathColumn)
+                        ? "" : cursor.getString(relativePathColumn);
+                final int modifiedColumn =
+                        cursor.getColumnIndex(MediaStore.MediaColumns.DATE_MODIFIED);
+                final long modifiedSeconds = modifiedColumn < 0 || cursor.isNull(modifiedColumn)
+                        ? -1L : cursor.getLong(modifiedColumn);
+                final long modifiedMs = modifiedSeconds < 0 ? -1L
+                        : modifiedSeconds > Long.MAX_VALUE / 1000L
+                                ? Long.MAX_VALUE : modifiedSeconds * 1000L;
                 final Uri itemUri = ContentUris.withAppendedId(collection, id);
                 files.add(new MpcBrowserFile(
-                        itemUri.toString(), name, mime, size, duration));
+                        itemUri.toString(), name, mime, size, duration, relativePath, modifiedMs));
             }
         }
         return files;

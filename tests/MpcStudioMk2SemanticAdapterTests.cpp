@@ -9,6 +9,7 @@ InputEvent btnAt(std::uint8_t n,bool p,std::int64_t timestamp){
   return event;
 }
 InputEvent pad(std::uint8_t i){return {InputEventType::PadNote,9,37,112,i,true};}
+InputEvent padOff(std::uint8_t i){return {InputEventType::PadNote,9,37,0,i,false};}
 InputEvent jog(std::uint8_t v){return {InputEventType::JogWheel,0,100,v};}
 InputEvent strip(std::uint8_t v){return {InputEventType::TouchStrip,0,33,v};}
 void typeOf(const std::optional<SemanticAction>& a,SemanticActionType t){assert(a);assert(a->type==t);}
@@ -19,6 +20,52 @@ int main(){
   auto source=b.handlePad(pad(4)); assert(source.targetPadIndex==4); static_cast<void>(b.handleControl(btn(49,false))); static_cast<void>(b.handleControl(btn(39))); assert(b.handlePad(pad(0)).velocity==127);
   static_cast<void>(b.handleControl(btn(49))); auto half=b.handleControl(btn(39)); typeOf(half,SemanticActionType::HalfLevelState); assert(half->value0==1); assert(b.handlePad(pad(0)).velocity==64);
   static_cast<void>(b.handlePad(pad(4))); static_cast<void>(b.handleControl(btn(49))); auto level16=b.handleControl(btn(40)); typeOf(level16,SemanticActionType::SixteenLevelState); assert(level16->value0==1 && level16->value1==4); auto low=b.handlePad(pad(0)); auto high=b.handlePad(pad(15)); assert(low.targetPadIndex==4 && low.velocity==1); assert(high.targetPadIndex==4 && high.velocity==127); auto level16Release=b.handlePad(InputEvent{InputEventType::PadNote,9,37,0,15,false}); assert(level16Release.targetPadIndex==4); static_cast<void>(b.handleControl(btn(40))); assert(!b.sixteenLevel());
+
+  MpcStudioMk2SemanticAdapter pressSnapshots;
+  static_cast<void>(pressSnapshots.handlePad(pad(4)));
+  static_cast<void>(pressSnapshots.handlePad(padOff(4)));
+  static_cast<void>(pressSnapshots.handleControl(btn(40)));
+  const auto firstLevelPress = pressSnapshots.handlePad(pad(0));
+  assert(!firstLevelPress.consumed
+          && firstLevelPress.targetPadIndex == 4
+          && firstLevelPress.velocity == 1);
+  assert(pressSnapshots.padTargetForPhysicalPad(0) == 4);
+  // Turning 16 Levels off and selecting another Pad cannot retarget the held
+  // physical key: its Note Off must close the exact Pad/velocity captured on press.
+  static_cast<void>(pressSnapshots.handleControl(btn(40)));
+  const auto secondNormalPress = pressSnapshots.handlePad(pad(7));
+  assert(secondNormalPress.targetPadIndex == 7);
+  const auto firstLevelRelease = pressSnapshots.handlePad(padOff(0));
+  assert(!firstLevelRelease.consumed
+          && firstLevelRelease.targetPadIndex == 4
+          && firstLevelRelease.velocity == 1);
+  assert(pressSnapshots.padTargetForPhysicalPad(0) == 4);
+  const auto secondNormalRelease = pressSnapshots.handlePad(padOff(7));
+  assert(!secondNormalRelease.consumed
+          && secondNormalRelease.targetPadIndex == 7);
+  assert(pressSnapshots.handlePad(padOff(7)).consumed);
+
+  MpcStudioMk2SemanticAdapter chordRelease;
+  static_cast<void>(chordRelease.handleControl(btn(114)));
+  const auto chordPad = chordRelease.handlePad(pad(1));
+  assert(chordPad.consumed && chordPad.action.has_value());
+  static_cast<void>(chordRelease.handleControl(btn(114, false)));
+  const auto chordPadRelease = chordRelease.handlePad(padOff(1));
+  assert(chordPadRelease.consumed && !chordPadRelease.action.has_value());
+
+  MpcStudioMk2SemanticAdapter overlappingRepeat;
+  static_cast<void>(overlappingRepeat.handleControl(btn(11)));
+  assert(overlappingRepeat.handlePad(pad(2)).repeating);
+  assert(overlappingRepeat.handlePad(pad(7)).repeating);
+  const auto olderRepeatRelease = overlappingRepeat.handlePad(padOff(2));
+  assert(olderRepeatRelease.repeating && olderRepeatRelease.targetPadIndex == 2);
+  const auto resumedRepeat = overlappingRepeat.heldRepeatPad();
+  assert(resumedRepeat.has_value()
+          && resumedRepeat->targetPadIndex == 7
+          && resumedRepeat->velocity == 112);
+  const auto finalRepeatRelease = overlappingRepeat.handlePad(padOff(7));
+  assert(finalRepeatRelease.repeating && finalRepeatRelease.targetPadIndex == 7);
+  assert(!overlappingRepeat.heldRepeatPad().has_value());
 
   MpcStudioMk2SemanticAdapter c; typeOf(c.handleControl(btn(13)),SemanticActionType::TrackSelectionContext); auto d=c.handleControl(jog(1)); typeOf(d,SemanticActionType::DataDialDelta); assert(d->value0==1); auto plus=c.handleControl(btn(54)); typeOf(plus,SemanticActionType::AdjustValueDelta); assert(plus->value0==1);
   MpcStudioMk2SemanticAdapter e; typeOf(e.handleControl(btn(82)),SemanticActionType::TransportPlay); static_cast<void>(e.handleControl(btn(49))); typeOf(e.handleControl(btn(81)),SemanticActionType::TransportReset);
@@ -166,5 +213,61 @@ int main(){
   typeOf(pressureAction,SemanticActionType::PadAftertouch);
   assert(pressureAction->value0==0 && pressureAction->value1==96);
 
+  MpcStudioMk2SemanticAdapter pressureMapping;
+  static_cast<void>(pressureMapping.handlePad(pad(4)));
+  static_cast<void>(pressureMapping.handlePad(padOff(4)));
+  static_cast<void>(pressureMapping.handleControl(btn(40)));
+  const auto expressionPress = pressureMapping.handlePad(pad(0));
+  assert(expressionPress.targetPadIndex == 4);
+  assert(pressureMapping.padTargetForPhysicalPad(0) == 4);
+  const auto mappedPressure = pressureMapping.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,100,0,true});
+  typeOf(mappedPressure, SemanticActionType::PadAftertouch);
+  assert(mappedPressure->value0 == 0 && mappedPressure->value1 == 100);
+  static_cast<void>(pressureMapping.handleControl(btn(40)));
+  const auto expressionRelease = pressureMapping.handlePad(padOff(0));
+  assert(expressionRelease.targetPadIndex == 4);
+  assert(pressureMapping.padTargetForPhysicalPad(0) == 4);
+
+  MpcStudioMk2SemanticAdapter invalidPad;
+  auto invalidPadEvent = invalidPad.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(invalidPadEvent.consumed && !invalidPadEvent.action.has_value());
+  assert(invalidPadEvent.targetPadIndex == 0xFF && invalidPadEvent.velocity == 0);
+  assert(invalidPad.lastPadIndex() == 0xFF);
+  auto nextValidPad = invalidPad.handlePad(pad(7));
+  assert(!nextValidPad.consumed && nextValidPad.targetPadIndex == 7);
+  assert(invalidPad.lastPadIndex() == 7);
+
+  MpcStudioMk2SemanticAdapter invalidVelocity;
+  auto outOfRangeVelocity = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 128, 3, true});
+  assert(outOfRangeVelocity.consumed && !outOfRangeVelocity.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+  auto zeroVelocityPress = invalidVelocity.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 0, 3, true});
+  assert(zeroVelocityPress.consumed && !zeroVelocityPress.action.has_value());
+  assert(invalidVelocity.lastPadIndex() == 0xFF);
+
+  MpcStudioMk2SemanticAdapter malformedCopy;
+  static_cast<void>(malformedCopy.handleControl(btn(122)));
+  auto validSourceBeforeMalformed = malformedCopy.handlePad(pad(2));
+  typeOf(validSourceBeforeMalformed.action, SemanticActionType::CopyPadSelection);
+  auto malformedCopyPad = malformedCopy.handlePad(
+      InputEvent{InputEventType::PadNote, 9, 37, 112, 255, true});
+  assert(malformedCopyPad.consumed && !malformedCopyPad.action.has_value());
+  auto validDestinationAfterMalformed = malformedCopy.handlePad(pad(4));
+  typeOf(validDestinationAfterMalformed.action, SemanticActionType::CopyPadSelection);
+  assert(validDestinationAfterMalformed.action->value1 == 4);
+  typeOf(malformedCopy.handleControl(btn(122, false)), SemanticActionType::CopyPadCommit);
+
+  auto maximumPressure = pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,127,15,true});
+  typeOf(maximumPressure,SemanticActionType::PadAftertouch);
+  assert(maximumPressure->value0==15 && maximumPressure->value1==127);
+  assert(!pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,128,0,true}).has_value());
+  assert(!pressure.handleControl(
+      InputEvent{InputEventType::PadAftertouch,9,37,96,16,true}).has_value());
   return 0;
 }

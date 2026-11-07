@@ -11,6 +11,8 @@ Canonical contract: docs/MPC3-UI-MIGRATION-MASTER-SPEC.md
 
 This is the durable research map for future sessions. It records published MPC3 information architecture, routes, control semantics, current implementation status and known gaps. It does not copy Akai artwork, firmware, source code or proprietary resources.
 
+**Visual screenshot archive:** [Open the local 82-context screenshot gallery](MPC3-UI-REFERENCE-ASSETS/INDEX.md), [image/PDF extraction manifest](MPC3-UI-REFERENCE-ASSETS/manifest.json), [preserved original URLs for 59 direct reference images](MPC3-UI-REFERENCE-ASSETS/direct-image-source-index.json), and [asset README](MPC3-UI-REFERENCE-ASSETS/README.md). These are repository-local research references only; they are not bundled into the Android application. The corresponding screen-by-screen source catalog is [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md).
+
 ## Current implementation status override — 2026-10-18
 
 This dated addendum supersedes older Project rows below that say the Project UI/route is absent or RESERVED. The current branch source contains a user-facing Project SAVE, SAVE AS and OPEN route in `MainActivity.java`, wired to the v2 native serializer/loader in `NativeEngine.cpp` and Android Storage Access Framework document intents.
@@ -270,6 +272,9 @@ Current visible Main: Toolbar → five shortcuts → XL Strip region → central
 
 Do not store Akai screenshots, firmware resources, proprietary artwork or extracted UI assets in the app.
 Store source URL, manual section/page, observed geometry/relationship, and original annotated reconstructions.
+
+**Visual screenshot index (expanded 2026-10-29):** use [MPC3-UI-VISUAL-REFERENCE-CATALOG.md](MPC3-UI-VISUAL-REFERENCE-CATALOG.md) as the picture-led companion to this knowledge base. The catalog currently contains 51 source-linked, captioned inline screenshot references plus an 82-context coverage table with manual/source links. It includes recovered official MPC 3.6/3.7 PDF figures for Grid View, 16 Levels, List Edit, Looper and LFO, plus official MPC 3 images for Sequence Edit/Erase/Clear All, Hardware Preferences, Project Load/Save/New Project selectors and Main Track/Program fields. Some legacy PDF page anchors still require page-by-page visual validation. It now includes recovered visual references for Grid View, 16 Levels, List Edit, Looper and Track Edit LFO from official MPC 3.6/3.7 PDFs, alongside current official support images. Every row identifies the visual source and distinguishes current MPC 3.x / official images from legacy MPC2 and sibling-device references. The catalog makes unresolved exact-version image gaps explicit; an older screenshot is a fallback visual reference, not proof of exact MPC 3.9 appearance. Screenshot coverage also does not prove our Android screen is implemented or accepted.
+Do not use screenshot references as proof of implementation. The required acceptance chain remains: relevant reference → implementation status → real interaction/state verification → exact-SHA CI → inspected screenshot/evidence.
 
 | Reference | Source | Anchor | Extract |
 |---|---|---|---|

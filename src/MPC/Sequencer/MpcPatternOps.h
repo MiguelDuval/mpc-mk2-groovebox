@@ -70,6 +70,9 @@ inline std::size_t applySwing(
     const auto maxDelay = grid / 2;
     const auto delay =
             (maxDelay * static_cast<std::int64_t>(clampedSwing)) / 100;
+    if (delay == 0) {
+        return 0;
+    }
 
     std::size_t changed = 0;
     for (auto& note : pattern.notes) {
@@ -84,6 +87,9 @@ inline std::size_t applySwing(
 
         const auto shifted =
                 (static_cast<std::int64_t>(note.tick) + delay) % length;
+        if (shifted == note.tick) {
+            continue;
+        }
         note.tick = static_cast<std::int32_t>(shifted);
         ++changed;
     }
@@ -137,12 +143,15 @@ inline bool movePatternNoteTick(
     if (pattern.lengthTicks <= 0 || sourceTick < 0 || targetTick < 0
             || sourceTick >= pattern.lengthTicks
             || targetTick >= pattern.lengthTicks || sourceTick == targetTick) return false;
+    const auto matchesSource = [sourceTick, noteNumber](
+            const domain::MidiNoteEvent& note) {
+        return note.tick == sourceTick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matchesSource) != 1) {
+        return false;
+    }
     auto source = std::find_if(
-            pattern.notes.begin(), pattern.notes.end(),
-            [sourceTick, noteNumber](const domain::MidiNoteEvent& note) {
-                return note.tick == sourceTick && note.note == noteNumber;
-            });
-    if (source == pattern.notes.end()) return false;
+            pattern.notes.begin(), pattern.notes.end(), matchesSource);
     const auto collision = std::find_if(
             pattern.notes.begin(), pattern.notes.end(),
             [targetTick, noteNumber](const domain::MidiNoteEvent& note) {
@@ -261,8 +270,10 @@ inline bool setStepNote(
         std::int32_t durationTicks = 0,
         std::uint8_t probability = 127,
         std::uint8_t ratchet = 1) {
-    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0 ||
-        velocity == 0 || ratchet == 0 || probability > 127) {
+    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0
+            || noteNumber > 127 || velocity == 0 || velocity > 127
+            || probability > 127 || ratchet == 0 || ratchet > 8
+            || durationTicks < 0 || durationTicks > pattern.lengthTicks) {
         return false;
     }
 
@@ -275,14 +286,23 @@ inline bool setStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            note.durationTicks = durationTicks;
-            note.velocity = velocity;
-            note.probability = probability;
-            note.ratchet = ratchet;
-            return true;
-        }
+    const auto matchesExisting = [tick, noteNumber](
+            const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    const auto existingCount = static_cast<std::size_t>(std::count_if(
+            pattern.notes.begin(), pattern.notes.end(), matchesExisting));
+    if (existingCount > 1) {
+        return false;
+    }
+    if (existingCount == 1) {
+        const auto existing = std::find_if(
+                pattern.notes.begin(), pattern.notes.end(), matchesExisting);
+        existing->durationTicks = durationTicks;
+        existing->velocity = velocity;
+        existing->probability = probability;
+        existing->ratchet = ratchet;
+        return true;
     }
 
     pattern.notes.push_back({
@@ -321,12 +341,14 @@ inline domain::MidiNoteEvent* findStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            return &note;
-        }
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return nullptr;
     }
-    return nullptr;
+    const auto found = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    return found == pattern.notes.end() ? nullptr : &*found;
 }
 
 inline const domain::MidiNoteEvent* findStepNote(
@@ -347,12 +369,14 @@ inline const domain::MidiNoteEvent* findStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    for (const auto& note : pattern.notes) {
-        if (note.tick == tick && note.note == noteNumber) {
-            return &note;
-        }
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return nullptr;
     }
-    return nullptr;
+    const auto found = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    return found == pattern.notes.end() ? nullptr : &*found;
 }
 
 inline bool setStepNoteVelocity(
@@ -361,7 +385,7 @@ inline bool setStepNoteVelocity(
         std::int32_t gridTicks,
         std::uint8_t noteNumber,
         std::uint8_t velocity) noexcept {
-    if (velocity == 0) {
+    if (noteNumber > 127 || velocity == 0 || velocity > 127) {
         return false;
     }
     auto* note = findStepNote(
@@ -379,9 +403,12 @@ inline bool setStepNoteProbability(
         std::int32_t gridTicks,
         std::uint8_t noteNumber,
         std::uint8_t probability) noexcept {
+    if (noteNumber > 127 || probability > 127) {
+        return false;
+    }
     auto* note = findStepNote(
             pattern, stepIndex, gridTicks, noteNumber);
-    if (note == nullptr || probability > 127) {
+    if (note == nullptr) {
         return false;
     }
     note->probability = probability;
@@ -434,9 +461,13 @@ inline bool setStepNoteDuration(
         std::int32_t gridTicks,
         std::uint8_t noteNumber,
         std::int32_t durationTicks) noexcept {
-    if (gridTicks <= 0
-            || durationTicks < std::max(1, gridTicks / 4)
-            || durationTicks > gridTicks * 4) {
+    if (gridTicks <= 0 || pattern.lengthTicks <= 0
+            || noteNumber > 127
+            || static_cast<std::int64_t>(durationTicks)
+                    < std::max<std::int64_t>(1, gridTicks / 4)
+            || static_cast<std::int64_t>(durationTicks)
+                    > static_cast<std::int64_t>(gridTicks) * 4
+            || durationTicks > pattern.lengthTicks) {
         return false;
     }
     const auto* existing = findStepNote(
@@ -468,16 +499,15 @@ inline bool eraseStepNote(
     }
 
     const auto tick = static_cast<std::int32_t>(tick64);
-    const auto before = pattern.notes.size();
-    pattern.notes.erase(
-            std::remove_if(
-                    pattern.notes.begin(),
-                    pattern.notes.end(),
-                    [tick, noteNumber](const domain::MidiNoteEvent& note) {
-                        return note.tick == tick && note.note == noteNumber;
-                    }),
-            pattern.notes.end());
-    return pattern.notes.size() != before;
+    const auto matches = [tick, noteNumber](const domain::MidiNoteEvent& note) {
+        return note.tick == tick && note.note == noteNumber;
+    };
+    if (std::count_if(pattern.notes.begin(), pattern.notes.end(), matches) != 1) {
+        return false;
+    }
+    const auto event = std::find_if(pattern.notes.begin(), pattern.notes.end(), matches);
+    pattern.notes.erase(event);
+    return true;
 }
 
 inline std::size_t recordNotes(
@@ -488,9 +518,19 @@ inline std::size_t recordNotes(
         return 0;
     }
 
+    const auto validEvent = [length = pattern.lengthTicks](
+            const domain::MidiNoteEvent& source) noexcept {
+        return source.durationTicks >= 0
+                && source.durationTicks <= length
+                && source.note <= 127
+                && source.velocity <= 127
+                && source.probability <= 127
+                && source.ratchet >= 1
+                && source.ratchet <= 8;
+    };
     std::size_t validCount = 0;
     for (const auto& source : captured) {
-        if (source.durationTicks >= 0 && source.ratchet != 0) {
+        if (validEvent(source)) {
             ++validCount;
         }
     }
@@ -510,7 +550,7 @@ inline std::size_t recordNotes(
     std::size_t accepted = 0;
 
     for (const auto& source : captured) {
-        if (source.durationTicks < 0 || source.ratchet == 0) {
+        if (!validEvent(source)) {
             continue;
         }
 
