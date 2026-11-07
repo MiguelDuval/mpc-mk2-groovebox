@@ -175,6 +175,23 @@ After meaningful changes:
 
 If a build fails, fix the build before adding unrelated functionality.
 
+### 4.6 GitHub-only CI/CD and APK delivery
+
+## GitHub repository and APK build authority
+
+This project is hosted and developed on **GitHub**. The only authoritative CI/CD system for this repository is **GitHub Actions**, using [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml).
+
+- Use GitHub branches, commits, pull requests, checks, Actions runs and Actions artifacts as the source of truth.
+- Build and publish the deliverable APK through the GitHub Actions workflow. A local Gradle build may be used for focused developer feedback, but it is not the accepted CI/release APK and must never be presented as the requested Actions artifact.
+- For every acceptance claim, record the exact repository, branch, commit SHA, PR, workflow name/run ID/URL, conclusion, relevant job and step results, and artifact IDs/names.
+- The APK is not accepted merely because the APK assembly and upload steps succeeded. The full required workflow—including native/JVM tests, emulator smoke and required visual-evidence upload—must pass on the exact reported SHA.
+- Download and inspect the APK artifact from that exact successful run. Verify the APK inside the archive and compute its own SHA-256; do not confuse GitHub's artifact-archive digest with the APK file digest.
+- Inspect the visual-evidence artifact from the same run and confirm that expected screenshots, UI hierarchies and logs are present and correspond to the same SHA.
+- A failed or incomplete workflow may still have uploaded an APK. Treat it as an intermediate diagnostic candidate, not as an accepted release.
+- Do not introduce a second hosting or CI/CD platform, duplicate build pipeline, runner configuration or external release dependency without explicit product-owner authorization.
+
+The active branch/PR can change. Read `docs/SESSION-STATE.md`, then verify every mutable value against live GitHub state before acting.
+
 ---
 
 ## 5. Android platform rules
