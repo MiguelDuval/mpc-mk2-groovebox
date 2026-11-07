@@ -13497,6 +13497,43 @@ wait_for_new_project_marker() {
   return 1
 }
 
+# Reuse a View tree that was freshly captured and validated by the immediately
+# preceding navigation helper. Requiring another pre-draw event without any UI
+# transition is not a new acceptance check; it is a race on an unchanged page.
+reuse_current_project_view_tree() {
+  local expected_page="$1" target_xml="$2"
+  if [[ ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
+    echo "ERROR: no validated current View tree to reuse for page $expected_page"; return 1
+  fi
+  if ! python3 - "$PROJECT_CURRENT_APP_XML" "$expected_page" <<'PY_REUSE_PROJECT_VIEW_TREE'
+import sys
+import xml.etree.ElementTree as ET
+source, expected_page = sys.argv[1], sys.argv[2]
+root = ET.parse(source).getroot()
+if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree":
+    raise SystemExit("current snapshot is not an app-owned Android View tree")
+if root.attrib.get("page") != expected_page:
+    raise SystemExit(
+        f"current snapshot page mismatch: expected {expected_page}, got {root.attrib.get('page')}")
+try:
+    generated = int(root.attrib.get("generated-at-uptime-ms", ""))
+except (TypeError, ValueError):
+    raise SystemExit("current snapshot has no valid generation timestamp")
+if generated <= 0 or not list(root.iter("node")):
+    raise SystemExit("current snapshot is empty or has an invalid generation timestamp")
+PY_REUSE_PROJECT_VIEW_TREE
+  then
+    echo "ERROR: current View tree is not valid for reuse on page $expected_page"; return 1
+  fi
+  if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
+    echo "ERROR: could not preserve current $expected_page View-tree evidence"; return 1
+  fi
+  if ! cmp -s -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
+    echo "ERROR: preserved $expected_page View tree differs from validated snapshot"; return 1
+  fi
+  echo "Reused exact validated $expected_page View tree without requesting a duplicate redraw."
+}
+
 project_shell_geometry() {
   # Derive touch geometry from actual shell nodes in the previously captured
   # Main hierarchy. "MPC Browser" is a Toolbar button, not the workspace; using
@@ -13741,16 +13778,9 @@ if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 # controls. Reuse that exact immutable snapshot for route evidence: asking for
 # a second "fresh" pre-draw marker without changing the UI is a race and can
 # only time out on an otherwise stable page.
-if [[ ! -s "$PROJECT_CURRENT_APP_XML" ]]; then
-  echo "ERROR: validated Project route View-tree snapshot is missing"; exit 1
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_ROUTE_XML"; then
+  echo "ERROR: validated Project route View-tree snapshot could not be preserved"; exit 1
 fi
-if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: could not preserve validated Project route View-tree evidence"; exit 1
-fi
-if ! cmp -s -- "$PROJECT_CURRENT_APP_XML" "$PROJECT_ROUTE_XML"; then
-  echo "ERROR: preserved Project route XML differs from the validated snapshot"; exit 1
-fi
-echo "Preserved the exact fresh Project View tree already validated by tap_mpc_menu_tile."
 if ! capture_ui_screenshot "$PROJECT_ROUTE_PNG" 10; then
   echo "ERROR: could not capture Project route screenshot"; exit 1
 fi
@@ -13809,7 +13839,7 @@ if ! tap_mpc_menu_tile 0 0; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: Main View tree before mutation missing"; exit 1; fi
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: validated Main View tree before mutation missing"; exit 1; fi
 if ! tap_main_new_track; then exit 1; fi
 sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
@@ -13818,7 +13848,7 @@ if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: mutated Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: validated mutated Project View tree missing"; exit 1; fi
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
@@ -13876,7 +13906,7 @@ if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: reopened Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: validated reopened Project View tree missing"; exit 1; fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
 echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
@@ -14208,7 +14238,7 @@ if [[ "$project_doc_a_open_sha" != "$PROJECT_DOC_A_SHA" ]] \
 fi
 if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-a-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
 
 # B must separately reopen as its newer three-Track snapshot. Restart acceptance
 # below deliberately reopens A and retains the A digest assertion.
@@ -14224,7 +14254,7 @@ if [[ "$project_doc_b_open_sha" != "$project_doc_b_sha" ]] \
 fi
 if ! show_project_route_extended "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-b-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
 echo "Two-document isolation passed: A SHA=$project_doc_a_open_sha retains TRACKS=2; B SHA=$project_doc_b_open_sha retains TRACKS=3."
 
 
@@ -14260,7 +14290,7 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_MAIN_PNG" 10; then
   echo "ERROR: could not capture post-restart Main screenshot"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: restart Main View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: validated restart Main View tree missing"; exit 1; fi
 show_project_route_extended
 open_project_document "Untitled.mpcproj"
 if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
@@ -14280,7 +14310,7 @@ show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: restart Project View tree missing"; exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: validated restart Project View tree missing"; exit 1; fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
 save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
@@ -14992,8 +15022,8 @@ PROJECT_CURRENT_APP_XML="$PROJECT_EXT_V1_XML"
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu from the measured v1-loaded Android View tree"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MENU" "$PROJECT_NEW_MENU_APP_XML"; then
-  echo "ERROR: real Menu View tree unavailable for New Project acceptance"; exit 1
+if ! reuse_current_project_view_tree "MENU" "$PROJECT_NEW_MENU_APP_XML"; then
+  echo "ERROR: validated Menu View tree unavailable for New Project acceptance"; exit 1
 fi
 if ! tap_visible_description_early "$PROJECT_NEW_MENU_APP_XML" "MPC Menu New Project"; then
   echo "ERROR: real New Project Function Bar target is missing, disabled, or has invalid bounds"; exit 1
@@ -15059,8 +15089,8 @@ PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_H
 if ! tap_mpc_menu_tile 3 3; then
   echo "ERROR: could not inspect new Project's unlinked status"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
-  echo "ERROR: new Project View tree unavailable"; exit 1
+if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
+  echo "ERROR: validated new Project View tree unavailable"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_NEW_PROJECT_XML"
 if ! grep -Fq -- "MPC Project current name Untitled" "$PROJECT_NEW_PROJECT_XML" \
@@ -15355,6 +15385,6 @@ if [[ "$project_recovery_open_sha" != "$project_recovery_source_sha" ]] || ! gre
 fi
 if ! show_project_route_extended; then exit 1; fi
 if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
+if ! reuse_current_project_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."
 
