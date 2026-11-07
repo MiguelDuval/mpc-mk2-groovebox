@@ -50,7 +50,8 @@ mojibake_patterns = {
     '\u0432\u0402\u201d': '\u2014',   # \xd0\xb2\xd0\x82\xe2\x80\x9d -> \xe2\x80\x94 (EM DASH)
     '\u0432\u0402\u201c': '\u2013',   # \xd0\xb2\xd0\x82\xe2\x80\x9c -> \xe2\x80\x93 (EN DASH)
     '\u0432\u0402\u00a6': '\u2026',   # вЂ¢ -> … (ELLIPSIS)
-    '\\u0432\\u0402\\u0092': '\\u2192',   # в†' -> → (RIGHTWARDS ARROW)\n}
+    '\\u0432\\u0402\\u0092': '\\u2192',  # literal escaped mojibake -> literal escaped arrow
+}
 lines = text.split('\n')
 found = False
 for i, line in enumerate(lines, 1):
