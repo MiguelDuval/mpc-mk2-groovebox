@@ -217,7 +217,7 @@ Older dated “next task” sections below retain history only. Start each slice
 
 ## Permanent MPC 3.9 UI migration program — 2026-10-02
 
-The former generic "MPC-like UI" Stage 7 is now superseded by a permanent MPC 3.9 standalone UI migration.
+The former generic "MPC-like UI" Stage 7 is now superseded by a permanent MPC 3.9 UI/workspace migration designed to be operated primarily through the Akai MPC Studio MkII controller. Standalone touchscreen-only operation is secondary.
 
 Canonical documents:
 
@@ -276,7 +276,7 @@ Lower-layer edits are allowed only for truthful semantic prerequisites such as T
 
 No new top-level UI page is accepted unless its MPC 3.9 context, hardware entry path, semantic state, backend command and controller feedback are documented first.
 
-## Stage 7 — MPC 3.9 standalone UI migration
+## Stage 7 — MPC 3.9 UI/workspace migration (MPC Studio MkII-first)
 - UI shell. **MPC 3.9 MIGRATION FOUNDATION IMPLEMENTED — `MpcShell` owns the persistent Toolbar / five configurable shortcuts / XL Channel Strip region / Workspace / contextual Function Bar. Legacy seven-page rail is no longer the canonical shell; legacy workspace pages remain temporary adapters.**
 - Main. **UI FOUNDATION + MPC MAIN CONTEXT REFINEMENT IMPLEMENTED — controller-first selected-pad context, quick sample waveform with Start/End editing, layer selection, direct audition trigger, persistent Main Pad Mixer Strip level/pan/tuning readout, real imported sample-name display, and MPC-style BAR/BEAT/TICK toolbar position display. The canonical Main composition no longer embeds an Android 4x4 pad grid, matching the hardware-first MPC workflow. Full Track Edit and full Channel Mixer remain separately gated by backend support.**
 - Browser. **LOCAL WAV VERTICAL SLICE + SEARCH/FILTER INTERACTIONS IMPLEMENTED AND ANDROID E2E VERIFIED (Build #2637, code SHA `94ee3bfa9a8407d20ab6f0c69bde47519fe8fb07`) — MediaStore-backed WAV rows, real selection, MediaPlayer audition, native Pad/Layer assignment, matching/non-matching Search, Clear, PROJECTS empty result and ALL/SAMPLES restoration all pass emulator smoke. Actual Android Document Picker selection/return target-preservation, user-selected document trees and persisted favourites remain the next slices. Unsupported categories stay honestly unavailable.**
@@ -401,7 +401,7 @@ P0 code coverage now includes transport, Main/Browse, Track/Sequence selection, 
 
 Note Repeat scheduling, Touch Strip contextual control, complete button/pad/LCD feedback, and the remaining P1 production controls stay separate and explicitly incomplete.
 
-This controller work supplements Stages 1, 2 and 7; it does not replace the overall roadmap.
+This controller work is the primary product interaction track. Stages 1, 2 and 7 supply the audio/sequencer and on-screen workspace foundations that this hardware workflow needs; they must not demote the physical MPC Studio MkII to an optional add-on. Standalone touchscreen-only operation is secondary. Project persistence remains a required data-integrity capability, but its remaining work must not outrank the P0 physical-controller workflow unless a data-loss defect blocks that workflow.
 
 
 ## 2026-10-02 Main Program context truthfulness increment
