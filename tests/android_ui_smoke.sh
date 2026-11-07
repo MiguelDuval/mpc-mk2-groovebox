@@ -13525,6 +13525,13 @@ PY_REUSE_PROJECT_VIEW_TREE
   then
     echo "ERROR: current View tree is not valid for reuse on page $expected_page"; return 1
   fi
+  # Some callers request evidence at the exact path that was just
+  # captured. Treat that as an already-preserved snapshot instead of asking
+  # cp to copy a file onto itself (which correctly exits non-zero).
+  if [[ "$PROJECT_CURRENT_APP_XML" == "$target_xml" ]]; then
+    echo "Reused validated $expected_page View tree at its existing evidence path."
+    return 0
+  fi
   if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
     echo "ERROR: could not preserve current $expected_page View-tree evidence"; return 1
   fi
