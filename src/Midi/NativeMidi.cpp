@@ -245,14 +245,23 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             return std::vector<std::uint8_t>(led.begin(), led.end());
         }
 
+        bool triggerAccepted = false;
         if (event->pressed && padRouting.targetPadIndex != 0xFF) {
             const auto& pad =
                     core.projectState().activeDrumProgram()
                             .pad(padRouting.targetPadIndex);
             if (!pad.muted) {
-                core.audio().triggerPad(
-                        padRouting.targetPadIndex,
-                        padRouting.velocity);
+                if (padRouting.tuningMode) {
+                    triggerAccepted = core.audio().triggerPadWithTuningOffset(
+                            padRouting.targetPadIndex,
+                            padRouting.velocity,
+                            padRouting.tuningOffsetMilliSemitones);
+                } else {
+                    core.audio().triggerPad(
+                            padRouting.targetPadIndex,
+                            padRouting.velocity);
+                    triggerAccepted = true;
+                }
             }
         }
 
@@ -266,20 +275,40 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                 && core.sequenceTransportClock().snapshot().playing) {
             const auto tick =
                     core.sequenceTransportClock().positionAtTimestamp(timestamp);
-            const mpc::sequencer::SequenceRecordEvent captured{
-                    tick,
-                    static_cast<std::uint8_t>(trackIndex),
-                    padRouting.targetPadIndex,
-                    event->pressed
-                            ? padRouting.velocity
-                            : static_cast<std::uint8_t>(0),
-                    event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
+            if (padRouting.tuningMode) {
+                // Tune is a one-shot Pattern note: physical release must not close
+                // a held note with the source Pad's untransposed base pitch.
+                if (event->pressed && triggerAccepted) {
+                    const mpc::sequencer::SequenceRecordEvent captured{
+                            tick,
+                            static_cast<std::uint8_t>(trackIndex),
+                            padRouting.targetPadIndex,
+                            padRouting.velocity,
+                            mpc::sequencer::kSequenceRecordNoteHit,
+                            padRouting.tuningOffsetMilliSemitones};
+                    if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
+                        __android_log_print(
+                                ANDROID_LOG_WARN,
+                                kTag,
+                                "16 Levels Tune record queue full");
+                    }
+                }
+            } else {
+                const mpc::sequencer::SequenceRecordEvent captured{
+                        tick,
+                        static_cast<std::uint8_t>(trackIndex),
+                        padRouting.targetPadIndex,
+                        event->pressed
+                                ? padRouting.velocity
+                                : static_cast<std::uint8_t>(0),
+                        event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
 
-            if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
-                __android_log_print(
-                        ANDROID_LOG_WARN,
-                        kTag,
-                        "Sequence record queue full");
+                if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
+                    __android_log_print(
+                            ANDROID_LOG_WARN,
+                            kTag,
+                            "Sequence record queue full");
+                }
             }
         }
 
@@ -336,6 +365,13 @@ void invalidateNoteRepeatRecordingTarget() noexcept {
 }
 
 } // namespace mpc::midi
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetSixteenLevelTuneMode(
+        JNIEnv* /* env */, jclass /* clazz */, jboolean enabled)
+{
+    semanticAdapter.setSixteenLevelTuneMode(enabled == JNI_TRUE);
+}
 
 template <std::size_t Size>
 jbyteArray toJavaByteArray(

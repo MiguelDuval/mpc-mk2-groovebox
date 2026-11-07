@@ -2,6 +2,7 @@
 #include "MPC/MpcStudioMk2InputDecoder.h"
 #include <array>
 #include "MPC/Sequencer/MpcTouchStripPolicy.h"
+#include <atomic>
 #include <cstdint>
 #include <optional>
 
@@ -27,14 +28,17 @@ struct SemanticAction final {
 struct PadRoutingResult final {
     bool consumed=false;
     bool repeating=false;
+    bool tuningMode=false;
     std::uint8_t velocity=0;
     std::uint8_t targetPadIndex=0xFF;
+    std::int32_t tuningOffsetMilliSemitones=0;
     std::optional<SemanticAction> action;
 };
 class MpcStudioMk2SemanticAdapter final {
 public:
     std::optional<SemanticAction> handleControl(const InputEvent&) noexcept;
     PadRoutingResult handlePad(const InputEvent&) noexcept;
+    void setSixteenLevelTuneMode(bool enabled) noexcept;
     [[nodiscard]] std::uint8_t padTargetForPhysicalPad(
             std::uint8_t physicalPadIndex) const noexcept;
     [[nodiscard]] std::optional<PadRoutingResult> heldRepeatPad() const noexcept;
@@ -71,6 +75,8 @@ private:
         bool hasTarget = false;
         std::uint8_t targetPadIndex = 0xFF;
         std::uint8_t velocity = 0;
+        bool tuningMode = false;
+        std::int32_t tuningOffsetMilliSemitones = 0;
         std::uint64_t order = 0;
     };
     std::array<PadPressSnapshot, 16> padPresses_{};
@@ -84,6 +90,7 @@ private:
     bool noteRepeatHeld_=false, noteRepeatLatched_=false;
     bool fullLevel_=false, halfLevel_=false;
     bool padMuteMode_=false, trackMuteMode_=false, sixteenLevel_=false;
+    std::atomic<bool> sixteenLevelTuneMode_{false};
     std::uint8_t lastPadIndex_=0xFF;
     std::uint8_t padBank_=0;
     std::uint8_t noteRepeatRateIndex_=2;

@@ -398,6 +398,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int TOUCH_STRIP_MODE_TUNE = 2;
     private static final int TOUCH_STRIP_MODE_SAMPLE_START = 3;
     private static final int TOUCH_STRIP_MODE_SAMPLE_END = 4;
+    private static final int SIXTEEN_LEVEL_MODE_VELOCITY = 0;
+    private static final int SIXTEEN_LEVEL_MODE_TUNE = 1;
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
@@ -431,6 +433,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean hardwareFullLevelActive;
     private boolean hardwareHalfLevelActive;
     private boolean hardwareSixteenLevelActive;
+    private int sixteenLevelMode = SIXTEEN_LEVEL_MODE_VELOCITY;
     private boolean hardwarePadMuteModeActive;
     private boolean hardwareTrackMuteModeActive;
     private String lastLcdSignature = "";
@@ -471,6 +474,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native void nativeAudioTriggerPad(int pad, int velocity);
     private static native boolean nativeAudioTriggerPadWithTuningOffset(
             int pad, int velocity, int tuningOffsetMilliSemitones);
+    private static native void nativeMidiSetSixteenLevelTuneMode(boolean enabled);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -5583,8 +5587,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     // ------------------------------------------------------------------
-    // 16 Levels — velocity layering for a source pad
+    // 16 Levels — Velocity and Tune performance modes
     // ------------------------------------------------------------------
+
+    private void selectSixteenLevelMode(int mode) {
+        if (mode != SIXTEEN_LEVEL_MODE_VELOCITY
+                && mode != SIXTEEN_LEVEL_MODE_TUNE) {
+            return;
+        }
+        sixteenLevelMode = mode;
+        nativeMidiSetSixteenLevelTuneMode(mode == SIXTEEN_LEVEL_MODE_TUNE);
+        showLevels16Page();
+        setBottomStatus(mode == SIXTEEN_LEVEL_MODE_TUNE
+                ? "16 LEVELS • TUNE MODE • 0 TO +15 ST"
+                : "16 LEVELS • VELOCITY MODE • 1 TO 127");
+    }
 
     private void showLevels16Page() {
         clearStepEditPadLeds();
@@ -5596,16 +5613,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
         pageTitle.setText("16 LEVELS");
         content.removeAllViews();
+        nativeMidiSetSixteenLevelTuneMode(
+                sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE);
 
+        final boolean tuneMode = sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE;
+        final String modeName = tuneMode ? "TUNE" : "VELOCITY";
         LinearLayout page = page();
         LinearLayout header = row();
-        header.addView(sectionLabelView("SOURCE PAD " + (selectedPad + 1),
+        header.addView(sectionLabelView(
+                "SOURCE PAD " + (selectedPad + 1) + " • " + modeName,
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
+                new LinearLayout.LayoutParams(dp(56), dp(34)));
+        header.addView(actionButton(
+                tuneMode ? "VEL" : "VEL ✓",
+                v -> selectSixteenLevelMode(SIXTEEN_LEVEL_MODE_VELOCITY)),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
-        header.addView(actionButton("VEL", v -> {
-            setBottomStatus("16 LEVELS: velocity mode active");
-        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
+        header.addView(actionButton(
+                tuneMode ? "TUNE ✓" : "TUNE",
+                v -> selectSixteenLevelMode(SIXTEEN_LEVEL_MODE_TUNE)),
+                new LinearLayout.LayoutParams(dp(70), dp(34)));
         page.addView(header);
 
         LinearLayout levelsGrid = new LinearLayout(this);
@@ -5622,10 +5649,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             for (int colIdx = 0; colIdx < 4; colIdx++) {
                 int levelIndex = rowIdx * 4 + colIdx;
                 int velocity = 1 + (levelIndex * 126) / 15;
-                Button levelBtn = actionButton("L" + (levelIndex + 1), v -> {
-                    nativeAudioTriggerPad(selectedPad, velocity);
-                    setBottomStatus("16 LEVELS: pad " + (selectedPad + 1)
-                            + " velocity " + velocity);
+                int tuningOffsetMilliSemitones = levelIndex * 1000;
+                String valueLabel = tuneMode
+                        ? (levelIndex == 0 ? "0 st" : "+" + levelIndex + " st")
+                        : "VEL " + velocity;
+                Button levelBtn = actionButton(
+                        "L" + (levelIndex + 1) + "\n" + valueLabel, v -> {
+                    if (tuneMode) {
+                        boolean recorded = nativeAudioTriggerPadWithTuningOffset(
+                                selectedPad, 100, tuningOffsetMilliSemitones);
+                        setBottomStatus("16 LEVELS: " + (recorded ? "REC" : "LIVE")
+                                + " • pad " + (selectedPad + 1)
+                                + " • tune " + (levelIndex == 0 ? "0" : "+" + levelIndex)
+                                + " st");
+                    } else {
+                        nativeAudioTriggerPad(selectedPad, velocity);
+                        setBottomStatus("16 LEVELS: pad " + (selectedPad + 1)
+                                + " velocity " + velocity);
+                    }
                 });
                 levelBtn.setMinWidth(dp(64));
                 levelBtn.setMinHeight(dp(64));
@@ -18505,7 +18546,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 syncHardwareLevelModeLeds();
                 if (value0 != 0 && value1 >= 0) {
                     setBottomStatus(
-                            "16 LEVEL • VELOCITY • SOURCE PAD " + (value1 + 1));
+                            "16 LEVEL • "
+                                    + (sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE
+                                            ? "TUNE" : "VELOCITY")
+                                    + " • SOURCE PAD " + (value1 + 1));
                 } else if (value0 != 0) {
                     setBottomStatus("16 LEVEL unavailable • hit a pad first");
                 } else {
@@ -18525,7 +18569,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.PAD_TRIGGER:
-                nativeAudioTriggerPad(value0, value1);
+                if (hardwareSixteenLevelActive
+                        && sixteenLevelMode == SIXTEEN_LEVEL_MODE_TUNE) {
+                    final int levelIndex = Math.max(0, Math.min(15,
+                            Math.round((Math.max(1, Math.min(127, value1)) - 1)
+                                    * 15.0f / 126.0f)));
+                    final boolean recorded = nativeAudioTriggerPadWithTuningOffset(
+                            value0, 100, levelIndex * 1000);
+                    setBottomStatus("16 LEVEL • TUNE • "
+                            + (recorded ? "REC" : "LIVE")
+                            + " • +" + levelIndex + " ST");
+                } else {
+                    nativeAudioTriggerPad(value0, value1);
+                }
                 return;
             case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:
                 setBottomStatus(nativeSequenceTogglePadMute(value0));
@@ -19474,6 +19530,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         startupExecutor.shutdownNow();
         projectIoExecutor.shutdownNow();
         stopSequenceUiUpdater();
+        nativeMidiSetSixteenLevelTuneMode(false);
         nativeSequenceSetStepEditContext(false, 0);
 
         if (!uiOnlySmokeMode) {

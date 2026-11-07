@@ -20,6 +20,31 @@ int main(){
   auto source=b.handlePad(pad(4)); assert(source.targetPadIndex==4); static_cast<void>(b.handleControl(btn(49,false))); static_cast<void>(b.handleControl(btn(39))); assert(b.handlePad(pad(0)).velocity==127);
   static_cast<void>(b.handleControl(btn(49))); auto half=b.handleControl(btn(39)); typeOf(half,SemanticActionType::HalfLevelState); assert(half->value0==1); assert(b.handlePad(pad(0)).velocity==64);
   static_cast<void>(b.handlePad(pad(4))); static_cast<void>(b.handleControl(btn(49))); auto level16=b.handleControl(btn(40)); typeOf(level16,SemanticActionType::SixteenLevelState); assert(level16->value0==1 && level16->value1==4); auto low=b.handlePad(pad(0)); auto high=b.handlePad(pad(15)); assert(low.targetPadIndex==4 && low.velocity==1); assert(high.targetPadIndex==4 && high.velocity==127); auto level16Release=b.handlePad(InputEvent{InputEventType::PadNote,9,37,0,15,false}); assert(level16Release.targetPadIndex==4); static_cast<void>(b.handleControl(btn(40))); assert(!b.sixteenLevel());
+  
+  MpcStudioMk2SemanticAdapter tuneLevels;
+  static_cast<void>(tuneLevels.handlePad(pad(4)));
+  static_cast<void>(tuneLevels.handlePad(padOff(4)));
+  tuneLevels.setSixteenLevelTuneMode(true);
+  auto tuneLevelsOn = tuneLevels.handleControl(btn(40));
+  typeOf(tuneLevelsOn, SemanticActionType::SixteenLevelState);
+  assert(tuneLevelsOn->value0 == 1 && tuneLevelsOn->value1 == 4);
+  const auto tuneLowest = tuneLevels.handlePad(pad(0));
+  assert(!tuneLowest.consumed && tuneLowest.targetPadIndex == 4);
+  assert(tuneLowest.tuningMode && tuneLowest.velocity == 100);
+  assert(tuneLowest.tuningOffsetMilliSemitones == 0);
+  const auto tuneHighest = tuneLevels.handlePad(pad(15));
+  assert(!tuneHighest.consumed && tuneHighest.targetPadIndex == 4);
+  assert(tuneHighest.tuningMode && tuneHighest.velocity == 100);
+  assert(tuneHighest.tuningOffsetMilliSemitones == 15000);
+  tuneLevels.setSixteenLevelTuneMode(false);
+  const auto tuneHighestRelease = tuneLevels.handlePad(padOff(15));
+  assert(!tuneHighestRelease.consumed && tuneHighestRelease.targetPadIndex == 4);
+  assert(tuneHighestRelease.tuningMode
+          && tuneHighestRelease.tuningOffsetMilliSemitones == 15000);
+  const auto tuneLowestRelease = tuneLevels.handlePad(padOff(0));
+  assert(tuneLowestRelease.tuningMode
+          && tuneLowestRelease.tuningOffsetMilliSemitones == 0);
+
 
   MpcStudioMk2SemanticAdapter pressSnapshots;
   static_cast<void>(pressSnapshots.handlePad(pad(4)));

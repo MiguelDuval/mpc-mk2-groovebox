@@ -16,6 +16,10 @@ const mpc::studio::ButtonDefinition* findButton(std::uint8_t note) noexcept {
 Action make(Type t,std::int32_t a=0,std::int32_t b=0,std::int32_t c=0) noexcept { return {t,a,b,c}; }
 }
 namespace mpc::studio {
+void MpcStudioMk2SemanticAdapter::setSixteenLevelTuneMode(bool enabled) noexcept {
+    sixteenLevelTuneMode_.store(enabled, std::memory_order_release);
+}
+
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const InputEvent& e) noexcept {
     switch(e.type){
         case InputEventType::Button: return handleButton(e.number,e.pressed,e.timestampNanos);
@@ -107,6 +111,8 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
             snapshot.hasTarget = false;
             snapshot.targetPadIndex = 0xFF;
             snapshot.velocity = 0;
+            snapshot.tuningMode = false;
+            snapshot.tuningOffsetMilliSemitones = 0;
             snapshot.order = ++padPressOrder_;
         }
         return r;
@@ -128,6 +134,8 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         r.repeating = snapshot.repeating;
         r.velocity = snapshot.velocity;
         r.targetPadIndex = snapshot.targetPadIndex;
+        r.tuningMode = snapshot.tuningMode;
+        r.tuningOffsetMilliSemitones = snapshot.tuningOffsetMilliSemitones;
         snapshot.active = false;
         return r;
     }
@@ -141,6 +149,8 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
                 && result.targetPadIndex < padPresses_.size();
         snapshot.targetPadIndex = result.targetPadIndex;
         snapshot.velocity = result.velocity;
+        snapshot.tuningMode = result.tuningMode;
+        snapshot.tuningOffsetMilliSemitones = result.tuningOffsetMilliSemitones;
         snapshot.order = ++padPressOrder_;
         return result;
     };
@@ -244,8 +254,15 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
             return rememberPress(r);
         }
         r.targetPadIndex = lastPadIndex_;
-        r.velocity = static_cast<std::uint8_t>(
-                1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
+        if (sixteenLevelTuneMode_.load(std::memory_order_acquire)) {
+            r.tuningMode = true;
+            r.tuningOffsetMilliSemitones =
+                    static_cast<std::int32_t>(e.padIndex) * 1000;
+            r.velocity = 100;
+        } else {
+            r.velocity = static_cast<std::uint8_t>(
+                    1u + (static_cast<unsigned>(e.padIndex) * 126u) / 15u);
+        }
         return rememberPress(r);
     }
 
