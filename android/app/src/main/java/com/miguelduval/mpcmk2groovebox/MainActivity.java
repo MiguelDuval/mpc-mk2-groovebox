@@ -5677,7 +5677,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         // Build a 4x4 chromatic performance grid. Pitch is a transient voice offset;
         // it must never modify the saved tuning of the source Drum Program Pad.
-        // Pattern recording for per-note chromatic offsets is not implemented yet.
+        // During armed Sequence recording each note carries its pitch offset into Pattern.
         int baseNote = 60; // Middle C as base
         for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
             LinearLayout levelRow = row();

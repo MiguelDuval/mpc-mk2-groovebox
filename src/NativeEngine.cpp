@@ -1113,8 +1113,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
         return JNI_FALSE;
     }
 
+    const auto eventTick = core.sequenceTransportClock().positionAtTimestamp(
+            monotonicNanos());
     const mpc::sequencer::SequenceRecordEvent event{
-            sequenceSession().positionTicks(),
+            eventTick,
             static_cast<std::uint8_t>(trackIndex),
             static_cast<std::uint8_t>(pad),
             static_cast<std::uint8_t>(velocity),
