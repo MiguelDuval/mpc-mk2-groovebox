@@ -3,6 +3,7 @@
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2SemanticAdapter.h"
+#include "../MPC/MpcPadPerformPolicy.h"
 #include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
 #include "../MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "../MPC/Sequencer/MpcStepEditRouting.h"

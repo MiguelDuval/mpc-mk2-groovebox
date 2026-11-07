@@ -1,4 +1,5 @@
 #include "MpcStudioMk2SemanticAdapter.h"
+#include "MpcPadPerformPolicy.h"
 #include "MpcStudioMk2ControlMap.h"
 #include "MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
