@@ -13802,11 +13802,13 @@ fi
 # Change the in-memory model after saving; the disk copy must still load the
 # earlier single-Track state rather than the currently edited model.
 if ! tap_project_toolbar_menu; then exit 1; fi
-if ! tap_mpc_menu_tile 0 0; then exit 1; fi
+# tap_mpc_menu_tile already waits for and captures the first fresh MAIN
+# hierarchy. Preserve that exact route capture; a second unchanged-page capture
+# has no new pre-draw to wait for and would incorrectly time out.
+if ! tap_mpc_menu_tile 0 0 "$PROJECT_MUTATED_XML"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture Main before Track mutation"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MUTATED_XML"; then echo "ERROR: Main View tree before mutation missing"; exit 1; fi
 if ! tap_main_new_track; then exit 1; fi
 sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
