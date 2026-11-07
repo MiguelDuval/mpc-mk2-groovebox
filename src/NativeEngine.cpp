@@ -4353,6 +4353,39 @@ namespace {
     return &track.patterns[patternIndex];
 }
 
+// Record complete Pattern event-list snapshots so undo/redo remains correct
+// when a tick edit reorders events or a later edit changes vector positions.
+bool recordPatternNotesEdit(
+        mpc::MpcEditHistory& history,
+        mpc::domain::Pattern& pattern,
+        std::string label,
+        std::vector<mpc::domain::MidiNoteEvent> before,
+        std::vector<mpc::domain::MidiNoteEvent> after) {
+    const auto beforeSnapshot =
+            std::make_shared<const std::vector<mpc::domain::MidiNoteEvent>>(
+                    std::move(before));
+    const auto afterSnapshot =
+            std::make_shared<const std::vector<mpc::domain::MidiNoteEvent>>(
+                    std::move(after));
+    pattern.notes = *afterSnapshot;
+
+    auto* const patternPtr = &pattern;
+    if (!history.record({
+            std::move(label),
+            [patternPtr, beforeSnapshot]() {
+                patternPtr->notes = *beforeSnapshot;
+                return true;
+            },
+            [patternPtr, afterSnapshot]() {
+                patternPtr->notes = *afterSnapshot;
+                return true;
+            }})) {
+        pattern.notes = *beforeSnapshot;
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 extern "C" {
@@ -4451,45 +4484,28 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
     if (pattern == nullptr) {
         return toJString(env, "Event note failed: invalid target");
     }
-    auto& notes = pattern->notes;
     if (eventIndex < 0
-            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event note failed: index out of range");
     }
-    const auto prevNote = notes[eventIndex].note;
-    notes[eventIndex].note = static_cast<std::uint8_t>(note);
+
+    const auto previousNote = pattern->notes[eventIndex].note;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].note = static_cast<std::uint8_t>(note);
     std::stable_sort(
-            notes.begin(), notes.end(),
+            after.begin(), after.end(),
             [](const mpc::domain::MidiNoteEvent& lhs,
                const mpc::domain::MidiNoteEvent& rhs) {
                 return lhs.tick < rhs.tick;
             });
-
-    auto noteUndo = [pattern, eventIndex, prevNote]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].note = prevNote;
-        }
-    };
-    auto noteRedo = [pattern, eventIndex, note]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].note =
-                static_cast<std::uint8_t>(note);
-        }
-    };
-
-    if (!history.record(
-            "Change Event Note",
-            std::move(noteUndo),
-            std::move(noteRedo))) {
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Note",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event note failed: history record rejected");
     }
-
     return toJString(env,
-            "Event note " + std::to_string(prevNote)
+            "Event note " + std::to_string(previousNote)
                     + " -> " + std::to_string(note));
 }
 
@@ -4512,39 +4528,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventVelocity(
     if (pattern == nullptr) {
         return toJString(env, "Event velocity failed: invalid target");
     }
-    auto& notes = pattern->notes;
     if (eventIndex < 0
-            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event velocity failed: index out of range");
     }
-    const auto prevVelocity = notes[eventIndex].velocity;
-    notes[eventIndex].velocity = static_cast<std::uint8_t>(velocity);
 
-    auto velUndo = [pattern, eventIndex, prevVelocity]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].velocity = prevVelocity;
-        }
-    };
-    auto velRedo = [pattern, eventIndex, velocity]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].velocity =
-                static_cast<std::uint8_t>(velocity);
-        }
-    };
-
-    if (!history.record(
-            "Change Event Velocity",
-            std::move(velUndo),
-            std::move(velRedo))) {
+    const auto previousVelocity = pattern->notes[eventIndex].velocity;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].velocity = static_cast<std::uint8_t>(velocity);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Velocity",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event velocity failed: history record rejected");
     }
-
     return toJString(env,
-            "Event velocity " + std::to_string(prevVelocity)
+            "Event velocity " + std::to_string(previousVelocity)
                     + " -> " + std::to_string(velocity));
 }
 
@@ -4567,44 +4566,26 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventDuration(
     if (pattern == nullptr) {
         return toJString(env, "Event duration failed: invalid target");
     }
-    auto& notes = pattern->notes;
     if (eventIndex < 0
-            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event duration failed: index out of range");
     }
-    const auto length =
-            static_cast<std::int64_t>(pattern->lengthTicks);
+    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
     if (static_cast<std::int64_t>(duration) > length) {
         return toJString(env, "Event duration failed: exceeds pattern length");
     }
-    const auto prevDuration = notes[eventIndex].durationTicks;
-    notes[eventIndex].durationTicks = static_cast<std::int32_t>(duration);
 
-    auto durUndo = [pattern, eventIndex, prevDuration]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].durationTicks = prevDuration;
-        }
-    };
-    auto durRedo = [pattern, eventIndex, duration]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].durationTicks =
-                static_cast<std::int32_t>(duration);
-        }
-    };
-
-    if (!history.record(
-            "Change Event Duration",
-            std::move(durUndo),
-            std::move(durRedo))) {
+    const auto previousDuration = pattern->notes[eventIndex].durationTicks;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].durationTicks = static_cast<std::int32_t>(duration);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Duration",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event duration failed: history record rejected");
     }
-
     return toJString(env,
-            "Event duration " + std::to_string(prevDuration)
+            "Event duration " + std::to_string(previousDuration)
                     + " -> " + std::to_string(duration));
 }
 
@@ -4627,62 +4608,32 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
     if (pattern == nullptr) {
         return toJString(env, "Event tick failed: invalid target");
     }
-    auto& notes = pattern->notes;
     if (eventIndex < 0
-            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event tick failed: index out of range");
     }
-    const auto length =
-            static_cast<std::int64_t>(pattern->lengthTicks);
+    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
     if (static_cast<std::int64_t>(tick) >= length) {
         return toJString(env, "Event tick failed: exceeds pattern length");
     }
-    const auto prevTick = notes[eventIndex].tick;
-    notes[eventIndex].tick = static_cast<std::int32_t>(tick);
+
+    const auto previousTick = pattern->notes[eventIndex].tick;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].tick = static_cast<std::int32_t>(tick);
     std::stable_sort(
-            notes.begin(), notes.end(),
+            after.begin(), after.end(),
             [](const mpc::domain::MidiNoteEvent& lhs,
                const mpc::domain::MidiNoteEvent& rhs) {
                 return lhs.tick < rhs.tick;
             });
-
-    auto tickUndo = [pattern, eventIndex, prevTick]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].tick = prevTick;
-            std::stable_sort(
-                    n.begin(), n.end(),
-                    [](const mpc::domain::MidiNoteEvent& lhs,
-                       const mpc::domain::MidiNoteEvent& rhs) {
-                        return lhs.tick < rhs.tick;
-                    });
-        }
-    };
-    auto tickRedo = [pattern, eventIndex, tick]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n[static_cast<std::size_t>(eventIndex)].tick =
-                static_cast<std::int32_t>(tick);
-            std::stable_sort(
-                    n.begin(), n.end(),
-                    [](const mpc::domain::MidiNoteEvent& lhs,
-                       const mpc::domain::MidiNoteEvent& rhs) {
-                        return lhs.tick < rhs.tick;
-                    });
-        }
-    };
-
-    if (!history.record(
-            "Change Event Tick",
-            std::move(tickUndo),
-            std::move(tickRedo))) {
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Tick",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event tick failed: history record rejected");
     }
-
     return toJString(env,
-            "Event tick " + std::to_string(prevTick)
+            "Event tick " + std::to_string(previousTick)
                     + " -> " + std::to_string(tick));
 }
 
@@ -4708,67 +4659,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
     if (pattern == nullptr) {
         return toJString(env, "Event add failed: invalid target");
     }
-    const auto length =
-            static_cast<std::int64_t>(pattern->lengthTicks);
+    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
     if (static_cast<std::int64_t>(tick) >= length
             || static_cast<std::int64_t>(duration) > length) {
         return toJString(env, "Event add failed: tick/duration out of range");
     }
     if (std::any_of(
             pattern->notes.begin(), pattern->notes.end(),
-            [tick, note](const mpc::domain::MidiNoteEvent& n) {
-                return n.tick == tick && n.note ==
-                        static_cast<std::uint8_t>(note);
+            [tick, note](const mpc::domain::MidiNoteEvent& event) {
+                return event.tick == tick
+                        && event.note == static_cast<std::uint8_t>(note);
             })) {
         return toJString(env, "Event add failed: same-pitch collision");
     }
 
-    auto addUndo = [pattern, tick, note]() mutable {
-        auto& notes = pattern->notes;
-        notes.erase(
-                std::remove_if(
-                        notes.begin(), notes.end(),
-                        [tick, note](const mpc::domain::MidiNoteEvent& n) {
-                            return n.tick == tick &&
-                                   n.note == static_cast<std::uint8_t>(note);
-                        }),
-                notes.end());
-    };
-    auto addRedo = [pattern, tick, note, velocity, duration]() mutable {
-        auto& notes = pattern->notes;
-        notes.erase(
-                std::remove_if(
-                        notes.begin(), notes.end(),
-                        [tick, note](const mpc::domain::MidiNoteEvent& n) {
-                            return n.tick == tick &&
-                                   n.note == static_cast<std::uint8_t>(note);
-                        }),
-                notes.end());
-        notes.push_back({
-            static_cast<std::int32_t>(tick),
-            static_cast<std::int32_t>(duration),
-            static_cast<std::uint8_t>(note),
-            static_cast<std::uint8_t>(velocity),
-            127,
-            1,
-            0
-        });
-        std::stable_sort(
-                notes.begin(), notes.end(),
-                [](const mpc::domain::MidiNoteEvent& lhs,
-                   const mpc::domain::MidiNoteEvent& rhs) {
-                    return lhs.tick < rhs.tick;
-                });
-    };
-
-    if (!history.record(
-            "Add Pattern Event",
-            std::move(addUndo),
-            std::move(addRedo))) {
+    auto before = pattern->notes;
+    auto after = before;
+    after.push_back({
+        static_cast<std::int32_t>(tick),
+        static_cast<std::int32_t>(duration),
+        static_cast<std::uint8_t>(note),
+        static_cast<std::uint8_t>(velocity),
+        127,
+        1,
+        0
+    });
+    std::stable_sort(
+            after.begin(), after.end(),
+            [](const mpc::domain::MidiNoteEvent& lhs,
+               const mpc::domain::MidiNoteEvent& rhs) {
+                return lhs.tick < rhs.tick;
+            });
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Add Pattern Event",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event add failed: history record rejected");
     }
-
-    addRedo();
     return toJString(env,
             "Event added: note=" + std::to_string(note)
                     + " tick=" + std::to_string(tick));
@@ -4789,54 +4715,23 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
     if (pattern == nullptr) {
         return toJString(env, "Event delete failed: invalid target");
     }
-    auto& notes = pattern->notes;
     if (eventIndex < 0
-            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event delete failed: index out of range");
     }
-    const auto deletedNote = notes[eventIndex].note;
-    const auto deletedTick = notes[eventIndex].tick;
-    const auto deletedVelocity = notes[eventIndex].velocity;
-    const auto deletedDuration = notes[eventIndex].durationTicks;
 
-    auto delUndo = [pattern, eventIndex, deletedNote, deletedTick,
-                     deletedVelocity, deletedDuration]() mutable {
-        auto& n = pattern->notes;
-        n.insert(n.begin() + eventIndex, {
-            static_cast<std::int32_t>(deletedTick),
-            static_cast<std::int32_t>(deletedDuration),
-            static_cast<std::uint8_t>(deletedNote),
-            static_cast<std::uint8_t>(deletedVelocity),
-            127,
-            1,
-            0
-        });
-        std::stable_sort(
-                n.begin(), n.end(),
-                [](const mpc::domain::MidiNoteEvent& lhs,
-                   const mpc::domain::MidiNoteEvent& rhs) {
-                    return lhs.tick < rhs.tick;
-                });
-    };
-    auto delRedo = [pattern, eventIndex]() mutable {
-        auto& n = pattern->notes;
-        if (eventIndex >= 0 &&
-            static_cast<std::size_t>(eventIndex) < n.size()) {
-            n.erase(n.begin() + eventIndex);
-        }
-    };
-
-    if (!history.record(
-            "Delete Pattern Event",
-            std::move(delUndo),
-            std::move(delRedo))) {
+    const auto deletedEvent = pattern->notes[eventIndex];
+    auto before = pattern->notes;
+    auto after = before;
+    after.erase(after.begin() + eventIndex);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Delete Pattern Event",
+            std::move(before), std::move(after))) {
         return toJString(env, "Event delete failed: history record rejected");
     }
-
-    delRedo();
     return toJString(env,
-            "Event deleted: note=" + std::to_string(deletedNote)
-                    + " tick=" + std::to_string(deletedTick));
+            "Event deleted: note=" + std::to_string(deletedEvent.note)
+                    + " tick=" + std::to_string(deletedEvent.tick));
 }
 
 } // extern "C"
