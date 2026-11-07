@@ -4474,6 +4474,23 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventTick(
     return static_cast<jint>(event->tick);
 }
 
+JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventId(
+        JNIEnv* /* env */, jobject /* thiz */, jint /* padIndex */, jint eventIndex)
+{
+    if (eventIndex < 0) return 0;
+    auto* pattern = resolveEditPattern(0);
+    if (pattern == nullptr
+            || !mpc::domain::ListEditService::ensureEventIdentities(*pattern)) {
+        return 0;
+    }
+    const auto event = mpc::domain::ListEditService::getEvent(
+            *pattern, static_cast<std::size_t>(eventIndex));
+    return event.has_value()
+            ? static_cast<jlong>(event->eventId)
+            : static_cast<jlong>(0);
+}
+
 JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
         JNIEnv* env, jobject /* thiz */, jint /* padIndex */, jint eventIndex,
@@ -4662,6 +4679,80 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
     return toJString(env,
             "Event deleted at index="
                     + std::to_string(static_cast<std::int64_t>(eventIndex)));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternEditEvent(
+        JNIEnv* env, jobject /* thiz */, jlong eventId, jint tick,
+        jint note, jint velocity, jint duration)
+{
+    if (env == nullptr) return nullptr;
+    if (eventId <= 0
+            || static_cast<std::uint64_t>(eventId)
+                    > std::numeric_limits<std::uint32_t>::max()) {
+        return toJString(env, "Event edit failed: invalid event ID");
+    }
+    if (note < 0 || note > 127 || velocity < 1 || velocity > 127
+            || tick < 0 || duration < 0) {
+        return toJString(env, "Event edit failed: note/velocity/tick/duration out of range");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(0);
+    if (pattern == nullptr) {
+        return toJString(env, "Event edit failed: invalid target Pattern");
+    }
+    const auto result = mpc::domain::ListEditService::editEventById(
+            *pattern,
+            core.editHistory(),
+            static_cast<std::uint32_t>(eventId),
+            static_cast<std::int32_t>(tick),
+            static_cast<std::int32_t>(duration),
+            static_cast<std::uint8_t>(note),
+            static_cast<std::uint8_t>(velocity));
+    if (!result.success) {
+        return toJString(env, "Event edit failed: " + result.error);
+    }
+    return toJString(
+            env,
+            "Event edited • ID=" + std::to_string(eventId)
+                    + " • NOTE=" + std::to_string(note)
+                    + " • VELOCITY=" + std::to_string(velocity)
+                    + " • TICK=" + std::to_string(tick)
+                    + " • DURATION=" + std::to_string(duration));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEventById(
+        JNIEnv* env, jobject /* thiz */, jlong eventId)
+{
+    if (env == nullptr) return nullptr;
+    if (eventId <= 0
+            || static_cast<std::uint64_t>(eventId)
+                    > std::numeric_limits<std::uint32_t>::max()) {
+        return toJString(env, "Event delete failed: invalid event ID");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event delete blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(0);
+    if (pattern == nullptr) {
+        return toJString(env, "Event delete failed: invalid target Pattern");
+    }
+    const auto result = mpc::domain::ListEditService::deleteEventById(
+            *pattern,
+            core.editHistory(),
+            static_cast<std::uint32_t>(eventId));
+    if (!result.success) {
+        return toJString(env, "Event delete failed: " + result.error);
+    }
+    return toJString(
+            env, "Event deleted • ID=" + std::to_string(eventId));
 }
 
 // Pattern selection for the active track

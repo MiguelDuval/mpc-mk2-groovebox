@@ -885,6 +885,113 @@ int main() {
         assert(pattern.notes.back().eventId == 1001);
     }
 
+    // ---- Test 29: runtime identity repair can be requested before rendering ----
+    {
+        Sequence seq = makeSequence();
+        auto& pattern = seq.tracks[0].patterns[0];
+        pattern.notes.push_back({100, 240, 60, 90, 127, 1, 0});
+        pattern.notes.push_back({300, 240, 64, 100, 127, 1, 0});
+        assert(pattern.notes[0].eventId == 0);
+        assert(pattern.notes[1].eventId == 0);
+
+        assert(ListEditService::ensureEventIdentities(pattern));
+        const auto firstId = pattern.notes[0].eventId;
+        const auto secondId = pattern.notes[1].eventId;
+        assert(firstId != 0 && secondId != 0 && firstId != secondId);
+        assert(ListEditService::ensureEventIdentities(pattern));
+        assert(pattern.notes[0].eventId == firstId);
+        assert(pattern.notes[1].eventId == secondId);
+    }
+
+    // ---- Test 30: one atomic ID-addressed edit survives tick sorting and Undo/Redo ----
+    {
+        Sequence seq = makeSequence();
+        auto& pattern = seq.tracks[0].patterns[0];
+        pattern.notes.push_back({100, 240, 60, 90, 127, 1, 0});
+        pattern.notes.push_back({200, 240, 64, 100, 127, 1, 0});
+        MpcEditHistory history;
+        assert(ListEditService::ensureEventIdentities(pattern));
+        const auto editedId = pattern.notes[0].eventId;
+        const auto otherId = pattern.notes[1].eventId;
+
+        auto result = ListEditService::editEventById(
+                pattern, history, editedId, 400, 480, 72, 111);
+        assert(result.success);
+        assert(pattern.notes.size() == 2);
+        assert(pattern.notes[0].eventId == otherId);
+        assert(pattern.notes[1].eventId == editedId);
+        assert(pattern.notes[1].tick == 400);
+        assert(pattern.notes[1].durationTicks == 480);
+        assert(pattern.notes[1].note == 72);
+        assert(pattern.notes[1].velocity == 111);
+        assert(pattern.notes[0].note == 64);
+        assert(pattern.notes[0].velocity == 100);
+
+        assert(history.undo());
+        assert(pattern.notes[0].eventId == editedId);
+        assert(pattern.notes[0].tick == 100);
+        assert(pattern.notes[0].durationTicks == 240);
+        assert(pattern.notes[0].note == 60);
+        assert(pattern.notes[0].velocity == 90);
+        assert(pattern.notes[1].eventId == otherId);
+        assert(history.redo());
+        assert(pattern.notes[1].eventId == editedId);
+        assert(pattern.notes[1].tick == 400);
+        assert(pattern.notes[1].durationTicks == 480);
+        assert(pattern.notes[1].note == 72);
+        assert(pattern.notes[1].velocity == 111);
+    }
+
+    // ---- Test 31: invalid atomic ID edit leaves events and history unchanged ----
+    {
+        Sequence seq = makeSequence();
+        auto& pattern = seq.tracks[0].patterns[0];
+        MpcEditHistory history;
+        auto add = ListEditService::addEvent(
+                pattern, history, 0, 480, 60, 100);
+        assert(add.success);
+        history.clear();
+        const auto id = pattern.notes[0].eventId;
+        const auto before = pattern.notes[0];
+
+        auto result = ListEditService::editEventById(
+                pattern, history, id, 1800, 480, 72, 110);
+        assert(!result.success);
+        assert(result.error == "event exceeds pattern length");
+        assert(pattern.notes.size() == 1);
+        assert(pattern.notes[0].eventId == before.eventId);
+        assert(pattern.notes[0].tick == before.tick);
+        assert(pattern.notes[0].durationTicks == before.durationTicks);
+        assert(pattern.notes[0].note == before.note);
+        assert(pattern.notes[0].velocity == before.velocity);
+        assert(!history.canUndo());
+        assert(!history.canRedo());
+    }
+
+    // ---- Test 32: delete by stable ID after sorting, then Undo/Redo ----
+    {
+        Sequence seq = makeSequence();
+        auto& pattern = seq.tracks[0].patterns[0];
+        MpcEditHistory history;
+        ListEditService::addEvent(pattern, history, 100, 240, 60, 90);
+        ListEditService::addEvent(pattern, history, 200, 240, 64, 100);
+        const auto removedId = pattern.notes[0].eventId;
+        auto edit = ListEditService::editEventById(
+                pattern, history, removedId, 350, 120, 61, 80);
+        assert(edit.success);
+        auto deletion = ListEditService::deleteEventById(
+                pattern, history, removedId);
+        assert(deletion.success);
+        assert(pattern.notes.size() == 1);
+        assert(pattern.notes[0].eventId != removedId);
+        assert(history.undo());
+        assert(pattern.notes.size() == 2);
+        assert(pattern.notes[1].eventId == removedId);
+        assert(history.redo());
+        assert(pattern.notes.size() == 1);
+        assert(pattern.notes[0].eventId != removedId);
+    }
+
     return 0;
 }
 

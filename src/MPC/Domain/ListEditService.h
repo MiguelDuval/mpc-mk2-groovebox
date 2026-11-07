@@ -79,6 +79,25 @@ public:
             std::size_t eventIndex,
             std::int32_t tick);
 
+    // Assigns runtime-only identities for legacy events before UI selection.
+    static bool ensureEventIdentities(Pattern& pattern);
+
+    // Atomically changes all note fields by stable event identity.
+    static ModifyResult editEventById(
+            Pattern& pattern,
+            MpcEditHistory& history,
+            std::uint32_t eventId,
+            std::int32_t tick,
+            std::int32_t durationTicks,
+            std::uint8_t note,
+            std::uint8_t velocity);
+
+    // Deletes an event by stable runtime identity.
+    static ModifyResult deleteEventById(
+            Pattern& pattern,
+            MpcEditHistory& history,
+            std::uint32_t eventId);
+
     // Returns the number of events in the pattern.
     static std::size_t eventCount(const Pattern& pattern) noexcept;
 

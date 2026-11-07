@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <iterator>
 #include <optional>
 #include <unordered_set>
 
@@ -208,6 +209,34 @@ ListEditService::ModifyResult ListEditService::deleteEvent(
     return result;
 }
 
+ListEditService::ModifyResult ListEditService::deleteEventById(
+        Pattern& pattern,
+        MpcEditHistory& history,
+        std::uint32_t eventId) {
+    ModifyResult result;
+    if (eventId == 0) {
+        result.error = "invalid event ID";
+        return result;
+    }
+    if (!ensureEventIds(pattern)) {
+        result.error = "event ID space exhausted";
+        return result;
+    }
+    const auto found = std::find_if(
+            pattern.notes.begin(), pattern.notes.end(),
+            [eventId](const MidiNoteEvent& event) {
+                return event.eventId == eventId;
+            });
+    if (found == pattern.notes.end()) {
+        result.error = "event ID not found";
+        return result;
+    }
+    return deleteEvent(
+            pattern,
+            history,
+            static_cast<std::size_t>(std::distance(pattern.notes.begin(), found)));
+}
+
 ListEditService::ModifyResult ListEditService::setNote(
         Pattern& pattern, MpcEditHistory& history, std::size_t eventIndex,
         std::uint8_t note) {
@@ -410,6 +439,111 @@ ListEditService::ModifyResult ListEditService::setTick(
     }
     if (!history.record(mpc::MpcEditHistory::Command{
             "Change Pattern Event Tick", undo, redo})) {
+        (void)undo();
+        result.error = "history record rejected";
+        return result;
+    }
+    result.success = true;
+    return result;
+}
+
+bool ListEditService::ensureEventIdentities(Pattern& pattern) {
+    return ensureEventIds(pattern);
+}
+
+ListEditService::ModifyResult ListEditService::editEventById(
+        Pattern& pattern,
+        MpcEditHistory& history,
+        std::uint32_t eventId,
+        std::int32_t tick,
+        std::int32_t durationTicks,
+        std::uint8_t note,
+        std::uint8_t velocity) {
+    ModifyResult result;
+    if (eventId == 0) {
+        result.error = "invalid event ID";
+        return result;
+    }
+    if (pattern.lengthTicks <= 0 || tick < 0
+            || static_cast<std::int64_t>(tick) >= pattern.lengthTicks) {
+        result.error = "tick out of range";
+        return result;
+    }
+    if (durationTicks < 0
+            || static_cast<std::int64_t>(durationTicks) > pattern.lengthTicks) {
+        result.error = "duration out of range";
+        return result;
+    }
+    if (note > 127) {
+        result.error = "note out of range";
+        return result;
+    }
+    if (velocity == 0 || velocity > 127) {
+        result.error = "velocity out of range";
+        return result;
+    }
+    if (static_cast<std::int64_t>(tick)
+                    + static_cast<std::int64_t>(durationTicks)
+            > static_cast<std::int64_t>(pattern.lengthTicks)) {
+        result.error = "event exceeds pattern length";
+        return result;
+    }
+    if (!ensureEventIds(pattern)) {
+        result.error = "event ID space exhausted";
+        return result;
+    }
+
+    auto* target = findByEventId(pattern, eventId);
+    if (target == nullptr) {
+        result.error = "event ID not found";
+        return result;
+    }
+    const MidiNoteEvent oldEvent = *target;
+    const auto oldIndex = static_cast<std::size_t>(
+            std::distance(pattern.notes.begin(), target));
+    if (oldEvent.tick == tick
+            && oldEvent.durationTicks == durationTicks
+            && oldEvent.note == note
+            && oldEvent.velocity == velocity) {
+        result.success = true;
+        return result;
+    }
+
+    MidiNoteEvent updatedEvent = oldEvent;
+    updatedEvent.tick = tick;
+    updatedEvent.durationTicks = durationTicks;
+    updatedEvent.note = note;
+    updatedEvent.velocity = velocity;
+
+    auto undo = [&pattern, eventId, oldEvent, oldIndex]() -> bool {
+        auto it = std::find_if(
+                pattern.notes.begin(), pattern.notes.end(),
+                [eventId](const MidiNoteEvent& event) {
+                    return event.eventId == eventId;
+                });
+        if (it == pattern.notes.end()) return false;
+        pattern.notes.erase(it);
+        const auto insertionIndex = std::min(oldIndex, pattern.notes.size());
+        pattern.notes.insert(
+                pattern.notes.begin()
+                        + static_cast<std::ptrdiff_t>(insertionIndex),
+                oldEvent);
+        return true;
+    };
+    auto redo = [&pattern, eventId, updatedEvent]() -> bool {
+        auto* event = findByEventId(pattern, eventId);
+        if (event == nullptr) return false;
+        *event = updatedEvent;
+        sortByTick(pattern);
+        return true;
+    };
+
+    if (!redo()) {
+        result.error = "event modification failed";
+        return result;
+    }
+    if (!history.record(mpc::MpcEditHistory::Command{
+            "Edit Pattern Event", undo, redo})) {
         (void)undo();
         result.error = "history record rejected";
         return result;
