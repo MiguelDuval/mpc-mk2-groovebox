@@ -72,6 +72,13 @@ https://github.com/Ableton/link
 MPC Studio MkII protocol:
 https://github.com/bcrowe306/MPC-Studio-Mk2-Midi-Sysex-Charts
 
+MPC firmware reverse-engineering integration:
+[docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md)
+
+Public firmware research sources:
+https://github.com/TheKikGen/MPC-LiveXplore
+https://github.com/DeathCamel58/denon-reverse-engineering
+
 MPC Studio MkII practical mapping:
 https://github.com/gstepniewski/MPC-Studio-Mk2-Ableton-Midi-Remote-Script
 

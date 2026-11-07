@@ -344,6 +344,21 @@ Two constraints are especially important:
 
 When implementing the controller, use the semantic map's documented chord behavior for Shift, Mode, Locate, and contextual buttons, and keep raw MIDI identifiers isolated inside the hardware adapter.
 
+## 7C. Standalone MPC firmware reverse-engineering evidence
+
+The public firmware research integration is maintained in:
+
+**[docs/research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md](research/MPC-FIRMWARE-REVERSE-ENGINEERING-INTEGRATION.md)**
+
+Use it as secondary implementation research only. It records the MPC 3.9.1 Gen1 binary/framework findings, firmware-family/version boundaries, standalone MIDI role distinctions and the unresolved Gen2 handoff. It does not replace the official MPC Standalone OS 3.9 manual, our local Gen1 UI research, the MPC Studio MkII hardware traceability map or physical tests.
+
+Important boundaries:
+- The original MPC app's JUCE/Pure Data/SQLite observations do not authorize replacing our selected JUCE/Tracktion/Oboe stack or changing project serialization.
+- Standalone Linux device-tree IDs and control-surface serials are not the USB-MIDI identity of our external MPC Studio MkII.
+- The MPC.settings Track/Global/Sync/Control roles are a future external-MIDI routing lead, not a reason to change the current MkII transport or semantic adapter.
+- Gen1 findings must not be generalized to Gen2 without a separate hash-linked binary analysis.
+- Do not copy proprietary firmware code, assets or artwork.
+
 ## 8. Hardware feedback
 
 Feedback must eventually include:
