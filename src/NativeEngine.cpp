@@ -4650,20 +4650,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
         return toJString(env, "Event note failed: index out of range");
     }
     const auto targetTick = pattern->notes[static_cast<std::size_t>(eventIndex)].tick;
-    if (std::any_of(pattern->notes.begin(), pattern->notes.end(),
-            [eventIndex, targetTick, note](const mpc::domain::MidiNoteEvent& event) {
-                const auto index = static_cast<std::size_t>(&event);
-                static_cast<void>(index);
-                return event.tick == targetTick && event.note == static_cast<std::uint8_t>(note);
-            })) {
-        // The current event itself is allowed to retain its pitch.
-        const auto collisionCount = std::count_if(
-                pattern->notes.begin(), pattern->notes.end(),
-                [targetTick, note](const mpc::domain::MidiNoteEvent& event) {
-                    return event.tick == targetTick
-                            && event.note == static_cast<std::uint8_t>(note);
-                });
-        if (collisionCount > (pattern->notes[static_cast<std::size_t>(eventIndex)].note == note ? 1 : 0)) {
+    for (std::size_t index = 0; index < pattern->notes.size(); ++index) {
+        if (index != static_cast<std::size_t>(eventIndex)
+                && pattern->notes[index].tick == targetTick
+                && pattern->notes[index].note == static_cast<std::uint8_t>(note)) {
             return toJString(env, "Event note failed: same-pitch event already exists at this tick");
         }
     }
