@@ -39,6 +39,11 @@ int main() {
     assert(state.activePatternIndex() == 0);
     assert(state.selectPattern(1));
 
+    // Discard the selection-only mutations before asserting the default project.
+    assert(state.resetToDefault());
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks.front().patterns.size() == 1);
+
     // Invalid SampleRef metadata is rejected before any ID is consumed.
     assert(!state.registerSample("Negative rate", "", -1.0, 24000).isAssigned());
     assert(!state.registerSample(
@@ -72,9 +77,9 @@ int main() {
     assert(sequence.loopEnabled);
     assert(sequence.loopStartTicks == 0);
     assert(sequence.loopEndTicks == sequence.lengthTicks);
-    assert(sequence.tracks.size() == 2);
+    assert(sequence.tracks.size() == 1);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
-    assert(sequence.tracks[0].patterns.size() == 2);
+    assert(sequence.tracks[0].patterns.size() == 1);
     assert(sequence.tracks[0].placements.size() == 1);
     assert(sequence.tracks[0].placements.front().patternId
             == sequence.tracks[0].patterns.front().id);
