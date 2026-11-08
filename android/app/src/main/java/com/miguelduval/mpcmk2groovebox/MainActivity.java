@@ -679,7 +679,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativePatternSetEventVelocity(int padIndex, int eventIndex, int velocity);
     private static native String nativePatternSetEventDuration(int padIndex, int eventIndex, int duration);
     private static native String nativePatternSetEventTick(int padIndex, int eventIndex, int tick);
-    private static native String nativePatternAddEvent(int padIndex, int tick, int note, int velocity, int duration);
+    private static native String nativePatternAddEvent(int padIndex, int tick, int velocity, int duration);
     private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
 
     @Override
@@ -5467,18 +5467,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.LIST_EDIT);
         navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
-        pageTitle.setText("LIST EDIT");
+        pageTitle.setText("LIST EDIT • NOTES");
         content.removeAllViews();
 
         LinearLayout page = page();
         LinearLayout header = row();
-        header.addView(sectionLabelView("PAD " + (selectedPad + 1),
+        header.addView(sectionLabelView(
+                "PATTERN 01 • ADD PAD " + (selectedPad + 1),
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
         header.addView(actionButton("ADD", v -> {
             final String result = nativePatternAddEvent(
-                    selectedPad, 0, 60, 100, 480);
+                    selectedPad, 0, 100, 480);
             if (result != null && !result.startsWith("Event added")) {
                 setBottomStatus(result);
             } else {
@@ -5505,7 +5506,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         final int count = nativePatternGetEventCount(selectedPad);
         if (count <= 0) {
-            TextView empty = label("No events in current pattern", 12, MUTED);
+            TextView empty = label("No note events in Pattern 01", 12, MUTED);
             empty.setPadding(dp(10), dp(8), dp(10), dp(8));
             listEditEventList.addView(empty);
             return;

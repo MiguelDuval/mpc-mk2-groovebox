@@ -38,6 +38,12 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
+    public void scopedNotesListEditIsReachableFromMenu() {
+        assertTrue(MpcModeRegistry.menuEntry(14).available);
+        assertEquals(MpcUiState.Mode.LIST_EDIT, MpcModeRegistry.menuEntry(14).mode);
+    }
+
+    @Test
     public void unavailableModesAreExplicitlyReserved() {
         assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);

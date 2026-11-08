@@ -18,6 +18,7 @@
 #include "MPC/MpcEditHistory.h"
 #include "MPC/MpcProjectPersistence.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcListEditOps.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
@@ -4380,7 +4381,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDrainRecordEvent
 
 namespace {
 
-// Resolve the current editable pattern for the given pad index.
+// Resolve Pattern 01 of the selected Drum Track. List Edit displays all of
+// this Pattern's note events; padIndex is only the current Add-note target,
+// never a Pattern-vector index.
 // Returns nullptr if no valid Drum track with patterns exists.
 [[nodiscard]] inline mpc::domain::Pattern* resolveEditPattern(
         jint padIndex) noexcept {
@@ -4398,15 +4401,7 @@ namespace {
             || track.patterns.empty()) {
         return nullptr;
     }
-    // Return the pattern at padIndex if it exists, otherwise first pattern.
-    // This matches MPC behavior where pads map to program slots, each of which
-    // may have its own pattern. padIndex is validated above.
-    auto patternCount = track.patterns.size();
-    auto patternIndex = static_cast<std::size_t>(padIndex);
-    if (patternIndex >= patternCount) {
-        patternIndex = 0;
-    }
-    return &track.patterns[patternIndex];
+    return &track.patterns.front();
 }
 
 // Record complete Pattern event-list snapshots so undo/redo remains correct
@@ -4696,63 +4691,63 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
 JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
         JNIEnv* env, jobject /* thiz */, jint padIndex, jint tick,
-        jint note, jint velocity, jint duration)
+        jint velocity, jint duration)
 {
     if (env == nullptr) return nullptr;
-    if (note < 0 || note > 127 || velocity < 1 || velocity > 127) {
-        return toJString(env, "Event add failed: note/velocity out of range");
-    }
-    if (tick < 0 || duration < 0) {
-        return toJString(env, "Event add failed: negative tick/duration");
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return toJString(env, "Event add failed: invalid Pad target");
     }
     auto& core = mpc::MpcCore::instance();
     if (sequenceSession().isPlaying()) {
         return toJString(env, "Event add blocked: stop playback first");
     }
     stopSequenceForMutation();
-    auto& history = core.editHistory();
-    auto* pattern = resolveEditPattern(padIndex);
-    if (pattern == nullptr) {
-        return toJString(env, "Event add failed: invalid target");
+
+    auto& state = core.projectState();
+    auto& tracks = state.activeSequence().tracks;
+    const auto trackIndex = state.activeTrackIndex();
+    if (trackIndex >= tracks.size()
+            || tracks[trackIndex].kind != mpc::domain::TrackKind::Drum) {
+        return toJString(env, "Event add failed: no selected Drum Track");
     }
-    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
-    if (static_cast<std::int64_t>(tick) >= length
-            || static_cast<std::int64_t>(duration) > length) {
-        return toJString(env, "Event add failed: tick/duration out of range");
-    }
-    if (std::any_of(
-            pattern->notes.begin(), pattern->notes.end(),
-            [tick, note](const mpc::domain::MidiNoteEvent& event) {
-                return event.tick == tick
-                        && event.note == static_cast<std::uint8_t>(note);
-            })) {
-        return toJString(env, "Event add failed: same-pitch collision");
+    const auto* program = state.findDrumProgram(tracks[trackIndex].programId);
+    if (program == nullptr || program->type != mpc::domain::ProgramType::Drum) {
+        return toJString(env, "Event add failed: selected Track has no Drum Program");
     }
 
+    auto* pattern = resolveEditPattern(padIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event add failed: invalid Pattern target");
+    }
     auto before = pattern->notes;
     auto after = before;
-    after.push_back({
-        static_cast<std::int32_t>(tick),
-        static_cast<std::int32_t>(duration),
-        static_cast<std::uint8_t>(note),
-        static_cast<std::uint8_t>(velocity),
-        127,
-        1,
-        0
-    });
-    std::stable_sort(
-            after.begin(), after.end(),
-            [](const mpc::domain::MidiNoteEvent& lhs,
-               const mpc::domain::MidiNoteEvent& rhs) {
-                return lhs.tick < rhs.tick;
-            });
+    const auto mappedMidiNote = program->pad(static_cast<std::size_t>(padIndex)).midiNote;
+    const auto inserted = mpc::sequencer::list_edit::appendPadNoteEvent(
+            after, pattern->lengthTicks, mappedMidiNote, tick, velocity, duration);
+    switch (inserted) {
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPattern:
+            return toJString(env, "Event add failed: invalid Pattern length");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidTick:
+            return toJString(env, "Event add failed: tick out of range");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidVelocity:
+            return toJString(env, "Event add failed: velocity range 1-127");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidDuration:
+            return toJString(env, "Event add failed: duration out of range");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::SamePitchCollision:
+            return toJString(env, "Event add failed: same-pitch collision");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::Added:
+            break;
+    }
+
     if (!recordPatternNotesEdit(
-            history, *pattern, "Add Pattern Event",
+            core.editHistory(), *pattern, "Add Pattern Pad Event",
             std::move(before), std::move(after))) {
         return toJString(env, "Event add failed: history record rejected");
     }
     return toJString(env,
-            "Event added: note=" + std::to_string(note)
+            "Event added: Pad " + std::to_string(padIndex + 1)
+                    + " note=" + std::to_string(mappedMidiNote)
                     + " tick=" + std::to_string(tick));
 }
 

@@ -43,7 +43,9 @@ final class MpcModeRegistry {
 
             new Entry(MpcUiState.Mode.NEXT_SEQUENCE, "NEXT SEQUENCE", true),
             new Entry(MpcUiState.Mode.ARRANGE, "ARRANGE", true),
-            new Entry(MpcUiState.Mode.LIST_EDIT, "LIST EDIT", false),
+            // Notes-event CRUD for Pattern 01 is available. Tempo, automation,
+            // event-type filters and the full MPC List Edit event catalog remain gaps.
+            new Entry(MpcUiState.Mode.LIST_EDIT, "LIST EDIT", true),
             new Entry(MpcUiState.Mode.PROJECT, "PROJECT", true)
     };
 
