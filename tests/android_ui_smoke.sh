@@ -14567,7 +14567,10 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML" 30; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
+# open_project_document() already captured and validated the fresh MAIN tree for a successful load.
+# Preserve that exact app-owned snapshot for the v1 evidence path instead of
+# requiring a second redraw while the app remains on the unchanged Main page.
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
 
 # SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
