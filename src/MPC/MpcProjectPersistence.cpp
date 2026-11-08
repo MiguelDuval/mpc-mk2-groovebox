@@ -37,16 +37,29 @@ bool setError(std::string* error, const std::string& message) {
     return false;
 }
 
+constexpr std::array<std::uint32_t, 256> makePcmCrc32Table() {
+    std::array<std::uint32_t, 256> table{};
+    for (std::uint32_t value = 0; value < table.size(); ++value) {
+        std::uint32_t crc = value;
+        for (int bit = 0; bit < 8; ++bit) {
+            crc = (crc >> 1u)
+                    ^ (0xEDB88320u & (0u - (crc & 1u)));
+        }
+        table[value] = crc;
+    }
+    return table;
+}
+
+constexpr auto kPcmCrc32Table = makePcmCrc32Table();
+
 std::uint32_t pcmCrc32(const audio::SampleBuffer& sample) noexcept {
     std::uint32_t crc = 0xFFFFFFFFu;
     for (const float value : sample.interleaved) {
         const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
         for (std::size_t byte = 0; byte < 4; ++byte) {
-            crc ^= static_cast<std::uint8_t>(bits >> (byte * 8u));
-            for (int bit = 0; bit < 8; ++bit) {
-                crc = (crc >> 1u)
-                        ^ (0xEDB88320u & (0u - (crc & 1u)));
-            }
+            const auto packedByte =
+                    static_cast<std::uint8_t>(bits >> (byte * 8u));
+            crc = kPcmCrc32Table[(crc ^ packedByte) & 0xFFu] ^ (crc >> 8u);
         }
     }
     return crc ^ 0xFFFFFFFFu;
@@ -187,11 +200,8 @@ public:
                 std::uint32_t bits = 0;
                 for (std::size_t byte = 0; byte < 4; ++byte) {
                     const auto value = chunk[offset + byte];
-                    crc ^= value;
-                    for (int bit = 0; bit < 8; ++bit) {
-                        crc = (crc >> 1u)
-                                ^ (0xEDB88320u & (0u - (crc & 1u)));
-                    }
+                    crc = kPcmCrc32Table[(crc ^ value) & 0xFFu]
+                            ^ (crc >> 8u);
                     bits |= static_cast<std::uint32_t>(value) << (byte * 8u);
                 }
                 const float value = std::bit_cast<float>(bits);
