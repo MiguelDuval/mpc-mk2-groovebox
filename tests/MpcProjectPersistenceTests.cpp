@@ -350,12 +350,12 @@ int main() {
     legacyAssignedV3.replace(
             legacyAssignedV3.find("MPCMK2_PROJECT 4"), 16,
             "MPCMK2_PROJECT 3");
-    const auto assignedPcmSection = legacyAssignedV3.find("PCM_ASSETS 1\\n");
+    const auto assignedPcmSection = legacyAssignedV3.find("PCM_ASSETS 1\n");
     assert(assignedPcmSection != std::string::npos);
     const auto assignedPcmRecord = legacyAssignedV3.find(
             "PCM_ASSET 101 ", assignedPcmSection);
     assert(assignedPcmRecord != std::string::npos);
-    const auto assignedPcmHeaderEnd = legacyAssignedV3.find('\\n', assignedPcmRecord);
+    const auto assignedPcmHeaderEnd = legacyAssignedV3.find('\n', assignedPcmRecord);
     assert(assignedPcmHeaderEnd != std::string::npos);
     std::istringstream pcmHeaderFields(legacyAssignedV3.substr(
             assignedPcmRecord, assignedPcmHeaderEnd - assignedPcmRecord));
