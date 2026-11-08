@@ -15331,7 +15331,7 @@ PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
   echo "ERROR: Menu does not expose the real Edit Shortcuts Function Bar action"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: Shortcut editor did not publish a fresh real Android View tree"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15351,13 +15351,14 @@ fi
 # schedules the app-owned View-tree capture immediately, so waiting for the
 # preference-write marker before recording this baseline would miss that tree.
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "GRID"; then
   echo "ERROR: could not select GRID from the real Shortcut slot-1 popup"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_grid_write_before" 20; then
   echo "ERROR: choosing GRID did not synchronously persist the exact five-slot mode order"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: slot-1 selection did not publish updated live editor state"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15369,13 +15370,14 @@ fi
 
 shortcut_order_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" 5)"
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcut 1 move down"; then
   echo "ERROR: slot-1 move-down target is not a live enabled control"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" "$shortcut_order_write_before" 20; then
   echo "ERROR: moving slot 1 down did not persist the exact reordered Shortcut Rail"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: reordered Shortcut editor View tree was not rendered"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15400,7 +15402,7 @@ PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
   echo "ERROR: Menu does not expose Edit Shortcuts after process restart"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: factory reset Shortcut editor did not render"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15408,13 +15410,14 @@ if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFI
 fi
 shortcut_defaults_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcuts Reset Defaults"; then
   echo "ERROR: Shortcut editor does not expose an enabled Reset Defaults action"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_defaults_before" 20; then
   echo "ERROR: Reset Defaults did not synchronously persist factory Shortcut order"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: Reset Defaults did not rebuild the live Shortcut editor"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
