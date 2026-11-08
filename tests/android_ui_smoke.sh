@@ -2249,7 +2249,7 @@ for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + 
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
     'initial DocumentsUI hierarchy is not ready' 'after 2 fresh, bounded compressed captures' \
-    'expected Project Open outcome $expected_marker'; do
+    'expected Project Open outcome $expected_marker' 'poll_timeout=3' 'project_marker_count "$marker" "$poll_timeout"' 'capture_project_persistence_view_tree()'; do
   if ! grep -Fq -- "$required" "$0"; then
     echo "ERROR: runtime smoke synchronization contract missing: $required"
     exit 1
@@ -13396,7 +13396,9 @@ snapshot_browser_view_tree_marker_baseline() {
 }
 
 capture_project_persistence_view_tree() {
-  local page="$1" target_xml="$2" timeout_seconds="${3:-45}" marker before remote
+  # Android view-tree publication may be queued behind an expensive layout.
+  # Give the UI 75s, while marker polling itself stays short and repeatable.
+  local page="$1" target_xml="$2" timeout_seconds="${3:-75}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
     MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
@@ -13485,10 +13487,15 @@ PY_PROJECT_APP_VIEW_TREE
 
 wait_for_new_project_marker() {
   local marker="$1" before="$2" timeout_seconds="${3:-45}"
-  local deadline=$((SECONDS + timeout_seconds)) remaining count
+  # Never let one ADB/logcat call consume the entire marker deadline. Under
+  # emulator load logcat -d can stall; short bounded polls keep observing new
+  # UI markers that arrive near the end of the overall deadline.
+  local deadline=$((SECONDS + timeout_seconds)) remaining count poll_timeout
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    count="$(project_marker_count "$marker" "$remaining")"
+    poll_timeout=3
+    if (( remaining < poll_timeout )); then poll_timeout=$remaining; fi
+    count="$(project_marker_count "$marker" "$poll_timeout")"
     if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
