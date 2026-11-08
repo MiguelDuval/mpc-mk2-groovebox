@@ -2394,7 +2394,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangem
         return toJString(env, "1|");
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto* selectedPattern = static_cast<std::size_t>(trackIndex) == state.activeTrackIndex()
+            ? state.activePattern() : &track.patterns.front();
+    if (selectedPattern == nullptr) return toJString(env, "1|");
+    const auto& pattern = *selectedPattern;
     std::string result = std::to_string(std::max<std::int32_t>(
             1, pattern.lengthTicks));
     result.push_back('|');
@@ -2472,7 +2475,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddArrangementPa
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: track has no source Pattern");
     }
-    const auto patternId = track.patterns.front().id;
+    const auto* sourcePattern = trackIndexValue == state.activeTrackIndex()
+            ? state.activePattern() : &track.patterns.front();
+    if (sourcePattern == nullptr) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: no selected source Pattern");
+    }
+    const auto patternId = sourcePattern->id;
     if (patternId.empty()) {
         return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: source Pattern has no identity");
     }

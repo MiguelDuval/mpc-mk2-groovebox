@@ -275,6 +275,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private TextView listEditPatternLabel;
     private int listEditPatternIndex = 0;
     private int listEditSelectedEvent = -1;
+    private int listEditLastSequenceIndex = -1;
+    private int listEditLastTrackIndex = -1;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -5525,6 +5527,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("LIST EDIT • EVENTS");
         content.removeAllViews();
 
+        final int sequenceIndex = nativeSequenceGetIndex();
+        final int trackIndex = nativeSequenceGetSelectedTrack();
+        if (sequenceIndex != listEditLastSequenceIndex || trackIndex != listEditLastTrackIndex) {
+            listEditPatternIndex = 0;
+            listEditLastSequenceIndex = sequenceIndex;
+            listEditLastTrackIndex = trackIndex;
+        }
         final int patternCount = nativePatternGetPatternCount();
         listEditPatternIndex = patternCount > 0
                 ? Math.max(0, Math.min(patternCount - 1, listEditPatternIndex)) : 0;
