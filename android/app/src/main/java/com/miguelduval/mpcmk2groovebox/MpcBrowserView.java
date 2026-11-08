@@ -2,10 +2,12 @@ package com.miguelduval.mpcmk2groovebox;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.os.Build;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -59,6 +61,7 @@ final class MpcBrowserView extends LinearLayout {
     private final EditText search;
 
     private Listener listener;
+    private Runnable resultsInteractionFinishedListener;
     private String activeSection = "PLACES";
     private String activeLocationItem = "INTERNAL";
     private List<MpcBrowserFile> localFiles = Collections.emptyList();
@@ -72,6 +75,8 @@ final class MpcBrowserView extends LinearLayout {
     private boolean userFolderAccessReady;
     private boolean userFolderScanComplete;
     private boolean userFolderScanFailed;
+    private boolean showFileSize = true;
+    private boolean showModifiedDate;
 
     MpcBrowserView(Context context) {
         super(context);
@@ -211,6 +216,16 @@ final class MpcBrowserView extends LinearLayout {
 
         ScrollView scroll = new ScrollView(context);
         scroll.setContentDescription("MPC Browser results list");
+        scroll.setOnScrollChangeListener((View view, int scrollX, int scrollY,
+                                          int oldScrollX, int oldScrollY) -> {
+            if (scrollY != oldScrollY) notifyResultsInteractionFinished();
+        });
+        scroll.setOnTouchListener((view, event) -> {
+            if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                notifyResultsInteractionFinished();
+            }
+            return false;
+        });
         results = new LinearLayout(context);
         results.setOrientation(VERTICAL);
         results.setPadding(0, dp(context, 3), 0, dp(context, 3));
@@ -227,6 +242,16 @@ final class MpcBrowserView extends LinearLayout {
 
     void setListener(Listener listener) {
         this.listener = listener;
+    }
+
+    void setOnResultsInteractionFinishedListener(Runnable listener) {
+        resultsInteractionFinishedListener = listener;
+    }
+
+    private void notifyResultsInteractionFinished() {
+        if (resultsInteractionFinishedListener != null) {
+            resultsInteractionFinishedListener.run();
+        }
     }
 
     void auditionSelectedFile() {
@@ -257,6 +282,26 @@ final class MpcBrowserView extends LinearLayout {
     void setScanState(String status) {
         setProviderStatus(status);
         renderResults();
+    }
+
+    void setShowFileSize(boolean show) {
+        if (showFileSize == show) return;
+        showFileSize = show;
+        renderResults();
+    }
+
+    boolean isShowFileSize() {
+        return showFileSize;
+    }
+
+    void setShowModifiedDate(boolean show) {
+        if (showModifiedDate == show) return;
+        showModifiedDate = show;
+        renderResults();
+    }
+
+    boolean isShowModifiedDate() {
+        return showModifiedDate;
     }
 
     void setProviderStatus(String status) {
@@ -506,8 +551,26 @@ final class MpcBrowserView extends LinearLayout {
             return isDocumentTreeLocation() && userFolderConfigured && userFolderAccessReady;
         }
         if ("CONTENT".equals(activeSection)) {
-            return "SAMPLES".equalsIgnoreCase(activeLocationItem)
-                    || "MY FILES".equalsIgnoreCase(activeLocationItem);
+            if ("SAMPLES".equalsIgnoreCase(activeLocationItem)
+                    || "MY FILES".equalsIgnoreCase(activeLocationItem)) {
+                return true;
+            }
+            return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    && ("DRUMS".equalsIgnoreCase(activeLocationItem)
+                            || "DEMOS".equalsIgnoreCase(activeLocationItem));
+        }
+        return false;
+    }
+
+    private boolean isPathBasedContentLocation() {
+        return "CONTENT".equals(activeSection)
+                && ("DRUMS".equalsIgnoreCase(activeLocationItem)
+                        || "DEMOS".equalsIgnoreCase(activeLocationItem));
+    }
+
+    private boolean hasRelativePathMetadata() {
+        for (MpcBrowserFile file : localFiles) {
+            if (file != null && !file.relativePath().isEmpty()) return true;
         }
         return false;
     }
@@ -543,6 +606,11 @@ final class MpcBrowserView extends LinearLayout {
                                 + activeLocationItem + ".";
             }
             return "This place is not backed by the local WAV catalog.";
+        }
+        if ("CONTENT".equals(activeSection)
+                && isPathBasedContentLocation()
+                && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return "This Android version does not expose MediaStore folder paths; use MY FILES or choose a local folder.";
         }
         return "No real local provider is available for " + activeLocationItem + " yet.";
     }
@@ -631,6 +699,9 @@ final class MpcBrowserView extends LinearLayout {
             if (visibleFiles.isEmpty()) {
                 if (localFiles.isEmpty()) {
                     addInfoRow("NO LOCAL WAV FILES", "No accessible WAV files were found in the device media catalog.");
+                } else if (isPathBasedContentLocation() && !hasRelativePathMetadata()) {
+                    addInfoRow("CATEGORY PATHS UNAVAILABLE",
+                            "MediaStore did not expose folder paths for indexed WAVs. Use MY FILES or choose a local folder.");
                 } else {
                     addInfoRow("NO MATCHING WAV FILES", "Change Search or select SAMPLES / ALL to show indexed WAV items.");
                 }
@@ -741,7 +812,7 @@ final class MpcBrowserView extends LinearLayout {
         main.setEllipsize(TextUtils.TruncateAt.END);
         row.addView(main, new LayoutParams(0, dp(getContext(), 34), 1));
 
-        final TextView sub = info(getContext(), file.metadataLine());
+        final TextView sub = info(getContext(), file.metadataLine(showFileSize, showModifiedDate));
         sub.setTextSize(8);
         sub.setSingleLine(true);
         sub.setEllipsize(TextUtils.TruncateAt.END);

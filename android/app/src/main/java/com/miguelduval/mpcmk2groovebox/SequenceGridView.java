@@ -159,6 +159,15 @@ public final class SequenceGridView extends View {
         }
 
         paint.setStyle(Paint.Style.FILL);
+        // A full 16-pad viewport can make each row shorter than the default
+        // 9dp glyph height. Fit the labels to the live Canvas row height so
+        // Pad indices remain separate/readable at every vertical zoom level.
+        paint.setTextSize(Math.min(
+                dp(9),
+                Math.max(dp(5), cellHeight * 0.68f)));
+        final Paint.FontMetrics padLabelMetrics = paint.getFontMetrics();
+        final float padLabelBaselineOffset =
+                -(padLabelMetrics.ascent + padLabelMetrics.descent) * 0.5f;
         for (int row = 0; row < visiblePads; row++) {
             final float centerY = top + row * cellHeight + cellHeight * 0.5f;
             final int padIndex = (ROWS - 1) - (firstPad + row);
@@ -166,7 +175,7 @@ public final class SequenceGridView extends View {
             canvas.drawText(
                     String.format(Locale.ROOT, "%02d", padIndex + 1),
                     dp(21),
-                    centerY + dp(3),
+                    centerY + padLabelBaselineOffset,
                     paint);
         }
 

@@ -2,6 +2,7 @@
 
 #include "Audio/AudioEngine.h"
 #include "MPC/Sequencer/MpcSequenceTransport.h"
+#include "MPC/Sequencer/MpcSequenceRecordQueue.h"
 
 #include <atomic>
 #include <chrono>
@@ -16,7 +17,8 @@ class MpcNoteRepeatScheduler final {
 public:
     MpcNoteRepeatScheduler(
             audio::AudioEngine& audio,
-            MpcSequenceTransportClock& clock) noexcept;
+            MpcSequenceTransportClock& clock,
+            SequenceRecordQueue& recordQueue) noexcept;
 
     ~MpcNoteRepeatScheduler();
 
@@ -26,6 +28,7 @@ public:
     void setEnabled(bool enabled) noexcept;
     void setPad(std::uint8_t padIndex, std::uint8_t velocity) noexcept;
     void clearPad() noexcept;
+    void setRecordingTrack(std::uint8_t trackIndex) noexcept;
 
     void setRepeatGridIndex(std::int32_t index) noexcept;
     [[nodiscard]] std::int32_t repeatGridIndex() const noexcept {
@@ -50,13 +53,20 @@ private:
 
     void wake() noexcept;
     void run() noexcept;
+    void triggerHit(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            std::int64_t timestampNanos) noexcept;
     [[nodiscard]] Clock::time_point nextDueFromTransport(
             Clock::time_point now,
             const SequenceTransportSnapshot& snapshot) const noexcept;
 
     audio::AudioEngine& audio_;
     MpcSequenceTransportClock& clock_;
+    SequenceRecordQueue& recordQueue_;
 
+    std::atomic<std::uint8_t> recordingTrackIndex_{0xFF};
+    std::atomic<std::uint32_t> recordingWriters_{0};
     std::atomic<bool> enabled_{false};
     std::atomic<bool> padHeld_{false};
     std::atomic<std::uint8_t> padIndex_{0};

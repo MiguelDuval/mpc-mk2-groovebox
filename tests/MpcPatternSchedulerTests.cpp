@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <limits>
 
 int main() {
     mpc::domain::Pattern pattern;
@@ -52,7 +53,7 @@ int main() {
 
     mpc::domain::Pattern nudgePattern;
     nudgePattern.lengthTicks = 1000;
-    nudgePattern.notes = {{100, 30, 40, 100, 127, 1, 40}};
+    nudgePattern.notes = {{100, 30, 40, 100, 127, 1, 40, 14500}};
     const auto nudged = mpc::sequencer::schedulePatternWindow(
             nudgePattern,
             mpc::sequencer::TickWindow{0, 200, 0},
@@ -61,6 +62,7 @@ int main() {
     assert(nudged.written == 1);
     assert(output[0].offsetTicks == 140);
     assert(output[0].patternTick == 100);
+    assert(output[0].tuningOffsetMilliSemitones == 14500);
 
     mpc::domain::Pattern nudgeWrapPattern;
     nudgeWrapPattern.lengthTicks = 1000;
@@ -161,6 +163,90 @@ int main() {
                    1234u,
                    output)
                    .written == 0);
+
+    // Large, valid cycle counts must not monopolize a caller after the output
+    // buffer fills. This bound is shared by whole-pattern and loop-range APIs.
+    mpc::domain::Pattern workBudgetPattern;
+    workBudgetPattern.lengthTicks = 3840;
+    workBudgetPattern.notes = {{0, 30, 36, 100, 127, 1}};
+    const auto budgeted = mpc::sequencer::schedulePatternWindow(
+            workBudgetPattern,
+            mpc::sequencer::TickWindow{0, 960, 1'000'000},
+            1234u,
+            tinyOutput);
+    assert(budgeted.written == tinyOutput.size());
+    assert(budgeted.eligible == 65'536);
+    assert(budgeted.truncated);
+
+    mpc::domain::Pattern rangeWorkBudgetPattern;
+    rangeWorkBudgetPattern.lengthTicks = 3840;
+    rangeWorkBudgetPattern.notes = {{960, 30, 36, 100, 127, 1}};
+    const auto rangeBudgeted = mpc::sequencer::schedulePatternWindowInRange(
+            rangeWorkBudgetPattern,
+            mpc::sequencer::TickWindow{960, 1200, 1'000'000},
+            960,
+            2880,
+            1234u,
+            tinyOutput);
+    assert(rangeBudgeted.written == tinyOutput.size());
+    assert(rangeBudgeted.eligible == 65'536);
+    assert(rangeBudgeted.truncated);
+
+    // Divide-before-multiply avoids signed overflow when the ratchet span is
+    // INT64_MAX; invalid base-offset addition is rejected before any writes.
+    std::array<mpc::sequencer::ScheduledMidiEvent, 8> ratchetOutput{};
+    mpc::sequencer::ScheduledMidiEvent wideRatchet{};
+    wideRatchet.offsetTicks = 17;
+    wideRatchet.ratchetCount = 8;
+    const auto maximumSpan = std::numeric_limits<std::int64_t>::max();
+    const auto wideExpansion = mpc::sequencer::expandScheduledRatchets(
+            std::span<const mpc::sequencer::ScheduledMidiEvent>(&wideRatchet, 1),
+            maximumSpan,
+            ratchetOutput);
+    assert(wideExpansion.written == ratchetOutput.size());
+    assert(!wideExpansion.truncated);
+    assert(!wideExpansion.invalid);
+    const auto stepTicks = maximumSpan / 8;
+    const auto remainderTicks = maximumSpan % 8;
+    for (std::size_t i = 0; i < ratchetOutput.size(); ++i) {
+        const auto index = static_cast<std::int64_t>(i);
+        const auto expected = 17 + stepTicks * index
+                + (remainderTicks * index) / 8;
+        assert(ratchetOutput[i].offsetTicks == expected);
+        assert(ratchetOutput[i].ratchetCount == 1);
+    }
+
+    wideRatchet.offsetTicks = std::numeric_limits<std::int64_t>::max() - 1;
+    wideRatchet.ratchetCount = 2;
+    const auto overflowingExpansion = mpc::sequencer::expandScheduledRatchets(
+            std::span<const mpc::sequencer::ScheduledMidiEvent>(&wideRatchet, 1),
+            10,
+            ratchetOutput);
+    assert(overflowingExpansion.written == 0);
+    assert(overflowingExpansion.invalid);
+
+    mpc::domain::Pattern tinyPattern;
+    tinyPattern.lengthTicks = 3;
+    tinyPattern.notes = {{0, 1, 36, 100, 127, 1}};
+    const auto maximumCycles = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max()) / 3u;
+    std::array<mpc::sequencer::ScheduledMidiEvent, 1> tailOutput{};
+    const auto ordinaryTail = mpc::sequencer::schedulePatternWindow(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0u,
+            tailOutput);
+    assert(ordinaryTail.written == 0);
+    assert(ordinaryTail.truncated);
+    const auto rangedTail = mpc::sequencer::schedulePatternWindowInRange(
+            tinyPattern,
+            mpc::sequencer::TickWindow{0, 2, maximumCycles},
+            0,
+            3,
+            0u,
+            tailOutput);
+    assert(rangedTail.written == 0);
+    assert(rangedTail.truncated);
 
     return 0;
 }

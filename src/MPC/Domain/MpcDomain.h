@@ -2,10 +2,12 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "MPC/Domain/SampleLayerVelocityRange.h"
+#include "MPC/Domain/SamplePcmAsset.h"
 #include "MPC/Domain/SampleRegion.h"
 
 namespace mpc::domain {
@@ -43,6 +45,9 @@ struct SampleRef {
     double sampleRate = 0.0;
     std::int64_t lengthSamples = 0;
     SampleId assetId{};
+    // Shared immutable PCM ownership; Pad/Layer references and edit snapshots
+    // resolve the same asset without copying large audio buffers.
+    std::shared_ptr<const SamplePcmAsset> pcm;
 };
 
 struct SampleLayer {
@@ -125,6 +130,8 @@ struct MidiNoteEvent {
     std::uint8_t ratchet = 1;
     // Signed microtiming offset from the quantized step, in project ticks.
     std::int32_t nudgeTicks = 0;
+    // Per-note semitone shift applied to the routed Drum Pad voice at playback.
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
 
 struct Pattern {

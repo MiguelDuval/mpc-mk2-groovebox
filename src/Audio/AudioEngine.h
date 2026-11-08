@@ -55,6 +55,10 @@ public:
     SampleRegion padSampleRegion(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
+    // Lock-free snapshot of the active voice position; -1 means idle.
+    std::int64_t padSamplePlaybackCursorFrame(
+            std::uint8_t padIndex,
+            std::uint8_t layerIndex) const noexcept;
     std::size_t padSampleFrameCount(
             std::uint8_t padIndex,
             std::uint8_t layerIndex) const;
@@ -161,7 +165,7 @@ public:
     std::string stop();
     std::string status() const;
     bool clearRuntimeSamplesForProjectReplacement() noexcept;
-    void refreshActiveProgramRuntimeProjection() noexcept;
+    std::string refreshActiveProgramRuntimeProjection();
 
     // Starts a bounded microphone capture buffer in RAM.
     // The capture callback writes only into preallocated storage.
@@ -191,6 +195,11 @@ public:
             std::uint8_t padIndex,
             std::uint8_t velocity,
             std::int32_t offsetFrames);
+    // Plays a pad with a temporary pitch offset without mutating Program state.
+    bool triggerPadWithTuningOffset(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            std::int32_t tuningOffsetMilliSemitones);
 
     AudioTriggerQueue& triggerQueue() noexcept {
         return triggerQueue_;
@@ -213,12 +222,17 @@ private:
                     kPadCount>;
     using SampleRegionGrid =
             std::array<std::array<SampleRegion, kSampleLayerCount>, kPadCount>;
+    using SamplePlaybackCursorGrid =
+            std::array<std::array<std::atomic<std::uint32_t>, kSampleLayerCount>, kPadCount>;
 
     class OutputCallback;
     class InputCallback;
 
     std::string openInputStream();
     mpc::domain::SampleId allocateSampleId();
+    mpc::domain::SampleId registerSampleAsset(
+            std::string name,
+            const std::shared_ptr<const SampleBuffer>& sample);
     std::string stopInputStream();
     std::string stopOutputStream();
     void syncPadRuntimeProjection(
@@ -242,6 +256,7 @@ private:
     std::shared_ptr<oboe::AudioStream> stream_;
     std::atomic<std::uint64_t> outputCallbackCount_{0};
     std::atomic<std::uint64_t> outputCallbackFrames_{0};
+    SamplePlaybackCursorGrid samplePlaybackCursorFrames_{};
     std::atomic<std::uint32_t> outputPeakMilli_{0};
     std::atomic<std::uint32_t> testToneRequestFrames_{0};
     std::atomic<std::int32_t> outputLastErrorCode_{

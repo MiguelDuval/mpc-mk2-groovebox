@@ -1,7 +1,9 @@
 #include "MPC/MpcProjectState.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <cassert>
+#include <limits>
 
 int main() {
     mpc::MpcProjectState state;
@@ -9,6 +11,45 @@ int main() {
     assert(state.project().drumPrograms.size() == 1);
     assert(state.activeDrumProgram().pads.size() == mpc::domain::kMaxProgramPads);
     assert(state.activeDrumProgram().pad(0).midiNote == 36);
+    assert(state.activePatternCount() == 1);
+    assert(state.activePatternIndex() == 0);
+    assert(state.activePattern() != nullptr);
+    assert(state.activePattern()->name == "Pattern 01");
+    assert(state.activeSequence().tracks.front().patterns.size() == 1);
+    auto secondPattern = *state.activePattern();
+    secondPattern.id = "pattern-02";
+    secondPattern.name = "Pattern 02";
+    state.activeSequence().tracks.front().patterns.push_back(secondPattern);
+    assert(state.activeSequence().tracks.front().patterns.size() == 2);
+    assert(state.activePatternCount() == 2);
+    assert(state.selectPattern(1));
+    assert(state.activePatternIndex() == 1);
+    assert(state.activePattern()->id == "pattern-02");
+    assert(!state.selectPattern(2));
+    assert(state.selectTrack(0));
+    assert(state.activePatternIndex() == 1);
+    assert(state.activeSequence().tracks.size() == 1);
+    auto secondTrack = state.activeSequence().tracks.front();
+    secondTrack.id = "pattern-selection-test-track-02";
+    state.activeSequence().tracks.push_back(secondTrack);
+    assert(state.activeSequence().tracks.size() == 2);
+    assert(state.selectTrack(1));
+    assert(state.activePatternIndex() == 0);
+    assert(state.selectTrack(0));
+    assert(state.activePatternIndex() == 0);
+    assert(state.selectPattern(1));
+
+    // Discard the selection-only mutations before asserting the default project.
+    assert(state.resetToDefault());
+    assert(state.activeSequence().tracks.size() == 1);
+    assert(state.activeSequence().tracks.front().patterns.size() == 1);
+
+    // Invalid SampleRef metadata is rejected before any ID is consumed.
+    assert(!state.registerSample("Negative rate", "", -1.0, 24000).isAssigned());
+    assert(!state.registerSample(
+            "Non-finite rate", "", std::numeric_limits<double>::quiet_NaN(), 24000).isAssigned());
+    assert(!state.registerSample("Negative length", "", 48000.0, -1).isAssigned());
+    assert(state.project().samples.empty());
 
     const auto sampleId = state.registerSample(
             "Kick",
@@ -17,6 +58,7 @@ int main() {
             24000);
 
     assert(sampleId.isAssigned());
+    assert(sampleId.value == 1);
     assert(state.project().samples.size() == 1);
     assert(state.findSample(sampleId) != nullptr);
     assert(state.findSample(sampleId)->name == "Kick");
@@ -155,13 +197,63 @@ int main() {
     assert(state.selectNextSequence());
     assert(state.activeSequenceIndex() == 1);
     assert(state.activeTrackIndex() == 0);
-    assert(state.activeDrumProgram().id == "drum-program-1");
-    assert(state.activeProgramIndexForTrack(0) == 0);
+    // The new sequence inherits the Track's currently assigned Drum Program.
+    assert(state.activeDrumProgram().id == "drum-program-2");
+    assert(state.activeProgramIndexForTrack(0) == 1);
     assert(state.selectSequence(0));
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
 
+    // Generated IDs use the next unused suffix, not collection size alone.
+    mpc::MpcProjectState sparseTrackState;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    auto& sparseSecondTrack = sparseTrackState.activeSequence().tracks[1];
+    sparseSecondTrack.id = "track-3";
+    sparseSecondTrack.patterns[0].id = "track-3-pattern-1";
+    sparseSecondTrack.placements[0].id = "track-3-placement-1";
+    sparseSecondTrack.placements[0].patternId = sparseSecondTrack.patterns[0].id;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    const auto& generatedTrackSequence = sparseTrackState.activeSequence();
+    assert(generatedTrackSequence.tracks.size() == 3);
+    assert(generatedTrackSequence.tracks[2].id == "track-4");
+    assert(generatedTrackSequence.tracks[2].patterns[0].id == "track-4-pattern-1");
+    assert(generatedTrackSequence.tracks[2].placements[0].id == "track-4-placement-1");
 
+    mpc::MpcProjectState sparseSequenceState;
+    assert(sparseSequenceState.addSequence());
+    auto& renamedSequence = sparseSequenceState.project().sequences[1];
+    renamedSequence.id = "sequence-3";
+    renamedSequence.tracks[0].id = "sequence-3-track-1";
+    renamedSequence.tracks[0].patterns[0].id = "sequence-3-track-1-pattern-1";
+    renamedSequence.tracks[0].placements[0].id = "sequence-3-track-1-placement-1";
+    renamedSequence.tracks[0].placements[0].patternId =
+            renamedSequence.tracks[0].patterns[0].id;
+    assert(sparseSequenceState.addSequence());
+    const auto& generatedSequences = sparseSequenceState.project().sequences;
+    assert(generatedSequences.size() == 3);
+    assert(generatedSequences[0].id == "sequence-1");
+    assert(generatedSequences[1].id == "sequence-3");
+    assert(generatedSequences[2].id == "sequence-4");
+    assert(generatedSequences[2].name == "Sequence 04");
+    assert(generatedSequences[2].tracks[0].id == "sequence-4-track-1");
+
+    // A new Sequence inherits the currently active Drum Program, not a
+    // hard-coded factory Program ID.
+    mpc::MpcProjectState activeProgramSequenceState;
+    auto activeDrumProgram = activeProgramSequenceState.project().drumPrograms.front();
+    activeDrumProgram.id = "drum-program-2";
+    activeDrumProgram.name = "Drum Program 2";
+    activeProgramSequenceState.project().drumPrograms.push_back(activeDrumProgram);
+    assert(activeProgramSequenceState.setTrackProgram(0, "drum-program-2"));
+    assert(activeProgramSequenceState.activeDrumProgram().id == "drum-program-2");
+    assert(activeProgramSequenceState.addSequence());
+    assert(activeProgramSequenceState.activeSequence().tracks[0].programId
+            == "drum-program-2");
+    assert(activeProgramSequenceState.activeProgramIndexForTrack(0) == 1);
+
+    // Whole-Project replacement gets a new in-memory generation even when
+    // the serialized Project/Sequence IDs are reused by the next opened file.
+    const auto generationBeforeReplacement = state.projectGeneration();
     // Project replacement must reset active indices and resolve the Track-owned Program.
     mpc::domain::Project opened;
     opened.id = "opened-project";
@@ -200,15 +292,106 @@ int main() {
     openedTrack.patterns.push_back(openedPattern);
     openedSequence.tracks.push_back(openedTrack);
     opened.sequences.push_back(openedSequence);
+
+    // Whole-Project replacement must reject dangling and ambiguous Drum Program
+    // routing without disturbing the currently active Project.
+    const auto projectBeforeRejectedRouting = state.project().id;
+    auto missingProgramProject = opened;
+    missingProgramProject.sequences[0].tracks[0].programId = "missing-program";
+    assert(!mpc::MpcProjectState::canReplaceProject(missingProgramProject));
+    assert(!state.replaceProject(missingProgramProject));
+    assert(state.project().id == projectBeforeRejectedRouting);
+
+    auto duplicateProgramProject = opened;
+    auto duplicateProgram = openedProgram;
+    duplicateProgram.name = "Duplicate Opened Drums";
+    duplicateProgramProject.drumPrograms.push_back(duplicateProgram);
+    assert(!mpc::MpcProjectState::canReplaceProject(duplicateProgramProject));
+    assert(!state.replaceProject(duplicateProgramProject));
+    assert(state.project().id == projectBeforeRejectedRouting);
+
     assert(mpc::MpcProjectState::canReplaceProject(opened));
     assert(state.replaceProject(opened));
+    assert(state.projectGeneration() != generationBeforeReplacement);
     assert(state.project().id == "opened-project");
     assert(state.activeSequenceIndex() == 0);
     assert(state.activeTrackIndex() == 0);
     assert(state.activeDrumProgram().id == "opened-program");
     assert(state.activeSequence().tracks[0].patterns[0].notes[0].nudgeTicks == -5);
+    const auto generationBeforeSameIdReplacement = state.projectGeneration();
+    auto sameIdProject = state.project();
+    assert(state.replaceProject(std::move(sameIdProject)));
+    assert(state.projectGeneration() != generationBeforeSameIdReplacement);
     const auto newSampleId = state.registerSample("New sample", "", 44100.0, 9000);
     assert(newSampleId.value == 42);
+
+    // When the next ID is UINT32_MAX, registering it must not wrap to 1 and
+    // duplicate an existing asset on the next registration.
+    mpc::MpcProjectState wrapSampleIdState;
+    auto wrapProject = wrapSampleIdState.project();
+    mpc::domain::SampleRef lowSample;
+    lowSample.id = "sample-low-id";
+    lowSample.name = "Existing low ID";
+    lowSample.sampleRate = 48000.0;
+    lowSample.lengthSamples = 100;
+    lowSample.assetId.value = 1;
+    wrapProject.samples.push_back(lowSample);
+    mpc::domain::SampleRef highSample;
+    highSample.id = "sample-high-id";
+    highSample.name = "Existing high ID";
+    highSample.sampleRate = 48000.0;
+    highSample.lengthSamples = 100;
+    highSample.assetId.value = std::numeric_limits<std::uint32_t>::max() - 1;
+    wrapProject.samples.push_back(highSample);
+    // An unresolved layer reference still reserves its ID during wrap. ID 3
+    // is the first ID after the hole at 2, so blindly advancing after allocating
+    // 2 would collide with this live reference on the very next registration.
+    wrapProject.drumPrograms.front().pads[0].layer(0).sample.value = 3;
+    assert(wrapSampleIdState.replaceProject(std::move(wrapProject)));
+
+    const auto lastSampleId = wrapSampleIdState.registerSample(
+            "Last sample ID", "", 48000.0, 100);
+    assert(lastSampleId.value == std::numeric_limits<std::uint32_t>::max());
+    const auto wrappedSampleId = wrapSampleIdState.registerSample(
+            "First free after wrap", "", 48000.0, 100);
+    assert(wrappedSampleId.value == 2);
+    const auto nextWrappedSampleId = wrapSampleIdState.registerSample(
+            "Next free after unresolved layer reference", "", 48000.0, 100);
+    assert(nextWrappedSampleId.value == 4);
+    assert(wrapSampleIdState.project().drumPrograms.front().pads[0].layer(0).sample.value == 3);
+    assert(wrapSampleIdState.project().samples.size() == 5);
+    assert(wrapSampleIdState.findSample(mpc::domain::SampleId{1}) != nullptr);
+    assert(wrapSampleIdState.findSample(wrappedSampleId) != nullptr);
+    assert(wrapSampleIdState.findSample(mpc::domain::SampleId{3}) == nullptr);
+    assert(wrapSampleIdState.findSample(lastSampleId) != nullptr);
+    assert(wrapSampleIdState.findSample(nextWrappedSampleId) != nullptr);
+    assert(lastSampleId.value != wrappedSampleId.value);
+    assert(wrappedSampleId.value != nextWrappedSampleId.value);
+
+    // Loading a project whose maximum referenced ID is already UINT32_MAX
+    // must enter the same persistent search mode, not trust the first hole's
+    // successor on a subsequent registration.
+    mpc::MpcProjectState loadedAtMaximumState;
+    auto loadedAtMaximumProject = loadedAtMaximumState.project();
+    loadedAtMaximumProject.samples.push_back(lowSample);
+    mpc::domain::SampleRef loadedMaximumSample;
+    loadedMaximumSample.id = "sample-loaded-maximum";
+    loadedMaximumSample.name = "Loaded maximum ID";
+    loadedMaximumSample.sampleRate = 48000.0;
+    loadedMaximumSample.lengthSamples = 100;
+    loadedMaximumSample.assetId.value = std::numeric_limits<std::uint32_t>::max();
+    loadedAtMaximumProject.samples.push_back(loadedMaximumSample);
+    loadedAtMaximumProject.drumPrograms.front().pads[0].layer(0).sample.value = 3;
+    assert(loadedAtMaximumState.replaceProject(std::move(loadedAtMaximumProject)));
+    const auto firstAfterMaximumLoad = loadedAtMaximumState.registerSample(
+            "First free after maximum load", "", 48000.0, 100);
+    const auto secondAfterMaximumLoad = loadedAtMaximumState.registerSample(
+            "Second free after maximum load", "", 48000.0, 100);
+    assert(firstAfterMaximumLoad.value == 2);
+    assert(secondAfterMaximumLoad.value == 4);
+    assert(loadedAtMaximumState.findSample(mpc::domain::SampleId{3}) == nullptr);
+    assert(loadedAtMaximumState.findSample(firstAfterMaximumLoad) != nullptr);
+    assert(loadedAtMaximumState.findSample(secondAfterMaximumLoad) != nullptr);
     mpc::domain::Project invalid;
     invalid.id = "invalid";
     assert(!mpc::MpcProjectState::canReplaceProject(invalid));
@@ -242,5 +425,141 @@ int main() {
     const auto firstNewSample = state.registerSample(
             "First sample in new project", "", 48000.0, 1000);
     assert(firstNewSample.value == 1);
+    // Malformed/legacy-sized sequences can approach INT32_MAX. Changing
+    // the time signature must not overflow loop-bar rounding or loop tick
+    // multiplication, and the resulting half-open range must stay in bounds.
+    mpc::MpcProjectState extremeTimeSignatureState;
+    auto& extremeSequence = extremeTimeSignatureState.activeSequence();
+    const auto maximumTicks = std::numeric_limits<std::int32_t>::max();
+    extremeSequence.lengthTicks = maximumTicks;
+    extremeSequence.loopStartTicks = maximumTicks - 3840;
+    extremeSequence.loopEndTicks = maximumTicks;
+    extremeSequence.tracks.front().patterns.front().lengthTicks = maximumTicks;
+    extremeSequence.tracks.front().placements.front().lengthTicks = maximumTicks;
+    assert(extremeTimeSignatureState.setSequenceTimeSignature(16, 4));
+    assert(extremeSequence.lengthTicks == maximumTicks);
+    assert(extremeSequence.loopStartTicks >= 0);
+    assert(extremeSequence.loopStartTicks < extremeSequence.loopEndTicks);
+    assert(extremeSequence.loopEndTicks <= extremeSequence.lengthTicks);
+    assert(extremeSequence.loopStartTicks == maximumTicks - 1);
+    assert(extremeSequence.loopEndTicks == maximumTicks);
+
+
+    // Shortening a Sequence must not leave Pattern notes or Arrangement
+    // placements beyond their newly shortened timeline/source bounds.
+    mpc::MpcProjectState barResizeState;
+    assert(barResizeState.setSequenceBars(8));
+    auto& barResizeSequence = barResizeState.activeSequence();
+    auto& barResizeTrack = barResizeSequence.tracks.front();
+    auto& barResizePattern = barResizeTrack.patterns.front();
+    barResizePattern.notes = {
+        {100, 120, 36, 100, 127, 1, 0},
+        {3600, 5000, 38, 90, 127, 1, 0},
+        {4000, 240, 42, 80, 127, 1, 0}
+    };
+    barResizeTrack.placements.clear();
+    barResizeTrack.placements = {
+        {"clip-a", barResizePattern.id, 100, 500, 0},
+        {"clip-b", barResizePattern.id, 3600, 500, 3500},
+        {"clip-c", barResizePattern.id, 5000, 300, 0}
+    };
+    assert(barResizeState.setSequenceBars(1));
+    assert(barResizeSequence.lengthTicks == 3840);
+    assert(barResizePattern.lengthTicks == 3840);
+    assert(barResizePattern.notes.size() == 2);
+    assert(barResizePattern.notes[0].tick == 100);
+    assert(barResizePattern.notes[0].durationTicks == 120);
+    assert(barResizePattern.notes[1].tick == 3600);
+    assert(barResizePattern.notes[1].durationTicks == 3840);
+    assert(barResizeTrack.placements.size() == 2);
+    assert(barResizeTrack.placements[0].id == "clip-a");
+    assert(barResizeTrack.placements[0].startTick == 100);
+    assert(barResizeTrack.placements[0].lengthTicks == 500);
+    assert(barResizeTrack.placements[1].id == "clip-b");
+    assert(barResizeTrack.placements[1].startTick == 3600);
+    assert(barResizeTrack.placements[1].lengthTicks == 240);
+    for (const auto& placement : barResizeTrack.placements) {
+        assert(placement.startTick >= 0);
+        assert(placement.lengthTicks > 0);
+        assert(static_cast<std::int64_t>(placement.startTick) + placement.lengthTicks
+                <= barResizeSequence.lengthTicks);
+        assert(placement.sourceOffsetTicks >= 0);
+        assert(static_cast<std::int64_t>(placement.sourceOffsetTicks) + placement.lengthTicks
+                <= barResizePattern.lengthTicks);
+    }
+
+    // Changing meter can also shorten the resulting Sequence; the same bounds
+    // repair must apply when the time-signature setter resizes its Patterns.
+    mpc::MpcProjectState meterResizeState;
+    assert(meterResizeState.setSequenceBars(8));
+    auto& meterResizeSequence = meterResizeState.activeSequence();
+    auto& meterResizeTrack = meterResizeSequence.tracks.front();
+    auto& meterResizePattern = meterResizeTrack.patterns.front();
+    meterResizePattern.notes = {
+        {100, 120, 36, 100, 127, 1, 0},
+        {25000, 25000, 38, 90, 127, 1, 0}
+    };
+    meterResizeTrack.placements.clear();
+    meterResizeTrack.placements = {
+        {"meter-clip-a", meterResizePattern.id, 100, 500, 0},
+        {"meter-clip-b", meterResizePattern.id, 24000, 1000, 24000}
+    };
+    assert(meterResizeState.setSequenceTimeSignature(3, 4));
+    assert(meterResizeSequence.lengthTicks == 23040);
+    assert(meterResizePattern.lengthTicks == 23040);
+    assert(meterResizePattern.notes.size() == 1);
+    assert(meterResizePattern.notes.front().tick == 100);
+    assert(meterResizeTrack.placements.size() == 1);
+    assert(meterResizeTrack.placements.front().id == "meter-clip-a");
+    assert(meterResizeTrack.placements.front().lengthTicks == 500);
+
+    // A malformed/legacy loop whose end precedes its start must be repaired
+    // when the Sequence resize API next runs, rather than exposing an inverted
+    // half-open range to the transport.
+    mpc::MpcProjectState invalidLoopResizeState;
+    auto& invalidLoopResizeSequence = invalidLoopResizeState.activeSequence();
+    invalidLoopResizeSequence.loopEnabled = true;
+    invalidLoopResizeSequence.loopStartTicks = 7000;
+    invalidLoopResizeSequence.loopEndTicks = 4000;
+    assert(invalidLoopResizeState.setSequenceBars(4));
+    assert(invalidLoopResizeSequence.loopStartTicks == 7000);
+    assert(invalidLoopResizeSequence.loopEndTicks == 7001);
+    assert(invalidLoopResizeSequence.loopStartTicks
+            < invalidLoopResizeSequence.loopEndTicks);
+    assert(invalidLoopResizeSequence.loopEndTicks
+            <= invalidLoopResizeSequence.lengthTicks);
+
+
+    // Bar-to-tick loop mapping must clamp in int64 before narrowing when a
+    // legacy Sequence is at INT32_MAX and the final bar rounds above the limit.
+    mpc::MpcProjectState extremeLoopState;
+    auto& extremeLoopSequence = extremeLoopState.activeSequence();
+    extremeLoopSequence.lengthTicks = std::numeric_limits<std::int32_t>::max();
+    extremeLoopSequence.loopStartTicks = 0;
+    extremeLoopSequence.loopEndTicks = extremeLoopSequence.lengthTicks;
+    extremeLoopSequence.tracks.front().patterns.front().lengthTicks =
+            extremeLoopSequence.lengthTicks;
+    extremeLoopSequence.tracks.front().placements.front().lengthTicks =
+            extremeLoopSequence.lengthTicks;
+    const auto extremeBars = mpc::sequencer::sequenceBars(extremeLoopSequence);
+    assert(extremeLoopState.setSequenceLoop(false, extremeBars, extremeBars));
+    assert(!extremeLoopSequence.loopEnabled);
+    assert(extremeLoopSequence.loopStartTicks >= 0);
+    assert(extremeLoopSequence.loopStartTicks < extremeLoopSequence.loopEndTicks);
+    assert(extremeLoopSequence.loopEndTicks == extremeLoopSequence.lengthTicks);
+
+    // A rejected edit is transactional: an invalid sequence length must not
+    // partially change the currently stored loop-enable/range state.
+    mpc::MpcProjectState invalidLoopState;
+    auto& invalidLoopSequence = invalidLoopState.activeSequence();
+    invalidLoopSequence.lengthTicks = 0;
+    invalidLoopSequence.loopEnabled = true;
+    invalidLoopSequence.loopStartTicks = 123;
+    invalidLoopSequence.loopEndTicks = 456;
+    assert(!invalidLoopState.setSequenceLoop(false, 1, 1));
+    assert(invalidLoopSequence.loopEnabled);
+    assert(invalidLoopSequence.loopStartTicks == 123);
+    assert(invalidLoopSequence.loopEndTicks == 456);
+
     return 0;
 }

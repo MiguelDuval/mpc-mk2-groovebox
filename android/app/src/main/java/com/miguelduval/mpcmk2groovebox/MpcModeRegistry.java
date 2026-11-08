@@ -35,12 +35,17 @@ final class MpcModeRegistry {
 
             new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", false),
             new Entry(MpcUiState.Mode.PAD_MIXER, "PAD MIXER", true),
-            new Entry(MpcUiState.Mode.LEVELS_16, "16 LEVELS", false),
-            new Entry(MpcUiState.Mode.PAD_PERFORM, "PAD PERFORM", false),
+            // These are intentionally scoped implementations: Velocity/Tune
+            // for 16 Levels, and scale/octave Pad Perform. Unsupported parameter
+            // mappings and chord/progression modes remain outside their scope.
+            new Entry(MpcUiState.Mode.LEVELS_16, "16 LEVELS", true),
+            new Entry(MpcUiState.Mode.PAD_PERFORM, "PAD PERFORM", true),
 
             new Entry(MpcUiState.Mode.NEXT_SEQUENCE, "NEXT SEQUENCE", true),
             new Entry(MpcUiState.Mode.ARRANGE, "ARRANGE", true),
-            new Entry(MpcUiState.Mode.LIST_EDIT, "LIST EDIT", false),
+            // Notes-event CRUD for Pattern 01 is available. Tempo, automation,
+            // event-type filters and the full MPC List Edit event catalog remain gaps.
+            new Entry(MpcUiState.Mode.LIST_EDIT, "LIST EDIT", true),
             new Entry(MpcUiState.Mode.PROJECT, "PROJECT", true)
     };
 

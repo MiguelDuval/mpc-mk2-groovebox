@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <limits>
 #include <cstddef>
 
 namespace {
@@ -53,13 +54,29 @@ int main() {
         mpc::audio::OnePoleLowPass filter;
         filter.configure(0.0f, 48000);
         expectNear(filter.process(0.75f), 0.75f);
-
         filter.configure(1000.0f, 48000);
+        expectNear(filter.process(1.0f), 1.0f);
+        filter.setCutoff(0.0f, 48000);
+        expectNear(filter.process(0.0f), 0.0f);
+        filter.setCutoff(1000.0f, 48000);
+        expectNear(filter.process(0.0f), 0.0f);
+
+        filter.reset();
         const float first = filter.process(1.0f);
         const float second = filter.process(0.0f);
         expectNear(first, 1.0f);
         assert(second > 0.0f);
         assert(second < 1.0f);
+
+        const auto notANumber = std::numeric_limits<float>::quiet_NaN();
+        const auto positiveInfinity = std::numeric_limits<float>::infinity();
+        assert(filter.process(notANumber) == 0.0f);
+        assert(std::isfinite(filter.process(0.25f)));
+        filter.setCutoff(0.0f, 48000);
+        assert(filter.process(positiveInfinity) == 0.0f);
+        expectNear(filter.process(0.25f), 0.25f);
+        filter.setCutoff(1000.0f, 48000);
+        expectNear(filter.process(0.25f), 0.25f);
     }
 
     return 0;

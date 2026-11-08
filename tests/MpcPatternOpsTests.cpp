@@ -429,6 +429,36 @@ int main() {
     assert(stepPattern.notes.size() == 1);
     assert(!mpc::sequencer::eraseStepNote(stepPattern, 4, 120, 38));
 
+    mpc::domain::Pattern ambiguousStepPattern;
+    ambiguousStepPattern.lengthTicks = 960;
+    ambiguousStepPattern.notes = {
+            {120, 120, 36, 100, 127, 1, -12},
+            {120, 60, 36, 80, 100, 2, 24}};
+    assert(!mpc::sequencer::eraseStepNote(ambiguousStepPattern, 1, 120, 36));
+    assert(ambiguousStepPattern.notes.size() == 2);
+    assert(ambiguousStepPattern.notes[0].durationTicks == 120);
+    assert(ambiguousStepPattern.notes[1].durationTicks == 60);
+    assert(mpc::sequencer::findStepNote(ambiguousStepPattern, 1, 120, 36) == nullptr);
+    assert(!mpc::sequencer::setStepNote(
+            ambiguousStepPattern, 1, 120, 36, 90, 90, 90, 2));
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteProbability(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(!mpc::sequencer::setStepNoteNudge(
+            ambiguousStepPattern, 1, 120, 36, 12));
+    assert(!mpc::sequencer::setStepNoteRatchet(
+            ambiguousStepPattern, 1, 120, 36, 3));
+    assert(!mpc::sequencer::setStepNoteDuration(
+            ambiguousStepPattern, 1, 120, 36, 90));
+    assert(ambiguousStepPattern.notes.size() == 2);
+    assert(ambiguousStepPattern.notes[0].durationTicks == 120);
+    assert(ambiguousStepPattern.notes[0].velocity == 100);
+    assert(ambiguousStepPattern.notes[0].nudgeTicks == -12);
+    assert(ambiguousStepPattern.notes[1].durationTicks == 60);
+    assert(ambiguousStepPattern.notes[1].velocity == 80);
+    assert(ambiguousStepPattern.notes[1].nudgeTicks == 24);
+
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 16, 120, 40, 100));
     assert(!mpc::sequencer::setStepNote(
@@ -437,6 +467,17 @@ int main() {
             stepPattern, 1, 0, 40, 100));
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
+
+    // Public Pattern mutation helpers must not create MIDI values that the
+    // project persistence contract later refuses to serialize.
+    const auto notesBeforeInvalidMutation = stepPattern.notes.size();
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 255, 100));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 255));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, 0, 127, 9));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, -1));
+    assert(!mpc::sequencer::setStepNote(stepPattern, 1, 120, 40, 100, 1921));
+    assert(!mpc::sequencer::setStepNoteVelocity(stepPattern, 0, 120, 36, 255));
+    assert(stepPattern.notes.size() == notesBeforeInvalidMutation);
 
     // Arrangement moves change only event position and reject collisions.
     mpc::domain::Pattern arrangementPattern;
@@ -465,6 +506,23 @@ int main() {
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 999, 36, 720));
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, -120));
     assert(!mpc::sequencer::movePatternNoteTick(arrangementPattern, 240, 36, 1920));
+
+    // The API identifies a note only by (tick, pitch); duplicated matches are
+    // ambiguous and must not move just the first event or alter Pattern state.
+    mpc::domain::Pattern ambiguousMovePattern;
+    ambiguousMovePattern.lengthTicks = 960;
+    ambiguousMovePattern.notes = {
+            {120, 120, 36, 100, 127, 1},
+            {120, 60, 36, 80, 100, 2}};
+    assert(!mpc::sequencer::movePatternNoteTick(
+            ambiguousMovePattern, 120, 36, 240));
+    assert(ambiguousMovePattern.notes.size() == 2);
+    assert(ambiguousMovePattern.notes[0].tick == 120);
+    assert(ambiguousMovePattern.notes[0].durationTicks == 120);
+    assert(ambiguousMovePattern.notes[0].velocity == 100);
+    assert(ambiguousMovePattern.notes[1].tick == 120);
+    assert(ambiguousMovePattern.notes[1].durationTicks == 60);
+    assert(ambiguousMovePattern.notes[1].velocity == 80);
 
     // Arrangement duplicate is non-destructive, preserves every musical field,
     // rejects same-pitch collisions/boundaries, and can be undone/redone exactly.
@@ -610,6 +668,19 @@ int main() {
     assert(pattern.notes.size() == 1);
     assert(pattern.notes[0].tick == 960);
 
+    const std::array<mpc::domain::MidiNoteEvent, 5> malformedAttributes{{
+            {0, 120, 255, 100, 127, 1},
+            {0, 120, 36, 255, 127, 1},
+            {0, 120, 36, 100, 255, 1},
+            {0, 120, 36, 100, 127, 9},
+            {0, 3841, 36, 100, 127, 1}}};
+    assert(mpc::sequencer::recordNotes(
+                   pattern,
+                   malformedAttributes,
+                   mpc::sequencer::PatternRecordMode::Replace) == 0);
+    assert(pattern.notes.size() == 1);
+    assert(pattern.notes[0].tick == 960);
+
     mpc::domain::Pattern swingPattern;
     swingPattern.lengthTicks = 3840;
     swingPattern.notes = {
@@ -628,6 +699,19 @@ int main() {
 
     assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
     assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
+
+    // A one-tick grid has a zero-frame swing delay at every percentage.
+    // It is a no-op and must not report that notes were edited.
+    mpc::domain::Pattern zeroDelaySwingPattern;
+    zeroDelaySwingPattern.lengthTicks = 16;
+    zeroDelaySwingPattern.notes = {
+            {0, 1, 36, 100, 127, 1},
+            {1, 1, 38, 100, 127, 1},
+            {3, 1, 42, 100, 127, 1}};
+    assert(mpc::sequencer::applySwing(zeroDelaySwingPattern, 1, 100) == 0);
+    assert(zeroDelaySwingPattern.notes[0].tick == 0);
+    assert(zeroDelaySwingPattern.notes[1].tick == 1);
+    assert(zeroDelaySwingPattern.notes[2].tick == 3);
     assert(swingPattern.notes[0].tick == 0);
     assert(swingPattern.notes[1].tick == 600);
     assert(swingPattern.notes[2].tick == 720);

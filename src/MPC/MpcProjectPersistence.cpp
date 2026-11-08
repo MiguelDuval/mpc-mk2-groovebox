@@ -1,16 +1,25 @@
 #include "MPC/MpcProjectPersistence.h"
+#include "Audio/AudioTriggerQueue.h"
+#include "Audio/WavSample.h"
+#include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
 #include <fstream>
 #include <iomanip>
 #include <limits>
+#include <map>
 #include <set>
 #include <sstream>
+#include <streambuf>
 #include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 namespace mpc::persistence {
 namespace {
@@ -29,6 +38,135 @@ bool setError(std::string* error, const std::string& message) {
     if (error != nullptr && error->empty()) *error = message;
     return false;
 }
+
+constexpr std::array<std::uint32_t, 256> makePcmCrc32Table() {
+    std::array<std::uint32_t, 256> table{};
+    for (std::uint32_t value = 0; value < table.size(); ++value) {
+        std::uint32_t crc = value;
+        for (int bit = 0; bit < 8; ++bit) {
+            crc = (crc >> 1u)
+                    ^ (0xEDB88320u & (0u - (crc & 1u)));
+        }
+        table[value] = crc;
+    }
+    return table;
+}
+
+constexpr auto kPcmCrc32Table = makePcmCrc32Table();
+
+std::uint32_t pcmCrc32(const audio::SampleBuffer& sample) noexcept {
+    std::uint32_t crc = 0xFFFFFFFFu;
+    for (const float value : sample.interleaved) {
+        const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            const auto packedByte =
+                    static_cast<std::uint8_t>(bits >> (byte * 8u));
+            crc = kPcmCrc32Table[(crc ^ packedByte) & 0xFFu] ^ (crc >> 8u);
+        }
+    }
+    return crc ^ 0xFFFFFFFFu;
+}
+
+void writePcmBlock(std::ostream& out, const audio::SampleBuffer& sample) {
+    std::array<std::uint8_t, 4096> chunk{};
+    std::size_t used = 0;
+    const auto flush = [&out, &chunk, &used]() {
+        if (used > 0) {
+            out.write(reinterpret_cast<const char*>(chunk.data()),
+                    static_cast<std::streamsize>(used));
+            used = 0;
+        }
+    };
+    for (const float value : sample.interleaved) {
+        const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            chunk[used++] = static_cast<std::uint8_t>(bits >> (byte * 8u));
+            if (used == chunk.size()) flush();
+        }
+    }
+    flush();
+    out.put('\n');
+}
+
+std::set<std::uint32_t> referencedSampleAssetIds(
+        const domain::Project& project) {
+    std::set<std::uint32_t> ids;
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) ids.insert(layer.sample.value);
+            }
+        }
+    }
+    return ids;
+}
+
+bool validateEmbeddedPcmAssets(
+        const domain::Project& project, std::string* error) {
+    std::uint64_t totalPcmBytes = 0;
+    for (const auto id : referencedSampleAssetIds(project)) {
+        const auto found = std::find_if(project.samples.begin(), project.samples.end(),
+                [id](const domain::SampleRef& sample) {
+                    return sample.assetId.value == id;
+                });
+        if (found == project.samples.end()) {
+            return setError(error, "Assigned sample asset references a missing SampleRef");
+        }
+        if (found->pcm == nullptr) {
+            return setError(error, "Assigned sample asset " + std::to_string(id)
+                    + " has no PCM data; reload the WAV before saving this v4 Project");
+        }
+        const auto& pcm = *found->pcm;
+        if (pcm.sampleRate == 0 || (pcm.channelCount != 1 && pcm.channelCount != 2)
+                || pcm.frameCount() == 0
+                || pcm.interleaved.size() != pcm.frameCount() * pcm.channelCount
+                || found->sampleRate != static_cast<double>(pcm.sampleRate)
+                || found->lengthSamples != static_cast<std::int64_t>(pcm.frameCount())) {
+            return setError(error, "SampleRef metadata does not match its PCM asset");
+        }
+        const auto assetBytes =
+                static_cast<std::uint64_t>(pcm.interleaved.size()) * sizeof(float);
+        if (assetBytes > kMaxProjectFileBytes - totalPcmBytes) {
+            return setError(error,
+                    "PCM assets exceed the 128 MiB project size limit");
+        }
+        totalPcmBytes += assetBytes;
+        for (const float value : pcm.interleaved) {
+            if (!std::isfinite(value) || value < -1.0f || value > 1.0f) {
+                return setError(error, "PCM asset contains invalid float samples");
+            }
+        }
+    }
+    return true;
+}
+
+bool validateRequiredPcmPresent(
+        const domain::Project& project, std::string* error) {
+    for (const auto id : referencedSampleAssetIds(project)) {
+        const auto found = std::find_if(project.samples.begin(), project.samples.end(),
+                [id](const domain::SampleRef& sample) {
+                    return sample.assetId.value == id;
+                });
+        if (found == project.samples.end() || found->pcm == nullptr) {
+            return setError(error, "v4 Project is missing a referenced PCM asset");
+        }
+    }
+    return true;
+}
+
+class ReadOnlyMemoryInputBuffer final : public std::streambuf {
+public:
+    explicit ReadOnlyMemoryInputBuffer(std::string_view bytes) noexcept {
+        if (bytes.empty()) {
+            setg(nullptr, nullptr, nullptr);
+            return;
+        }
+        // std::streambuf exposes a mutable get area even for input-only streams.
+        // No write path is provided; the source remains owned by the caller.
+        auto* const begin = const_cast<char*>(bytes.data());
+        setg(begin, begin, begin + bytes.size());
+    }
+};
 
 class Decoder final {
 public:
@@ -58,6 +196,57 @@ public:
         if (!value(raw)) return false;
         if (raw != 0 && raw != 1) return fail("boolean value must be 0 or 1");
         result = raw != 0;
+        return true;
+    }
+
+    bool pcmBlock(audio::SampleBuffer& sample,
+            std::uint64_t byteCount,
+            std::uint32_t expectedCrc) {
+        const std::uint64_t expectedBytes =
+                static_cast<std::uint64_t>(sample.interleaved.size()) * 4ULL;
+        if (byteCount != expectedBytes || byteCount > kMaxProjectFileBytes) {
+            return fail("PCM block byte count does not match its dimensions");
+        }
+        char headerSeparator = 0;
+        if (!stream_.get(headerSeparator) || headerSeparator != '\n') {
+            return fail("PCM block header is not newline terminated");
+        }
+
+        std::array<std::uint8_t, 4096> chunk{};
+        std::uint64_t remaining = byteCount;
+        std::size_t sampleIndex = 0;
+        std::uint32_t crc = 0xFFFFFFFFu;
+        while (remaining > 0) {
+            const auto amount = static_cast<std::size_t>(
+                    std::min<std::uint64_t>(remaining, chunk.size()));
+            stream_.read(reinterpret_cast<char*>(chunk.data()),
+                    static_cast<std::streamsize>(amount));
+            if (stream_.gcount() != static_cast<std::streamsize>(amount)) {
+                return fail("truncated PCM asset block");
+            }
+            for (std::size_t offset = 0; offset < amount; offset += 4) {
+                std::uint32_t bits = 0;
+                for (std::size_t byte = 0; byte < 4; ++byte) {
+                    const auto value = chunk[offset + byte];
+                    crc = kPcmCrc32Table[(crc ^ value) & 0xFFu]
+                            ^ (crc >> 8u);
+                    bits |= static_cast<std::uint32_t>(value) << (byte * 8u);
+                }
+                const float value = std::bit_cast<float>(bits);
+                if (!std::isfinite(value) || value < -1.0f || value > 1.0f
+                        || sampleIndex >= sample.interleaved.size()) {
+                    return fail("PCM asset contains invalid float samples");
+                }
+                sample.interleaved[sampleIndex++] = value;
+            }
+            remaining -= amount;
+        }
+        char blockSeparator = 0;
+        if (!stream_.get(blockSeparator) || blockSeparator != '\n') {
+            return fail("PCM asset block is not terminated");
+        }
+        crc ^= 0xFFFFFFFFu;
+        if (crc != expectedCrc) return fail("PCM asset checksum mismatch");
         return true;
     }
 
@@ -203,7 +392,10 @@ bool readPad(Decoder& in, domain::Pad& pad) {
     return true;
 }
 
-bool readPattern(Decoder& in, domain::Pattern& pattern) {
+bool readPattern(
+        Decoder& in,
+        domain::Pattern& pattern,
+        bool hasTuningOffset) {
     std::size_t noteCount = 0;
     if (!in.tag("PATTERN")
             || !in.text(pattern.id)
@@ -226,12 +418,18 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
                 || !in.value(velocity)
                 || !in.value(probability)
                 || !in.value(ratchet)
-                || !in.value(note.nudgeTicks)) {
+                || !in.value(note.nudgeTicks)
+                || (hasTuningOffset
+                        && !in.value(note.tuningOffsetMilliSemitones))) {
             return false;
         }
         if (pitch > 127 || velocity > 127 || probability > 127
                 || ratchet < 1 || ratchet > 8) {
             return in.fail("MIDI note field is out of range");
+        }
+        if (!audio::isValidAudioTriggerTuningOffset(
+                    note.tuningOffsetMilliSemitones)) {
+            return in.fail("MIDI note tuning offset is out of range");
         }
         note.note = static_cast<std::uint8_t>(pitch);
         note.velocity = static_cast<std::uint8_t>(velocity);
@@ -242,21 +440,314 @@ bool readPattern(Decoder& in, domain::Pattern& pattern) {
     return true;
 }
 
+bool validatePatternData(const domain::Project& project, std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        for (const auto& track : sequence.tracks) {
+            for (const auto& pattern : track.patterns) {
+                if (pattern.lengthTicks <= 0) {
+                    return setError(error, "Pattern length must be positive");
+                }
+                for (const auto& note : pattern.notes) {
+                    if (note.tick < 0 || note.tick >= pattern.lengthTicks
+                            || note.durationTicks < 0
+                            || note.durationTicks > pattern.lengthTicks
+                            || note.note > 127 || note.velocity > 127
+                            || note.probability > 127
+                            || note.ratchet < 1 || note.ratchet > 8
+                            || !audio::isValidAudioTriggerTuningOffset(
+                                    note.tuningOffsetMilliSemitones)) {
+                        return setError(error, "MIDI note range is invalid for its Pattern");
+                    }
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateEntityIdentifiers(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.id.empty()) {
+        return setError(error, "Project identifier must not be empty");
+    }
+
+    std::set<std::string> sampleIds;
+    std::set<std::uint32_t> assignedSampleIds;
+    for (const auto& sample : project.samples) {
+        if (sample.id.empty() || !sampleIds.insert(sample.id).second) {
+            return setError(error, "Sample identifiers must be nonempty and unique");
+        }
+        if (sample.assetId.isAssigned()
+                && !assignedSampleIds.insert(sample.assetId.value).second) {
+            return setError(error, "Assigned sample asset identifiers must be unique");
+        }
+    }
+
+    std::set<std::string> programIds;
+    for (const auto& program : project.drumPrograms) {
+        if (program.id.empty() || !programIds.insert(program.id).second) {
+            return setError(error, "Drum Program identifiers must be nonempty and unique");
+        }
+    }
+
+    std::set<std::string> sequenceIds;
+    for (const auto& sequence : project.sequences) {
+        if (sequence.id.empty() || !sequenceIds.insert(sequence.id).second) {
+            return setError(error, "Sequence identifiers must be nonempty and unique");
+        }
+
+        std::set<std::string> trackIds;
+        for (const auto& track : sequence.tracks) {
+            if (track.id.empty() || !trackIds.insert(track.id).second) {
+                return setError(error, "Track identifiers must be nonempty and unique within a Sequence");
+            }
+
+            std::set<std::string> patternIds;
+            for (const auto& pattern : track.patterns) {
+                if (pattern.id.empty() || !patternIds.insert(pattern.id).second) {
+                    return setError(error, "Pattern identifiers must be nonempty and unique within a Track");
+                }
+            }
+
+            std::set<std::string> placementIds;
+            for (const auto& placement : track.placements) {
+                if (placement.id.empty() || !placementIds.insert(placement.id).second) {
+                    return setError(error, "Placement identifiers must be nonempty and unique within a Track");
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSequenceSettings(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)
+                || sequence.tempoBpm < 20.0
+                || sequence.tempoBpm > 300.0) {
+            return setError(error, "Sequence tempo is outside the supported 20-300 BPM range");
+        }
+        if (!sequencer::isValidTimeSignature(
+                    sequence.numerator, sequence.denominator)) {
+            return setError(error, "Sequence time signature is out of range");
+        }
+        if (sequence.lengthTicks <= 0) {
+            return setError(error, "Sequence length must be positive");
+        }
+        if (sequence.loopStartTicks < 0
+                || sequence.loopEndTicks <= sequence.loopStartTicks
+                || sequence.loopEndTicks > sequence.lengthTicks) {
+            return setError(error, "Sequence loop range is invalid");
+        }
+        switch (sequence.quantizeGridTicks) {
+            case 60:
+            case 120:
+            case 240:
+            case 480:
+            case 960:
+                break;
+            default:
+                return setError(error, "Sequence quantize grid is out of range");
+        }
+        if (sequence.swingPercent < 0 || sequence.swingPercent > 100) {
+            return setError(error, "Sequence swing is out of range");
+        }
+    }
+    return true;
+}
+
+bool validateSerializableCollectionSizes(
+        const domain::Project& project,
+        std::string* error) {
+    if (project.samples.size() > kMaxSamples
+            || project.drumPrograms.size() > kMaxPrograms
+            || project.sequences.size() > kMaxSequences) {
+        return setError(error, "Project collection exceeds the supported item limit");
+    }
+    for (const auto& sequence : project.sequences) {
+        if (sequence.tracks.size() > kMaxTracks) {
+            return setError(error, "Track count exceeds the supported item limit");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (track.patterns.size() > kMaxPatternsPerTrack
+                    || track.placements.size() > kMaxPlacementsPerTrack) {
+                return setError(error, "Pattern/placement count exceeds the supported item limit");
+            }
+            for (const auto& pattern : track.patterns) {
+                if (pattern.notes.size() > kMaxNotesPerPattern) {
+                    return setError(error, "Pattern note count exceeds the supported item limit");
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSerializableNumericFields(
+        const domain::Project& project,
+        std::string* error) {
+    for (const auto& sample : project.samples) {
+        // The decoder already rejects NaN and infinities for this field.
+        if (!std::isfinite(sample.sampleRate)) {
+            return setError(error, "Sample rate must be finite");
+        }
+    }
+
+    for (const auto& program : project.drumPrograms) {
+        if (static_cast<unsigned int>(program.type) > 3) {
+            return setError(error, "Program type is out of range");
+        }
+
+        for (const auto& pad : program.pads) {
+            if (pad.midiNote > 127
+                    || static_cast<unsigned int>(pad.triggerMode) > 2) {
+                return setError(error, "Pad MIDI note or trigger mode is out of range");
+            }
+            if (!std::isfinite(pad.tuningSemitones)
+                    || !std::isfinite(pad.level)
+                    || !std::isfinite(pad.pan)
+                    || !std::isfinite(pad.velocityScale)
+                    || !std::isfinite(pad.envelopeAttackMs)
+                    || !std::isfinite(pad.envelopeDecayMs)
+                    || !std::isfinite(pad.envelopeSustain)
+                    || !std::isfinite(pad.envelopeReleaseMs)
+                    || !std::isfinite(pad.filterCutoffHz)) {
+                return setError(error, "Pad numeric fields must be finite");
+            }
+
+            for (const auto& layer : pad.layers) {
+                if (!std::isfinite(layer.gain)
+                        || !std::isfinite(layer.pan)
+                        || !std::isfinite(layer.tuningSemitones)) {
+                    return setError(error, "Sample-layer numeric fields must be finite");
+                }
+                if (layer.velocityMinimum > 127 || layer.velocityMaximum > 127) {
+                    return setError(error, "Sample-layer velocity range is out of range");
+                }
+            }
+        }
+    }
+
+    for (const auto& sequence : project.sequences) {
+        if (!std::isfinite(sequence.tempoBpm)) {
+            return setError(error, "Sequence tempo must be finite");
+        }
+        for (const auto& track : sequence.tracks) {
+            if (static_cast<unsigned int>(track.type) > 3
+                    || static_cast<unsigned int>(track.kind) > 4) {
+                return setError(error, "Track type or kind is out of range");
+            }
+        }
+    }
+    return true;
+}
+
+
+bool validateSampleReferences(
+        const domain::Project& project, std::string* error) {
+    for (const auto& sample : project.samples) {
+        if (sample.sampleRate < 0.0) {
+            return setError(error, "Sample rate is out of range");
+        }
+        if (sample.lengthSamples < 0) {
+            return setError(error, "Sample length is out of range");
+        }
+        if (sample.pcm != nullptr) {
+            const auto& pcm = *sample.pcm;
+            if (pcm.sampleRate == 0
+                    || (pcm.channelCount != 1 && pcm.channelCount != 2)
+                    || pcm.frameCount() == 0
+                    || pcm.interleaved.size() != pcm.frameCount() * pcm.channelCount
+                    || sample.sampleRate != static_cast<double>(pcm.sampleRate)
+                    || sample.lengthSamples != static_cast<std::int64_t>(pcm.frameCount())) {
+                return setError(error, "SampleRef metadata does not match its PCM asset");
+            }
+        }
+    }
+    return true;
+}
+
+bool validateSampleLayerState(
+        const domain::Project& project, std::string* error) {
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.gain < 0.0f || layer.gain > 1.0f) {
+                    return setError(error, "Sample layer gain is out of range");
+                }
+                if (layer.pan < -1.0f || layer.pan > 1.0f) {
+                    return setError(error, "Sample layer pan is out of range");
+                }
+                if (layer.tuningSemitones < -24.0f || layer.tuningSemitones > 24.0f) {
+                    return setError(error, "Sample layer tuning is out of range");
+                }
+                if (!layer.velocityRange().isValid()) {
+                    return setError(error, "Sample layer velocity range is reversed");
+                }
+                if (!layer.sample.isAssigned()) {
+                    continue;
+                }
+                if (layer.loopStartSample < 0 || layer.loopEndSample < 0) {
+                    return setError(error, "Sample loop bounds are negative");
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && layer.loopEndSample <= layer.loopStartSample) {
+                    return setError(error, "Sample loop range is empty or reversed");
+                }
+                if (layer.region.startFrame >= layer.region.endFrame) {
+                    return setError(error, "Sample region is empty or reversed");
+                }
+                const auto sample = std::find_if(
+                        project.samples.begin(), project.samples.end(),
+                        [&layer](const domain::SampleRef& candidate) {
+                            return candidate.assetId.value == layer.sample.value;
+                        });
+                if (sample == project.samples.end()) {
+                    return setError(error, "Sample layer references a missing SampleRef");
+                }
+                if (sample->lengthSamples > 0) {
+                    if (static_cast<std::uint64_t>(layer.region.endFrame)
+                            > static_cast<std::uint64_t>(sample->lengthSamples)) {
+                        return setError(error, "Sample region exceeds the referenced sample");
+                    }
+                    if (layer.loopEndSample > sample->lengthSamples) {
+                        return setError(error, "Sample loop exceeds the referenced sample");
+                    }
+                }
+                if ((layer.loopStartSample != 0 || layer.loopEndSample != 0)
+                        && (static_cast<std::uint64_t>(layer.loopStartSample)
+                                    < static_cast<std::uint64_t>(layer.region.startFrame)
+                            || static_cast<std::uint64_t>(layer.loopEndSample)
+                                    > static_cast<std::uint64_t>(layer.region.endFrame))) {
+                    return setError(error, "Sample loop is outside the playback region");
+                }
+            }
+        }
+    }
+    return true;
+}
+
 bool validatePlacements(const domain::Project& project, std::string* error) {
     for (const auto& sequence : project.sequences) {
         for (const auto& track : sequence.tracks) {
             std::set<std::string> ids;
-            for (std::size_t i = 0; i < track.placements.size(); ++i) {
-                const auto& placement = track.placements[i];
-                const auto pattern = std::find_if(
-                        track.patterns.begin(), track.patterns.end(),
-                        [&placement](const domain::Pattern& value) {
-                            return value.id == placement.patternId;
-                        });
+            std::map<std::string, std::int32_t> patternLengths;
+            for (const auto& pattern : track.patterns) {
+                // Preserve the existing first-match semantics for legacy
+                // duplicate IDs while avoiding a linear Pattern scan per clip.
+                patternLengths.emplace(pattern.id, pattern.lengthTicks);
+            }
+            std::vector<std::pair<std::int64_t, std::int64_t>> timelineRanges;
+            timelineRanges.reserve(track.placements.size());
+            for (const auto& placement : track.placements) {
+                const auto pattern = patternLengths.find(placement.patternId);
                 if (placement.id.empty() || !ids.insert(placement.id).second) {
                     return setError(error, "Pattern placement id is empty or duplicated");
                 }
-                if (pattern == track.patterns.end()) {
+                if (pattern == patternLengths.end()) {
                     return setError(error, "Pattern placement references a missing Pattern");
                 }
                 const auto timelineEnd = static_cast<std::int64_t>(placement.startTick)
@@ -266,18 +757,23 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
                 if (placement.startTick < 0 || placement.lengthTicks <= 0
                         || placement.sourceOffsetTicks < 0
                         || timelineEnd > sequence.lengthTicks
-                        || sourceEnd > pattern->lengthTicks) {
+                        || sourceEnd > pattern->second) {
                     return setError(error, "Pattern placement range is invalid");
                 }
-                for (std::size_t j = 0; j < i; ++j) {
-                    const auto& other = track.placements[j];
-                    const auto otherEnd = static_cast<std::int64_t>(other.startTick)
-                            + static_cast<std::int64_t>(other.lengthTicks);
-                    if (static_cast<std::int64_t>(placement.startTick) < otherEnd
-                            && static_cast<std::int64_t>(other.startTick) < timelineEnd) {
-                        return setError(error, "Pattern placements overlap on one Track");
-                    }
+                timelineRanges.emplace_back(placement.startTick, timelineEnd);
+            }
+
+            // The placements can arrive in any order. Sorting timeline intervals
+            // gives an O(n log n) overlap check; comparing each interval with every
+            // earlier placement made a valid 65,536-clip Arrangement quadratic and
+            // could stall project save/open for billions of comparisons.
+            std::sort(timelineRanges.begin(), timelineRanges.end());
+            std::int64_t furthestPreviousEnd = -1;
+            for (const auto& [start, end] : timelineRanges) {
+                if (start < furthestPreviousEnd) {
+                    return setError(error, "Pattern placements overlap on one Track");
                 }
+                furthestPreviousEnd = std::max(furthestPreviousEnd, end);
             }
         }
     }
@@ -288,7 +784,19 @@ bool validatePlacements(const domain::Project& project, std::string* error) {
 
 std::string serializeProject(const domain::Project& project, std::string* error) {
     if (error != nullptr) error->clear();
-    if (!validatePlacements(project, error)) return {};
+    // Apply cardinality limits before building identifier sets from caller-owned
+    // vectors; oversized Projects should be rejected without large temporary allocations.
+    if (!validateSerializableCollectionSizes(project, error)
+            || !validateSequenceSettings(project, error)
+            || !validateEntityIdentifiers(project, error)
+            || !validateSerializableNumericFields(project, error)
+            || !validateSampleReferences(project, error)
+            || !validateSampleLayerState(project, error)
+            || !validateEmbeddedPcmAssets(project, error)
+            || !validatePatternData(project, error)
+            || !validatePlacements(project, error)) {
+        return {};
+    }
     std::ostringstream out;
     out << std::setprecision(std::numeric_limits<double>::max_digits10);
     out << "MPCMK2_PROJECT " << kCurrentProjectFormatVersion << '\n';
@@ -300,6 +808,26 @@ std::string serializeProject(const domain::Project& project, std::string* error)
             << std::quoted(sample.name) << ' ' << std::quoted(sample.path)
             << ' ' << sample.sampleRate << ' ' << sample.lengthSamples
             << ' ' << sample.assetId.value << '\n';
+    }
+
+    const auto pcmAssetIds = referencedSampleAssetIds(project);
+    out << "PCM_ASSETS " << pcmAssetIds.size() << '\n';
+    for (const auto assetId : pcmAssetIds) {
+        const auto sample = std::find_if(project.samples.begin(), project.samples.end(),
+                [assetId](const domain::SampleRef& value) {
+                    return value.assetId.value == assetId;
+                });
+        if (sample == project.samples.end() || sample->pcm == nullptr) {
+            setError(error, "Assigned sample asset has no PCM data; refusing partial save");
+            return {};
+        }
+        const auto& pcm = *sample->pcm;
+        const std::uint64_t blockBytes =
+                static_cast<std::uint64_t>(pcm.interleaved.size()) * 4ULL;
+        out << "PCM_ASSET " << assetId << ' ' << pcm.sampleRate << ' '
+            << pcm.channelCount << ' ' << pcm.frameCount() << ' '
+            << blockBytes << ' ' << pcmCrc32(pcm) << '\n';
+        writePcmBlock(out, pcm);
     }
 
     out << "PROGRAMS " << project.drumPrograms.size() << '\n';
@@ -348,7 +876,8 @@ std::string serializeProject(const domain::Project& project, std::string* error)
                         << static_cast<unsigned int>(note.velocity) << ' '
                         << static_cast<unsigned int>(note.probability) << ' '
                         << static_cast<unsigned int>(note.ratchet) << ' '
-                        << note.nudgeTicks << '\n';
+                        << note.nudgeTicks << ' '
+                        << note.tuningOffsetMilliSemitones << '\n';
                 }
             }
             for (const auto& placement : track.placements) {
@@ -362,7 +891,12 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     }
 
     out << "END_PROJECT\n";
-    return out.str();
+    auto bytes = std::move(out).str();
+    if (bytes.size() > kMaxProjectFileBytes) {
+        setError(error, "Serialized project exceeds the supported file-size limit");
+        return {};
+    }
+    return bytes;
 }
 
 bool deserializeProject(
@@ -374,14 +908,15 @@ bool deserializeProject(
         return setError(error, "Project data exceeds the supported file-size limit");
     }
 
-    std::istringstream stream{std::string(bytes)};
+    ReadOnlyMemoryInputBuffer buffer(bytes);
+    std::istream stream(&buffer);
     Decoder in(stream, error);
     std::string magic;
     int version = 0;
     if (!in.value(magic) || magic != "MPCMK2_PROJECT" || !in.value(version)) {
         return setError(error, "Invalid project header");
     }
-    if (version != 1 && version != kCurrentProjectFormatVersion) {
+    if (version < 1 || version > kCurrentProjectFormatVersion) {
         return setError(error, "Unsupported project format version");
     }
 
@@ -403,6 +938,65 @@ bool deserializeProject(
             return false;
         }
         candidate.samples.push_back(std::move(sample));
+    }
+
+    if (version >= 4) {
+        std::size_t pcmAssetCount = 0;
+        if (!in.tag("PCM_ASSETS")
+                || !in.count(pcmAssetCount, kMaxSamples, "PCM asset")) {
+            return false;
+        }
+        std::set<std::uint32_t> decodedAssetIds;
+        for (std::size_t i = 0; i < pcmAssetCount; ++i) {
+            std::uint32_t assetId = 0;
+            std::uint32_t sampleRate = 0;
+            unsigned int channelCount = 0;
+            std::uint64_t frameCount = 0;
+            std::uint64_t blockBytes = 0;
+            std::uint32_t checksum = 0;
+            if (!in.tag("PCM_ASSET")
+                    || !in.value(assetId)
+                    || !in.value(sampleRate)
+                    || !in.value(channelCount)
+                    || !in.value(frameCount)
+                    || !in.value(blockBytes)
+                    || !in.value(checksum)) {
+                return false;
+            }
+            if (assetId == 0 || !decodedAssetIds.insert(assetId).second
+                    || sampleRate == 0
+                    || (channelCount != 1 && channelCount != 2)
+                    || frameCount == 0
+                    || frameCount > kMaxProjectFileBytes
+                            / (static_cast<std::uint64_t>(channelCount) * 4ULL)
+                    || frameCount > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::size_t>::max() / channelCount)
+                    || frameCount > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::int64_t>::max())) {
+                return in.fail("PCM asset metadata is out of range or duplicated");
+            }
+            const auto sample = std::find_if(candidate.samples.begin(),
+                    candidate.samples.end(), [assetId](const domain::SampleRef& value) {
+                        return value.assetId.value == assetId;
+                    });
+            if (sample == candidate.samples.end()
+                    || sample->sampleRate != static_cast<double>(sampleRate)
+                    || sample->lengthSamples != static_cast<std::int64_t>(frameCount)) {
+                return in.fail("PCM asset metadata does not match its SampleRef");
+            }
+            const std::uint64_t expectedBytes =
+                    frameCount * static_cast<std::uint64_t>(channelCount) * 4ULL;
+            if (blockBytes != expectedBytes || blockBytes > kMaxProjectFileBytes) {
+                return in.fail("PCM asset block size is invalid");
+            }
+            auto pcm = std::make_shared<audio::SampleBuffer>();
+            pcm->sampleRate = sampleRate;
+            pcm->channelCount = static_cast<std::uint16_t>(channelCount);
+            pcm->interleaved.resize(static_cast<std::size_t>(frameCount)
+                    * static_cast<std::size_t>(channelCount));
+            if (!in.pcmBlock(*pcm, blockBytes, checksum)) return false;
+            sample->pcm = std::move(pcm);
+        }
     }
 
     std::size_t programCount = 0;
@@ -482,7 +1076,7 @@ bool deserializeProject(
             track.patterns.reserve(patternCount);
             for (std::size_t patternIndex = 0; patternIndex < patternCount; ++patternIndex) {
                 domain::Pattern pattern;
-                if (!readPattern(in, pattern)) return false;
+                if (!readPattern(in, pattern, version >= 3)) return false;
                 track.patterns.push_back(std::move(pattern));
             }
             track.placements.reserve(placementCount);
@@ -504,7 +1098,16 @@ bool deserializeProject(
     }
 
     if (!in.tag("END_PROJECT") || !in.finished()) return false;
-    if (!validatePlacements(candidate, error)) return false;
+    if (!validateSequenceSettings(candidate, error)
+            || !validateEntityIdentifiers(candidate, error)
+            || !validateSerializableNumericFields(candidate, error)
+            || !validateSampleReferences(candidate, error)
+            || !validateSampleLayerState(candidate, error)
+            || (version >= 4 && !validateRequiredPcmPresent(candidate, error))
+            || !validatePatternData(candidate, error)
+            || !validatePlacements(candidate, error)) {
+        return false;
+    }
 
     project = std::move(candidate);
     return true;

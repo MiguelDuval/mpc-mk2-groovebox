@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <limits>
 #include <sstream>
+#include <unordered_set>
 
 namespace mpc {
 
@@ -51,6 +52,116 @@ domain::Sequence makeDefaultSequence(std::size_t sequenceNumber) {
     return sequence;
 }
 
+
+// Keep the native model internally valid when a user changes Sequence length.
+// Notes beyond the new Pattern end are removed; note durations are bounded by
+// the Pattern length. Placements that no longer intersect both the Sequence
+// timeline and their source Pattern are removed or clipped, never left for the
+// serializer or playback path to discover as invalid state.
+void resizeSequenceContent(
+        domain::Sequence& sequence,
+        std::int32_t previousLength,
+        std::int32_t newLength) {
+    for (auto& track : sequence.tracks) {
+        for (auto& pattern : track.patterns) {
+            pattern.lengthTicks = newLength;
+            auto& notes = pattern.notes;
+            notes.erase(
+                    std::remove_if(
+                            notes.begin(),
+                            notes.end(),
+                            [newLength](const domain::MidiNoteEvent& note) {
+                                return note.tick < 0 || note.tick >= newLength;
+                            }),
+                    notes.end());
+            for (auto& note : notes) {
+                if (note.durationTicks < 0) note.durationTicks = 0;
+                if (note.durationTicks > newLength) note.durationTicks = newLength;
+            }
+        }
+
+        for (auto& placement : track.placements) {
+            if (placement.startTick == 0
+                    && placement.lengthTicks == previousLength) {
+                placement.lengthTicks = newLength;
+            }
+        }
+
+        auto& placements = track.placements;
+        placements.erase(
+                std::remove_if(
+                        placements.begin(),
+                        placements.end(),
+                        [&track, newLength](const domain::PatternPlacement& placement) {
+                            if (placement.startTick < 0
+                                    || placement.startTick >= newLength
+                                    || placement.lengthTicks <= 0
+                                    || placement.sourceOffsetTicks < 0) {
+                                return true;
+                            }
+                            const auto pattern = std::find_if(
+                                    track.patterns.begin(),
+                                    track.patterns.end(),
+                                    [&placement](const domain::Pattern& value) {
+                                        return value.id == placement.patternId;
+                                    });
+                            return pattern == track.patterns.end()
+                                    || pattern->lengthTicks <= 0
+                                    || placement.sourceOffsetTicks >= pattern->lengthTicks;
+                        }),
+                placements.end());
+
+        for (auto& placement : placements) {
+            const auto pattern = std::find_if(
+                    track.patterns.begin(),
+                    track.patterns.end(),
+                    [&placement](const domain::Pattern& value) {
+                        return value.id == placement.patternId;
+                    });
+            // Invalid/missing-source placements have already been removed.
+            if (pattern == track.patterns.end()) continue;
+            const auto timelineAvailable = static_cast<std::int64_t>(newLength)
+                    - placement.startTick;
+            const auto sourceAvailable = static_cast<std::int64_t>(pattern->lengthTicks)
+                    - placement.sourceOffsetTicks;
+            placement.lengthTicks = static_cast<std::int32_t>(
+                    std::min<std::int64_t>(
+                            placement.lengthTicks,
+                            std::min(timelineAvailable, sourceAvailable)));
+        }
+    }
+}
+
+std::unordered_set<std::uint32_t> collectUsedSampleIds(
+        const domain::Project& project) {
+    std::unordered_set<std::uint32_t> used;
+    for (const auto& sample : project.samples) {
+        if (sample.assetId.isAssigned()) used.insert(sample.assetId.value);
+    }
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) used.insert(layer.sample.value);
+            }
+        }
+    }
+    return used;
+}
+
+std::uint32_t findAvailableSampleId(
+        const domain::Project& project,
+        std::uint32_t firstCandidate) {
+    const auto used = collectUsedSampleIds(project);
+    auto candidate = firstCandidate == 0 ? std::uint32_t{1} : firstCandidate;
+    const auto first = candidate;
+    do {
+        if (!used.contains(candidate)) return candidate;
+        ++candidate;
+        if (candidate == 0) candidate = 1;
+    } while (candidate != first);
+    return 0;
+}
+
 } // namespace
 
 MpcProjectState::MpcProjectState() {
@@ -82,10 +193,30 @@ bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept
     if (project.id.empty() || project.sequences.empty() || project.drumPrograms.empty()) {
         return false;
     }
+
+    // Drum Program IDs are the routing key used by Tracks. Reject ambiguous
+    // definitions and dangling references before the Project becomes live state.
+    for (std::size_t i = 0; i < project.drumPrograms.size(); ++i) {
+        const auto& program = project.drumPrograms[i];
+        if (program.id.empty()) return false;
+        for (std::size_t j = 0; j < i; ++j) {
+            if (project.drumPrograms[j].id == program.id) return false;
+        }
+    }
+
     for (const auto& sequence : project.sequences) {
         if (sequence.id.empty() || sequence.tracks.empty()) return false;
         for (const auto& track : sequence.tracks) {
             if (track.id.empty() || track.patterns.empty()) return false;
+            // Empty remains a supported explicitly-unassigned routing state.
+            if (!track.programId.empty()) {
+                const auto matchCount = static_cast<std::size_t>(std::count_if(
+                        project.drumPrograms.begin(), project.drumPrograms.end(),
+                        [&track](const domain::DrumProgram& program) {
+                            return program.id == track.programId;
+                        }));
+                if (matchCount != 1) return false;
+            }
         }
     }
     return true;
@@ -93,9 +224,12 @@ bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept
 
 bool MpcProjectState::replaceProject(domain::Project project) {
     if (!canReplaceProject(project)) return false;
+    ++projectGeneration_;
+    if (projectGeneration_ == 0) projectGeneration_ = 1;
     project_ = std::move(project);
     activeSequenceIndex_ = 0;
     activeTrackIndex_ = 0;
+    activePatternIndex_ = 0;
     activeDrumProgramIndex_ = 0;
     const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
     if (programIndex < project_.drumPrograms.size()) activeDrumProgramIndex_ = programIndex;
@@ -110,17 +244,9 @@ bool MpcProjectState::replaceProject(domain::Project project) {
     if (maximumId != std::numeric_limits<std::uint32_t>::max()) {
         nextSampleId_ = maximumId + 1;
     } else {
-        nextSampleId_ = 1;
-        const auto used = [this](std::uint32_t candidate) {
-            for (const auto& sample : project_.samples) if (sample.assetId.value == candidate) return true;
-            for (const auto& program : project_.drumPrograms) {
-                for (const auto& pad : program.pads) {
-                    for (const auto& layer : pad.layers) if (layer.sample.value == candidate) return true;
-                }
-            }
-            return false;
-        };
-        while (nextSampleId_ != 0 && used(nextSampleId_)) ++nextSampleId_;
+        // Keep a persistent search-mode sentinel after wrap. The first free ID
+        // is not necessarily followed by another free ID.
+        nextSampleId_ = 0;
     }
     return true;
 }
@@ -130,7 +256,9 @@ bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
         return false;
     }
 
+    const bool sequenceChanged = sequenceIndex != activeSequenceIndex_;
     activeSequenceIndex_ = sequenceIndex;
+    if (sequenceChanged) activePatternIndex_ = 0;
     activeTrackIndex_ = activeSequence().tracks.empty()
             ? 0
             : std::min(activeTrackIndex_, activeSequence().tracks.size() - 1);
@@ -146,6 +274,7 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
         return false;
     }
 
+    if (trackIndex != activeTrackIndex_) activePatternIndex_ = 0;
     activeTrackIndex_ = trackIndex;
     const auto& track = activeSequence().tracks[trackIndex];
     if (track.kind == domain::TrackKind::Drum) {
@@ -154,6 +283,29 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
             activeDrumProgramIndex_ = index;
         }
     }
+    return true;
+}
+
+
+domain::Pattern* MpcProjectState::activePattern() noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return nullptr;
+    auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (activePatternIndex_ >= patterns.size()) return nullptr;
+    return &patterns[activePatternIndex_];
+}
+
+const domain::Pattern* MpcProjectState::activePattern() const noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return nullptr;
+    const auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (activePatternIndex_ >= patterns.size()) return nullptr;
+    return &patterns[activePatternIndex_];
+}
+
+bool MpcProjectState::selectPattern(std::size_t patternIndex) noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return false;
+    const auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (patternIndex >= patterns.size()) return false;
+    activePatternIndex_ = patternIndex;
     return true;
 }
 
@@ -251,8 +403,24 @@ bool MpcProjectState::addSequence(std::string name) {
         return false;
     }
 
-    const auto number = project_.sequences.size() + 1;
+    auto number = project_.sequences.size() + 1;
+    const auto sequenceIdUsed = [this](std::size_t candidate) {
+        const auto candidateId = "sequence-" + std::to_string(candidate);
+        return std::any_of(
+                project_.sequences.begin(), project_.sequences.end(),
+                [&candidateId](const domain::Sequence& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (sequenceIdUsed(number)) {
+        ++number;
+    }
     auto sequence = makeDefaultSequence(number);
+    if (!sequence.tracks.empty() && !project_.drumPrograms.empty()) {
+        const auto programIndex = std::min(
+                activeDrumProgramIndex_, project_.drumPrograms.size() - 1);
+        sequence.tracks.front().programId = project_.drumPrograms[programIndex].id;
+    }
     if (!name.empty()) {
         sequence.name = std::move(name);
     }
@@ -260,6 +428,7 @@ bool MpcProjectState::addSequence(std::string name) {
     project_.sequences.push_back(std::move(sequence));
     activeSequenceIndex_ = project_.sequences.size() - 1;
     activeTrackIndex_ = 0;
+    activePatternIndex_ = 0;
     if (!activeSequence().tracks.empty()) {
         selectTrack(activeTrackIndex_);
     }
@@ -301,19 +470,14 @@ bool MpcProjectState::setSequenceBars(std::int32_t bars) noexcept {
     }
     mutableSequence.loopStartTicks =
             std::clamp(mutableSequence.loopStartTicks, 0, length - 1);
-
-    for (auto& track : mutableSequence.tracks) {
-        for (auto& pattern : track.patterns) {
-            pattern.lengthTicks = length;
-        }
-        // Keep only the legacy full-sequence placement coupled to sequence length.
-        // Explicit shorter clip placements remain independent of later sequence resizing.
-        for (auto& placement : track.placements) {
-            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
-                placement.lengthTicks = length;
-            }
-        }
+    // Malformed/legacy state can already contain a loop end before its start.
+    // Keep the half-open range valid after resizing instead of carrying that
+    // invalid range into the transport clock.
+    if (mutableSequence.loopEndTicks <= mutableSequence.loopStartTicks) {
+        mutableSequence.loopEndTicks = mutableSequence.loopStartTicks + 1;
     }
+
+    resizeSequenceContent(mutableSequence, previousLength, length);
 
     if (activeTrackIndex_ >= mutableSequence.tracks.size()) {
         activeTrackIndex_ = mutableSequence.tracks.empty()
@@ -338,12 +502,17 @@ bool MpcProjectState::setSequenceTimeSignature(
             sequencer::barLengthTicks(
                     oldSequence.numerator,
                     oldSequence.denominator));
-    const auto startBar = std::clamp(
-            oldSequence.loopStartTicks / oldPerBar + 1,
+    const auto startBar = std::clamp<std::int64_t>(
+            static_cast<std::int64_t>(oldSequence.loopStartTicks) / oldPerBar + 1,
             1,
             bars);
-    const auto endBar = std::clamp(
-            (oldSequence.loopEndTicks + oldPerBar - 1) / oldPerBar,
+    // Promote before adding the bar-rounding offset. loopEndTicks can be near
+    // INT32_MAX in a malformed/legacy Project, so int32 addition would overflow.
+    const auto roundedEndBar =
+            (static_cast<std::int64_t>(oldSequence.loopEndTicks)
+                    + oldPerBar - 1) / oldPerBar;
+    const auto endBar = std::clamp<std::int64_t>(
+            roundedEndBar,
             startBar,
             bars);
 
@@ -358,24 +527,21 @@ bool MpcProjectState::setSequenceTimeSignature(
     sequence.denominator = denominator;
     sequence.lengthTicks = length;
 
-    const auto newPerBar = sequencer::barLengthTicks(numerator, denominator);
-    sequence.loopStartTicks = (startBar - 1) * newPerBar;
-    sequence.loopEndTicks = std::min(
-            length,
-            endBar * newPerBar);
+    const auto newPerBar = static_cast<std::int64_t>(
+            sequencer::barLengthTicks(numerator, denominator));
+    // Time-signature changes can expand the mapped loop beyond the clamped
+    // int32 sequence length. Keep all products in int64 and clamp the resulting
+    // half-open loop range back into the new Sequence.
+    const auto proposedLoopStart = (startBar - 1) * newPerBar;
+    const auto proposedLoopEnd = endBar * newPerBar;
+    const auto newLoopStart = std::clamp<std::int64_t>(
+            proposedLoopStart, 0, static_cast<std::int64_t>(length) - 1);
+    const auto newLoopEnd = std::clamp<std::int64_t>(
+            proposedLoopEnd, newLoopStart + 1, length);
+    sequence.loopStartTicks = static_cast<std::int32_t>(newLoopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(newLoopEnd);
 
-    for (auto& track : sequence.tracks) {
-        for (auto& pattern : track.patterns) {
-            pattern.lengthTicks = length;
-        }
-        // Preserve a full-sequence placement as the sequence's length changes,
-        // while keeping intentional short/offset placements unchanged.
-        for (auto& placement : track.placements) {
-            if (placement.startTick == 0 && placement.lengthTicks == previousLength) {
-                placement.lengthTicks = length;
-            }
-        }
-    }
+    resizeSequenceContent(sequence, previousLength, length);
     return true;
 }
 
@@ -384,10 +550,13 @@ bool MpcProjectState::setSequenceLoop(
         std::int32_t startBar,
         std::int32_t endBar) noexcept {
     auto& sequence = activeSequence();
+    if (sequence.lengthTicks <= 0) {
+        return false;
+    }
+
     const auto bars = sequencer::sequenceBars(sequence);
     const auto start = sequencer::clampLoopBar(startBar, bars);
     const auto end = sequencer::clampLoopBar(endBar, bars);
-
     if (start > end) {
         return false;
     }
@@ -399,15 +568,20 @@ bool MpcProjectState::setSequenceLoop(
         return false;
     }
 
+    // Compute before mutating state and promote before bar-to-tick products.
+    // The last bar can extend a few ticks beyond INT32_MAX when a legacy
+    // Sequence was clamped to that maximum length.
+    const auto length = static_cast<std::int64_t>(sequence.lengthTicks);
+    const auto proposedStart = static_cast<std::int64_t>(start - 1) * perBar;
+    const auto proposedEnd = static_cast<std::int64_t>(end) * perBar;
+    const auto loopStart = std::clamp<std::int64_t>(
+            proposedStart, 0, length - 1);
+    const auto loopEnd = std::clamp<std::int64_t>(
+            proposedEnd, loopStart + 1, length);
+
+    sequence.loopStartTicks = static_cast<std::int32_t>(loopStart);
+    sequence.loopEndTicks = static_cast<std::int32_t>(loopEnd);
     sequence.loopEnabled = enabled;
-    sequence.loopStartTicks = (start - 1) * perBar;
-    sequence.loopEndTicks =
-            std::min(
-                    sequence.lengthTicks,
-                    end * perBar);
-    if (sequence.loopEndTicks <= sequence.loopStartTicks) {
-        return false;
-    }
     return true;
 }
 
@@ -442,7 +616,18 @@ bool MpcProjectState::addTrack(
         return false;
     }
     domain::Track track;
-    const auto number = sequence.tracks.size() + 1;
+    auto number = sequence.tracks.size() + 1;
+    const auto trackIdUsed = [&sequence](std::size_t candidate) {
+        const auto candidateId = "track-" + std::to_string(candidate);
+        return std::any_of(
+                sequence.tracks.begin(), sequence.tracks.end(),
+                [&candidateId](const domain::Track& existing) {
+                    return existing.id == candidateId;
+                });
+    };
+    while (trackIdUsed(number)) {
+        ++number;
+    }
     track.id = "track-" + std::to_string(number);
     track.name = name.empty()
             ? ("TRACK " + std::to_string(number))
@@ -545,11 +730,31 @@ domain::SampleId MpcProjectState::registerSample(
         std::string path,
         double sampleRate,
         std::int64_t lengthSamples) {
-    if (nextSampleId_ == 0) {
-        nextSampleId_ = 1;
+    // Keep live SampleRefs in the same range accepted by project persistence.
+    // Zero remains the supported value for unknown rate/length metadata.
+    if (!std::isfinite(sampleRate) || sampleRate < 0.0 || lengthSamples < 0) {
+        return {};
     }
 
-    const auto id = domain::SampleId{nextSampleId_++};
+    // Preserve the fast monotonic path until wrap. Zero is a persistent
+    // search-mode sentinel: once the counter wraps, each allocation must skip
+    // live SampleRefs and assigned layer references. The first free ID is not
+    // necessarily followed by another free ID, so do not advance past a hole
+    // and then blindly trust that next value.
+    const bool searchForFreeId = nextSampleId_ == 0;
+    const auto allocatedId = searchForFreeId
+            ? findAvailableSampleId(project_, 1)
+            : nextSampleId_;
+    if (allocatedId == 0) {
+        return {};
+    }
+
+    if (!searchForFreeId) {
+        nextSampleId_ = allocatedId == std::numeric_limits<std::uint32_t>::max()
+                ? 0
+                : allocatedId + 1;
+    }
+    const auto id = domain::SampleId{allocatedId};
 
     domain::SampleRef ref;
     ref.id = "sample-" + std::to_string(id.value);

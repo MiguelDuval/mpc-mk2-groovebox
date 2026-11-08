@@ -8,22 +8,28 @@
 #include <cstdint>
 #include <cstddef>
 #include <span>
+#include <string_view>
 #include <limits>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
 #include "MPC/MpcCore.h"
+#include "MPC/MpcEditHistory.h"
 #include "MPC/MpcProjectPersistence.h"
 #include "MPC/Sequencer/MpcPatternOps.h"
+#include "MPC/Sequencer/MpcListEditOps.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
 #include "MPC/Sequencer/MpcSequenceLauncher.h"
 #include "MPC/Sequencer/MpcSequencePlaybackSession.h"
+#include "MPC/Sequencer/MpcSequenceSoloPolicy.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 #include "MPC/Sequencer/MpcLocatePolicy.h"
 #include "MPC/Sequencer/MpcErasePolicy.h"
 #include "MPC/Sequencer/MpcStepEditParameterPolicy.h"
+#include "Midi/NativeMidi.h"
 
 namespace {
 
@@ -36,7 +42,7 @@ mpc::sequencer::MpcSequencePlaybackSession& sequenceSession() {
         sequencePlayback =
                 std::make_unique<mpc::sequencer::MpcSequencePlaybackSession>(
                         core.projectState(),
-                        core.audio());
+                        core.audio().triggerQueue());
     }
     return *sequencePlayback;
 }
@@ -50,7 +56,28 @@ jstring toJString(JNIEnv* env, const std::string& text) {
     return env->NewStringUTF(text.c_str());
 }
 
+struct ScopedJavaByteArrayRead final {
+    JNIEnv* env = nullptr;
+    jbyteArray array = nullptr;
+    jbyte* data = nullptr;
+
+    ScopedJavaByteArrayRead(
+            JNIEnv* sourceEnv, jbyteArray sourceArray, jbyte* sourceData) noexcept
+        : env(sourceEnv), array(sourceArray), data(sourceData) {}
+
+    ~ScopedJavaByteArrayRead() {
+        if (env != nullptr && array != nullptr && data != nullptr) {
+            env->ReleaseByteArrayElements(array, data, JNI_ABORT);
+        }
+    }
+
+    ScopedJavaByteArrayRead(const ScopedJavaByteArrayRead&) = delete;
+    ScopedJavaByteArrayRead& operator=(const ScopedJavaByteArrayRead&) = delete;
+};
+
 void stopSequenceForMutation() {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     auto& state = core.projectState();
     const auto position = sequenceSession().positionTicks();
@@ -127,6 +154,30 @@ std::string projectSummary(const mpc::domain::Project& project) {
     std::size_t patternCount = 0;
     std::size_t placementCount = 0;
     std::size_t noteCount = 0;
+    std::set<std::uint32_t> usedSampleAssets;
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) usedSampleAssets.insert(layer.sample.value);
+            }
+        }
+    }
+    std::uint64_t pcmBytes = 0;
+    std::size_t embeddedPcmAssets = 0;
+    std::size_t missingPcmAssets = 0;
+    for (const auto assetId : usedSampleAssets) {
+        const auto sample = std::find_if(project.samples.begin(), project.samples.end(),
+                [assetId](const mpc::domain::SampleRef& value) {
+                    return value.assetId.value == assetId;
+                });
+        if (sample == project.samples.end() || sample->pcm == nullptr) {
+            ++missingPcmAssets;
+        } else {
+            ++embeddedPcmAssets;
+            pcmBytes += static_cast<std::uint64_t>(
+                    sample->pcm->interleaved.size()) * sizeof(float);
+        }
+    }
     for (const auto& sequence : project.sequences) {
         trackCount += sequence.tracks.size();
         for (const auto& track : sequence.tracks) {
@@ -139,7 +190,13 @@ std::string projectSummary(const mpc::domain::Project& project) {
             + " TRACKS=" + std::to_string(trackCount)
             + " PATTERNS=" + std::to_string(patternCount)
             + " PLACEMENTS=" + std::to_string(placementCount)
-            + " MIDI_NOTES=" + std::to_string(noteCount);
+            + " MIDI_NOTES=" + std::to_string(noteCount)
+            + " SAMPLE_ASSETS=" + std::to_string(usedSampleAssets.size())
+            + " PCM_ASSETS=" + std::to_string(embeddedPcmAssets)
+            + " PCM_BYTES=" + std::to_string(pcmBytes)
+            + " MISSING_PCM=" + std::to_string(missingPcmAssets)
+            + " AUDIO_READY=" + (!usedSampleAssets.empty() && missingPcmAssets == 0
+                    ? "YES" : "NO");
 }
 } // namespace
 
@@ -207,7 +264,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
         return toJString(env, "PROJECT_NEW_FAILED • default Project replacement rejected");
     }
 
-    core.audio().refreshActiveProgramRuntimeProjection();
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();
@@ -216,7 +274,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
             core.projectState().activeSequence(), 0, monotonicNanos());
 
     return toJString(env,
-            "PROJECT_CREATED • " + projectSummary(core.projectState().project()));
+            "PROJECT_CREATED • " + projectSummary(core.projectState().project())
+                    + " • " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -238,7 +297,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Sequence or Pattern too short");
     }
     pattern.notes = {
-        mpc::domain::MidiNoteEvent{120, 180, 36, 97, 88, 3, -11},
+        mpc::domain::MidiNoteEvent{120, 180, 36, 97, 127, 3, -11},
         mpc::domain::MidiNoteEvent{600, 90, 42, 111, 123, 2, 7}
     };
     track.placements.clear();
@@ -249,13 +308,113 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     placement.lengthTicks = 720;
     placement.sourceOffsetTicks = 120;
     track.placements.push_back(placement);
+
+    // Seed the authoritative musical model first. The audio asset itself is
+    // then imported through AudioEngine::loadSampleForPadLayer from a valid
+    // PCM16 WAV, exactly like the Android Browser/SAF import route.
+    constexpr std::uint32_t kFixtureSampleRate = 48000;
+    constexpr std::size_t kFixtureFrameCount = 24000;
+    constexpr std::size_t kFixturePcmBytes = kFixtureFrameCount * 2u;
     std::string validationError;
-    if (mpc::persistence::serializeProject(candidate, &validationError).empty()) {
-        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • " + validationError);
+    if (!mpc::MpcProjectState::canReplaceProject(candidate)) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • invalid musical model");
     }
     const std::string patternId = pattern.id;
+
+    const auto audioStopped = core.audio().stop();
+    if (audioStopped.rfind("Audio stop failed:", 0) == 0
+            || audioStopped.rfind("Audio close failed:", 0) == 0
+            || audioStopped.rfind("Input stop failed:", 0) == 0
+            || audioStopped.rfind("Input close failed:", 0) == 0
+            || !core.audio().clearRuntimeSamplesForProjectReplacement()) {
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • could not quiesce audio for WAV import • "
+                        + audioStopped + " | " + audioRestarted);
+    }
     if (!core.projectState().replaceProject(std::move(candidate))) {
-        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
+        const auto projection = core.audio().refreshActiveProgramRuntimeProjection();
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected • "
+                        + projection + " | " + audioRestarted);
+    }
+
+    std::vector<std::uint8_t> fixtureWav(44u + kFixturePcmBytes, 0u);
+    const auto writeU16 = [&fixtureWav](std::size_t offset, std::uint16_t value) {
+        fixtureWav[offset] = static_cast<std::uint8_t>(value & 0xFFu);
+        fixtureWav[offset + 1u] =
+                static_cast<std::uint8_t>((value >> 8u) & 0xFFu);
+    };
+    const auto writeU32 = [&fixtureWav](std::size_t offset, std::uint32_t value) {
+        for (std::size_t byte = 0; byte < 4u; ++byte) {
+            fixtureWav[offset + byte] =
+                    static_cast<std::uint8_t>((value >> (byte * 8u)) & 0xFFu);
+        }
+    };
+    const auto writeTag = [&fixtureWav](std::size_t offset, const char* tag) {
+        for (std::size_t byte = 0; byte < 4u; ++byte) {
+            fixtureWav[offset + byte] = static_cast<std::uint8_t>(tag[byte]);
+        }
+    };
+    writeTag(0u, "RIFF");
+    writeU32(4u, static_cast<std::uint32_t>(36u + kFixturePcmBytes));
+    writeTag(8u, "WAVE");
+    writeTag(12u, "fmt ");
+    writeU32(16u, 16u);
+    writeU16(20u, 1u); // PCM
+    writeU16(22u, 1u); // mono
+    writeU32(24u, kFixtureSampleRate);
+    writeU32(28u, kFixtureSampleRate * 2u);
+    writeU16(32u, 2u);
+    writeU16(34u, 16u);
+    writeTag(36u, "data");
+    writeU32(40u, static_cast<std::uint32_t>(kFixturePcmBytes));
+    constexpr double kFixturePi = 3.14159265358979323846;
+    for (std::size_t frame = 0; frame < kFixtureFrameCount; ++frame) {
+        const double wave = 0.25 * std::sin(2.0 * kFixturePi * 440.0
+                * static_cast<double>(frame) / static_cast<double>(kFixtureSampleRate));
+        const auto pcm16 = static_cast<std::int16_t>(
+                std::lround(wave * 32767.0));
+        writeU16(44u + frame * 2u, static_cast<std::uint16_t>(pcm16));
+    }
+
+    const auto wavImport = core.audio().loadSampleForPadLayer(
+            std::span<const std::uint8_t>(fixtureWav.data(), fixtureWav.size()),
+            0u, 0u);
+    if (wavImport.rfind("Pad 1 layer 1 sample loaded", 0) != 0) {
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • WAV import did not assign Pad 01 • "
+                        + wavImport);
+    }
+    auto& fixtureLayer = core.projectState().activeDrumProgram().pad(0).layer(0);
+    fixtureLayer.enabled = true;
+    fixtureLayer.velocityMinimum = 0;
+    fixtureLayer.velocityMaximum = 127;
+
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
+    if (projectionStatus.find("failed") != std::string::npos
+            || core.audio().padSampleFrameCount(0, 0) != kFixtureFrameCount
+            || core.audio().padSampleRate(0, 0) != kFixtureSampleRate) {
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • imported PCM projection mismatch • "
+                        + projectionStatus + " | " + audioRestarted);
+    }
+    const auto fixtureSerialized = mpc::persistence::serializeProject(
+            core.projectState().project(), &validationError);
+    if (fixtureSerialized.empty()) {
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • imported WAV is not v4-persistable • "
+                        + validationError + " | " + audioRestarted);
+    }
+    const auto audioStarted = core.audio().start();
+    if (audioStarted.rfind("Audio output", 0) != 0) {
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • imported PCM audio output failed • "
+                        + audioStarted);
     }
     core.editHistory().clear();
     arrangementEventClipboard.reset();
@@ -263,9 +422,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     core.sequenceTransportClock().clearQueuedSequence();
     return toJString(env,
             "PROJECT_TEST_FIXTURE_READY notes=2 "
-            "note1=120/36/180/97/88/3/-11 "
+            "note1=120/36/180/97/127/3/-11 "
             "note2=600/42/90/111/123/2/7 "
-            "placement=project-persistence-clip-01/" + patternId + "/480/720/120");
+            "placement=project-persistence-clip-01/" + patternId + "/480/720/120 "
+            + "pcm=24000/48000/96000 "
+            + "asset=" + std::to_string(fixtureLayer.sample.value));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -277,14 +438,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     if (length <= 0 || length > kMaxJavaProjectBytes) {
         return toJString(env, "PROJECT_LOAD_FAILED • invalid project file size");
     }
-    jbyte* raw = env->GetByteArrayElements(data, nullptr);
-    if (raw == nullptr) return toJString(env, "PROJECT_LOAD_FAILED • could not read project bytes");
-    const std::string bytes(reinterpret_cast<const char*>(raw), static_cast<std::size_t>(length));
-    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
-
     mpc::domain::Project candidate;
     std::string error;
-    if (!mpc::persistence::deserializeProject(bytes, candidate, &error)) {
+    bool decoded = false;
+    {
+        ScopedJavaByteArrayRead source{
+                env, data, env->GetByteArrayElements(data, nullptr)};
+        if (source.data == nullptr) {
+            return toJString(
+                    env, "PROJECT_LOAD_FAILED • could not read project bytes");
+        }
+        const std::string_view bytes(
+                reinterpret_cast<const char*>(source.data),
+                static_cast<std::size_t>(length));
+        decoded = mpc::persistence::deserializeProject(bytes, candidate, &error);
+    }
+    if (!decoded) {
         return toJString(env, "PROJECT_LOAD_FAILED • " + error);
     }
     if (!mpc::MpcProjectState::canReplaceProject(candidate)) {
@@ -301,12 +470,28 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
         return toJString(env, "PROJECT_LOAD_FAILED • " + stopped);
     }
     if (!core.audio().clearRuntimeSamplesForProjectReplacement()) {
-        return toJString(env, "PROJECT_LOAD_FAILED • audio streams did not stop");
+        const auto restoredProjection =
+                core.audio().refreshActiveProgramRuntimeProjection();
+        const auto restoredAudio = core.audio().start();
+        return toJString(env,
+                "PROJECT_LOAD_FAILED • audio streams did not stop; "
+                "previous Project retained • " + restoredProjection
+                        + " • " + restoredAudio);
     }
     if (!core.projectState().replaceProject(std::move(candidate))) {
-        return toJString(env, "PROJECT_LOAD_FAILED • project state rejected replacement");
+        // replaceProject validates before mutating, so the existing Project
+        // remains authoritative. The runtime slots were cleared immediately
+        // before the attempted replacement; rebuild them and restart output.
+        const auto restoredProjection =
+                core.audio().refreshActiveProgramRuntimeProjection();
+        const auto restoredAudio = core.audio().start();
+        return toJString(env,
+                "PROJECT_LOAD_FAILED • project state rejected replacement; "
+                "previous Project retained • " + restoredProjection
+                        + " • " + restoredAudio);
     }
-    core.audio().refreshActiveProgramRuntimeProjection();
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();
@@ -314,7 +499,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     return toJString(env,
             "PROJECT_LOADED • "
             + projectSummary(core.projectState().project())
-            + " • sample PCM is not embedded; assigned WAVs may need reload");
+            + " • " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -482,6 +667,21 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleFrameCo
                     static_cast<std::uint8_t>(pad),
                     static_cast<std::uint8_t>(layer)));
 }
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSamplePlaybackCursorFrame(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint layer)
+{
+    if (pad < 0 || pad >= 16 || layer < 0 || layer >= 8) {
+        return static_cast<jlong>(-1);
+    }
+
+    return static_cast<jlong>(
+            mpc::audio::AudioEngine::instance().padSamplePlaybackCursorFrame(
+                    static_cast<std::uint8_t>(pad),
+                    static_cast<std::uint8_t>(layer)));
+}
+
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadSampleName(
@@ -1058,6 +1258,54 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
 }
 
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTuningOffset(
+        JNIEnv* /* env */, jobject /* thiz */,
+        jint pad, jint velocity, jint tuningOffsetMilliSemitones)
+{
+    if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127
+            || !mpc::audio::isValidAudioTriggerTuningOffset(
+                    tuningOffsetMilliSemitones)) {
+        return JNI_FALSE;
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    const auto queuedAudio = core.audio().triggerPadWithTuningOffset(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(velocity),
+            static_cast<std::int32_t>(tuningOffsetMilliSemitones));
+    if (!queuedAudio) {
+        return JNI_FALSE;
+    }
+
+    const auto transport = core.sequenceTransportClock().snapshot();
+    const auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (!transport.playing
+            || !core.sequenceRecorder().active()
+            || trackIndex >= tracks.size()
+            || trackIndex >= mpc::domain::kMaxSequenceTracks) {
+        return JNI_FALSE;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (!track.recordArmed || track.kind != mpc::domain::TrackKind::Drum) {
+        return JNI_FALSE;
+    }
+
+    const auto eventTick = core.sequenceTransportClock().positionAtTimestamp(
+            monotonicNanos());
+    const mpc::sequencer::SequenceRecordEvent event{
+            eventTick,
+            static_cast<std::uint8_t>(trackIndex),
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(velocity),
+            mpc::sequencer::kSequenceRecordNoteHit,
+            static_cast<std::int32_t>(tuningOffsetMilliSemitones)};
+    return core.sequenceRecordQueue().tryEnqueue(event) ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioConfigureOutput(
         JNIEnv* env,
@@ -1341,7 +1589,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsGridEditable(
     const auto& track = tracks[trackIndex];
     if (track.kind != mpc::domain::TrackKind::Drum
             || track.patterns.empty()
-            || track.patterns.front().lengthTicks <= 0) {
+            || state.activePattern() == nullptr
+            || state.activePattern()->lengthTicks <= 0) {
         return JNI_FALSE;
     }
 
@@ -1387,7 +1636,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocitie
         return result;
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto& pattern = *state.activePattern();
     const auto& program = state.activeDrumProgram();
 
     std::array<int, 128> noteToPad{};
@@ -1477,7 +1726,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
         const auto noteNumber = state.activeDrumProgram()
                 .pads[static_cast<std::size_t>(padIndex)].midiNote;
         const auto* note = mpc::sequencer::findStepNote(
-                track.patterns.front(),
+                *state.activePattern(),
                 stepIndex,
                 gridTicks,
                 noteNumber);
@@ -1539,7 +1788,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepVelocity(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteVelocity(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1588,7 +1837,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepProbabili
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteProbability(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1639,7 +1888,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepRatchet(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteRatchet(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1696,7 +1945,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepDuration(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteDuration(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1753,7 +2002,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepNudge(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteNudge(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1805,7 +2054,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleGridStep(
         return toJString(env, "Grid edit failed: selected track is not DRUM");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
 
@@ -1880,6 +2129,8 @@ jstring selectSequenceForUi(
     if (!state.selectSequence(sequenceIndex)) {
         return toJString(env, "Sequence selection failed");
     }
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
 
     core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().update(
@@ -1888,7 +2139,7 @@ jstring selectSequenceForUi(
             monotonicNanos(),
             false);
 
-    return toJString(env, state.sequenceStatus());
+    return toJString(env, state.sequenceStatus() + " | " + projectionStatus);
 }
 
 } // namespace
@@ -1944,10 +2195,13 @@ jstring selectSequenceFromPadForUi(
     if (action != mpc::sequencer::SequenceLaunchAction::Selected) {
         return toJString(env, "Sequence launch failed");
     }
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     return toJString(
             env,
             "Sequence selected: " + std::to_string(sequenceIndex + 1)
-                    + " | " + state.sequenceStatus());
+                    + " | " + state.sequenceStatus()
+                    + " | " + projectionStatus);
 }
 
 } // namespace
@@ -2233,7 +2487,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceQuantizeSelected
                 "QUANTIZE unavailable: selected track has no Drum pattern");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto gridTicks =
             state.activeSequence().quantizeGridTicks;
     const auto changed =
@@ -2325,7 +2579,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackArrangem
         return toJString(env, "1|");
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto* selectedPattern = static_cast<std::size_t>(trackIndex) == state.activeTrackIndex()
+            ? state.activePattern() : &track.patterns.front();
+    if (selectedPattern == nullptr) return toJString(env, "1|");
+    const auto& pattern = *selectedPattern;
     std::string result = std::to_string(std::max<std::int32_t>(
             1, pattern.lengthTicks));
     result.push_back('|');
@@ -2403,7 +2660,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddArrangementPa
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: track has no source Pattern");
     }
-    const auto patternId = track.patterns.front().id;
+    const auto* sourcePattern = trackIndexValue == state.activeTrackIndex()
+            ? state.activePattern() : &track.patterns.front();
+    if (sourcePattern == nullptr) {
+        return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: no selected source Pattern");
+    }
+    const auto patternId = sourcePattern->id;
     if (patternId.empty()) {
         return toJString(env, "ARRANGE PATTERN PLACEMENT ADD failed: source Pattern has no identity");
     }
@@ -2832,7 +3094,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementE
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT MOVE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks || targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT MOVE failed: target outside Pattern");
     }
@@ -2843,25 +3110,25 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementE
     }
     const auto moveStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
-            std::uint8_t storedNote, std::int64_t fromTick,
-            std::int64_t toTick) -> bool {
+            std::size_t storedPatternIndex, std::uint8_t storedNote,
+            std::int64_t fromTick, std::int64_t toTick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
         if (storedSequenceIndex >= project.sequences.size()) return false;
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::movePatternNoteTick(
-                storedTrack.patterns.front(), fromTick, storedNote, toTick);
+                storedTrack.patterns[storedPatternIndex], fromTick, storedNote, toTick);
     };
     if (!core.editHistory().record({
             "Move Arrangement event",
-            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
-                return moveStoredEvent(sequenceIndex, trackIndexValue, note, targetTick, sourceTick);
+            [moveStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, targetTick, sourceTick);
             },
-            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
-                return moveStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick, targetTick);
+            [moveStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick);
             }})) {
         mpc::sequencer::movePatternNoteTick(pattern, targetTick, note, sourceTick);
         return toJString(env, "ARRANGE EVENT MOVE failed: history recording failed");
@@ -2904,7 +3171,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT CUT failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT CUT failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT CUT failed: source outside Pattern");
     }
@@ -2916,6 +3188,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
     }
     const auto restoreStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             const mpc::domain::MidiNoteEvent& event) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -2923,12 +3196,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::pastePatternNoteTick(
-                storedTrack.patterns.front(), event, event.tick);
+                storedTrack.patterns[storedPatternIndex], event, event.tick);
     };
     const auto removeStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -2936,17 +3210,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     if (!core.editHistory().record({
             "Cut Arrangement event",
-            [restoreStoredEvent, sequenceIndex, trackIndexValue, cutEvent]() {
-                return restoreStoredEvent(sequenceIndex, trackIndexValue, cutEvent);
+            [restoreStoredEvent, sequenceIndex, trackIndexValue, patternIndex, cutEvent]() {
+                return restoreStoredEvent(sequenceIndex, trackIndexValue, patternIndex, cutEvent);
             },
-            [removeStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick]() {
-                return removeStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick);
+            [removeStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick]() {
+                return removeStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, sourceTick);
             }})) {
         mpc::sequencer::pastePatternNoteTick(pattern, cutEvent, sourceTick);
         return toJString(env, "ARRANGE EVENT CUT failed: history recording failed");
@@ -2987,9 +3261,14 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCopyArrangementE
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT COPY failed: track has no Pattern");
     }
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT COPY failed: selected Pattern is unavailable");
+    }
     mpc::domain::MidiNoteEvent copiedEvent{};
     if (!mpc::sequencer::copyPatternNoteTick(
-            track.patterns.front(), sourceTick,
+            track.patterns[patternIndex], sourceTick,
             static_cast<std::uint8_t>(noteNumber), copiedEvent)) {
         return toJString(env, "ARRANGE EVENT COPY failed: event missing or ambiguous");
     }
@@ -3023,7 +3302,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT PASTE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT PASTE failed: target outside Pattern");
     }
@@ -3038,6 +3322,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
     }
     const auto eraseStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3045,12 +3330,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     const auto insertStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             const mpc::domain::MidiNoteEvent& event) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3058,18 +3344,18 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::pastePatternNoteTick(
-                storedTrack.patterns.front(), event, event.tick);
+                storedTrack.patterns[storedPatternIndex], event, event.tick);
     };
     if (!core.editHistory().record({
             "Paste Arrangement event",
-            [eraseStoredEvent, sequenceIndex, trackIndexValue,
+            [eraseStoredEvent, sequenceIndex, trackIndexValue, patternIndex,
                     note = pastedEvent.note, tick = targetTick]() {
-                return eraseStoredEvent(sequenceIndex, trackIndexValue, note, tick);
+                return eraseStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, tick);
             },
-            [insertStoredEvent, sequenceIndex, trackIndexValue, pastedEvent]() {
-                return insertStoredEvent(sequenceIndex, trackIndexValue, pastedEvent);
+            [insertStoredEvent, sequenceIndex, trackIndexValue, patternIndex, pastedEvent]() {
+                return insertStoredEvent(sequenceIndex, trackIndexValue, patternIndex, pastedEvent);
             }})) {
         mpc::sequencer::erasePatternNoteTick(pattern, targetTick, pastedEvent.note);
         return toJString(env, "ARRANGE EVENT PASTE failed: history recording failed");
@@ -3104,7 +3390,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT DUPLICATE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks || targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: target outside Pattern");
     }
@@ -3116,6 +3407,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
     }
     const auto eraseStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3123,32 +3415,32 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     const auto duplicateStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
-            std::uint8_t storedNote, std::int64_t fromTick,
-            std::int64_t toTick) -> bool {
+            std::size_t storedPatternIndex, std::uint8_t storedNote,
+            std::int64_t fromTick, std::int64_t toTick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
         if (storedSequenceIndex >= project.sequences.size()) return false;
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::duplicatePatternNoteTick(
-                storedTrack.patterns.front(), fromTick, storedNote, toTick);
+                storedTrack.patterns[storedPatternIndex], fromTick, storedNote, toTick);
     };
     if (!core.editHistory().record({
             "Duplicate Arrangement event",
-            [eraseStoredEvent, sequenceIndex, trackIndexValue, note, targetTick]() {
-                return eraseStoredEvent(sequenceIndex, trackIndexValue, note, targetTick);
+            [eraseStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, targetTick]() {
+                return eraseStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, targetTick);
             },
-            [duplicateStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
+            [duplicateStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
                 return duplicateStoredEvent(
-                        sequenceIndex, trackIndexValue, note, sourceTick, targetTick);
+                        sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick);
             }})) {
         mpc::sequencer::erasePatternNoteTick(pattern, targetTick, note);
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: history recording failed");
@@ -3194,6 +3486,37 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackMuted(
 
     return state.activeSequence().tracks[
             static_cast<std::size_t>(trackIndex)].muted
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCanSoloTrack(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    return mpc::sequencer::canSoloTrackPlayback(
+            state, tracks[static_cast<std::size_t>(trackIndex)])
+            ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsTrackSoloed(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& tracks =
+            mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return JNI_FALSE;
+    }
+
+    return tracks[static_cast<std::size_t>(trackIndex)].soloed
             ? JNI_TRUE : JNI_FALSE;
 }
 
@@ -3287,10 +3610,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackProgram(
                 env,
                 "Program selection failed: Track requires a Drum Program");
     }
+    std::string projectionStatus;
+    if (static_cast<std::size_t>(trackIndex) == state.activeTrackIndex()) {
+        projectionStatus = mpc::MpcCore::instance().audio()
+                .refreshActiveProgramRuntimeProjection();
+    }
 
     return toJString(
             env,
-            "Program • " + programs[static_cast<std::size_t>(programIndex)].name);
+            "Program • " + programs[static_cast<std::size_t>(programIndex)].name
+                    + (projectionStatus.empty() ? "" : " | " + projectionStatus));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -3300,11 +3629,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
     if (trackIndex < 0) {
         return toJString(env, "Track selection failed");
     }
-    auto& state = mpc::MpcCore::instance().projectState();
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
     if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
+        const auto projectionStatus =
+                core.audio().refreshActiveProgramRuntimeProjection();
         return toJString(
                 env,
-                state.trackStatus(static_cast<std::size_t>(trackIndex)));
+                state.trackStatus(static_cast<std::size_t>(trackIndex))
+                        + " | " + projectionStatus);
     }
     return toJString(env, "Track selection failed");
 }
@@ -3322,9 +3656,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
             static_cast<mpc::domain::TrackKind>(kind))) {
         return toJString(env, "Track creation failed");
     }
+    const auto projectionStatus =
+            mpc::MpcCore::instance().audio().refreshActiveProgramRuntimeProjection();
     return toJString(
             env,
-            state.trackStatus(state.activeTrackIndex()));
+            state.trackStatus(state.activeTrackIndex()) + " | " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -3345,6 +3681,8 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto audioResult = core.audio().start();
@@ -3397,6 +3735,8 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3424,6 +3764,8 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3476,6 +3818,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
     if (advanceResult.wrapped
             && queuedIndex >= 0
             && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
+        mpc::midi::invalidateNoteRepeatRecordingTarget();
+        mpc::midi::invalidatePadRecordingTargets();
         const bool wasRecording = core.sequenceRecorder().active();
         if (wasRecording) {
             core.sequenceRecorder().finish(
@@ -3708,6 +4052,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceUndo(
         jobject /* thiz */)
 {
     auto& history = mpc::MpcCore::instance().editHistory();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "UNDO • stop playback before editing Pattern data");
+    }
     if (!history.canUndo()) {
         return toJString(env, "UNDO • nothing to undo");
     }
@@ -3728,6 +4075,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceRedo(
         jobject /* thiz */)
 {
     auto& history = mpc::MpcCore::instance().editHistory();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "REDO • stop playback before editing Pattern data");
+    }
     if (!history.canRedo()) {
         return toJString(env, "REDO • nothing to redo");
     }
@@ -3771,7 +4121,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceErasePadAtPlayhe
         return toJString(env, "ERASE • selected track is not DRUM");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto noteNumber =
             state.activeDrumProgram()
                     .pads[static_cast<std::size_t>(padIndex)]
@@ -3987,7 +4337,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveToPreviousOr
         return toJString(env, "Locate event failed: selected track has no Drum pattern");
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto& pattern = *state.activePattern();
     const auto now = monotonicNanos();
     const auto current =
             core.sequenceTransportClock().positionAtTimestamp(now);
@@ -4079,6 +4429,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMovePlayheadTick
                     + " ticks");
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsPadMuted(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return JNI_FALSE;
+    }
+
+    const auto& pad = mpc::MpcCore::instance()
+            .projectState()
+            .activeDrumProgram()
+            .pad(static_cast<std::size_t>(padIndex));
+    return pad.muted ? JNI_TRUE : JNI_FALSE;
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceTogglePadMute(
         JNIEnv* env, jobject /* thiz */, jint padIndex)
@@ -4119,6 +4485,31 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackMute(
             env,
             "TRACK " + std::to_string(trackIndex + 1)
                     + " MUTE " + (track.muted ? "ON" : "OFF"));
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    auto& tracks = state.activeSequence().tracks;
+    if (trackIndex < 0
+            || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return toJString(env, "Track Solo failed: invalid Track");
+    }
+
+    auto& track = tracks[static_cast<std::size_t>(trackIndex)];
+    if (!mpc::sequencer::canSoloTrackPlayback(state, track)) {
+        return toJString(
+                env,
+                "Track Solo unavailable: selected Track has no active Drum playback route");
+    }
+
+    track.soloed = !track.soloed;
+    return toJString(
+            env,
+            "TRACK " + std::to_string(trackIndex + 1)
+                    + " SOLO " + (track.soloed ? "ON" : "OFF"));
 }
 
 extern "C" JNIEXPORT jlong JNICALL
@@ -4162,6 +4553,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrack
         return toJString(env, "Track arm failed: no selected track");
     }
 
+    mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     if (core.sequenceRecorder().active()) {
         core.sequenceRecorder().finish(
                 state,
@@ -4228,3 +4621,657 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDrainRecordEvent
                     core.projectState(),
                     core.sequenceRecordQueue()));
 }
+
+// ---------------------------------------------------------------------------
+// List Edit — pattern event CRUD via JNI
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Resolve one real Pattern on the selected Drum Track. Pattern selection
+// belongs to MpcProjectState, so List Edit and other workspaces share context.
+[[nodiscard]] inline mpc::domain::Pattern* resolveEditPattern(
+        jint patternIndex) noexcept {
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()
+            || tracks[trackIndex].kind != mpc::domain::TrackKind::Drum
+            || patternIndex < 0
+            || !state.selectPattern(static_cast<std::size_t>(patternIndex))) {
+        return nullptr;
+    }
+    return state.activePattern();
+}
+
+// Record complete Pattern event-list snapshots so undo/redo remains correct
+// when a tick edit reorders events or a later edit changes vector positions.
+bool recordPatternNotesEdit(
+        mpc::MpcEditHistory& history,
+        mpc::domain::Pattern& pattern,
+        std::string label,
+        std::vector<mpc::domain::MidiNoteEvent> before,
+        std::vector<mpc::domain::MidiNoteEvent> after) {
+    const auto beforeSnapshot =
+            std::make_shared<const std::vector<mpc::domain::MidiNoteEvent>>(
+                    std::move(before));
+    const auto afterSnapshot =
+            std::make_shared<const std::vector<mpc::domain::MidiNoteEvent>>(
+                    std::move(after));
+    pattern.notes = *afterSnapshot;
+
+    auto* const patternPtr = &pattern;
+    if (!history.record({
+            std::move(label),
+            [patternPtr, beforeSnapshot]() {
+                patternPtr->notes = *beforeSnapshot;
+                return true;
+            },
+            [patternPtr, afterSnapshot]() {
+                patternPtr->notes = *afterSnapshot;
+                return true;
+            }})) {
+        pattern.notes = *beforeSnapshot;
+        return false;
+    }
+    return true;
+}
+
+} // namespace
+
+extern "C" {
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetPatternCount(
+        JNIEnv* /* env */, jobject /* thiz */)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()
+            || tracks[trackIndex].kind != mpc::domain::TrackKind::Drum) return 0;
+    return static_cast<jint>(tracks[trackIndex].patterns.size());
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetPatternName(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex)
+{
+    const auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()
+            || tracks[trackIndex].kind != mpc::domain::TrackKind::Drum
+            || patternIndex < 0
+            || static_cast<std::size_t>(patternIndex) >= tracks[trackIndex].patterns.size()) {
+        return toJString(env, "Unavailable Pattern");
+    }
+    return toJString(env, tracks[trackIndex].patterns[static_cast<std::size_t>(patternIndex)].name);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSelectPattern(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    if (patternIndex < 0 || !state.selectPattern(static_cast<std::size_t>(patternIndex))) {
+        return toJString(env, "Pattern selection failed: invalid target");
+    }
+    const auto* pattern = state.activePattern();
+    return toJString(env, pattern == nullptr ? "Pattern selected" : "PATTERN • " + pattern->name);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetLengthTicks(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex)
+{
+    const auto* pattern = resolveEditPattern(patternIndex);
+    return pattern == nullptr ? 0 : pattern->lengthTicks;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventNudge(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    const auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) return 0;
+    return pattern->notes[static_cast<std::size_t>(eventIndex)].nudgeTicks;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventTuning(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    const auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) return 0;
+    return pattern->notes[static_cast<std::size_t>(eventIndex)].tuningOffsetMilliSemitones;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventPad(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) return -1;
+    const auto& tracks = state.activeSequence().tracks;
+    if (state.activeTrackIndex() >= tracks.size()) return -1;
+    const auto* program = state.findDrumProgram(tracks[state.activeTrackIndex()].programId);
+    if (program == nullptr || program->type != mpc::domain::ProgramType::Drum) return -1;
+    const auto midiNote = pattern->notes[static_cast<std::size_t>(eventIndex)].note;
+    for (std::size_t pad = 0; pad < mpc::domain::kMaxProgramPads; ++pad) {
+        if (program->pad(pad).midiNote == midiNote) return static_cast<jint>(pad);
+    }
+    return -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetPadMidiNote(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0 || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) return -1;
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) return -1;
+    const auto* program = state.findDrumProgram(tracks[trackIndex].programId);
+    if (program == nullptr || program->type != mpc::domain::ProgramType::Drum) return -1;
+    return static_cast<jint>(program->pad(static_cast<std::size_t>(padIndex)).midiNote);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternFindEvent(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint tick, jint note)
+{
+    const auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || tick < 0 || note < 0 || note > 127) return -1;
+    for (std::size_t i = 0; i < pattern->notes.size(); ++i) {
+        const auto& event = pattern->notes[i];
+        if (event.tick == tick && event.note == static_cast<std::uint8_t>(note)) {
+            return static_cast<jint>(i);
+        }
+    }
+    return -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventCount(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex)
+{
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return -1;
+    }
+    return static_cast<jint>(pattern->notes.size());
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventNote(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].note);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventVelocity(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].velocity);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventDuration(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].durationTicks);
+}
+
+JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventTick(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return 0;
+    }
+    auto& notes = pattern->notes;
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= notes.size()) {
+        return 0;
+    }
+    return static_cast<jint>(notes[eventIndex].tick);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex,
+        jint note)
+{
+    if (env == nullptr) return nullptr;
+    if (note < 0 || note > 127) {
+        return toJString(env, "Event note failed: range 0-127");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& history = core.editHistory();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event note failed: invalid target");
+    }
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
+        return toJString(env, "Event note failed: index out of range");
+    }
+    const auto previousNote = pattern->notes[static_cast<std::size_t>(eventIndex)].note;
+    auto before = pattern->notes;
+    auto after = before;
+    if (!mpc::sequencer::list_edit::setPatternEventNote(
+            *pattern, static_cast<std::size_t>(eventIndex), note)) {
+        return toJString(env, "Event note failed: same-pitch event or invalid target");
+    }
+    after = pattern->notes;
+    pattern->notes = before;
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Note",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event note failed: history record rejected");
+    }
+    return toJString(env,
+            "Event note " + std::to_string(previousNote)
+                    + " -> " + std::to_string(note));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventVelocity(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex,
+        jint velocity)
+{
+    if (env == nullptr) return nullptr;
+    if (velocity < 1 || velocity > 127) {
+        return toJString(env, "Event velocity failed: range 1-127");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& history = core.editHistory();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event velocity failed: invalid target");
+    }
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
+        return toJString(env, "Event velocity failed: index out of range");
+    }
+
+    const auto previousVelocity = pattern->notes[eventIndex].velocity;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].velocity = static_cast<std::uint8_t>(velocity);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Velocity",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event velocity failed: history record rejected");
+    }
+    return toJString(env,
+            "Event velocity " + std::to_string(previousVelocity)
+                    + " -> " + std::to_string(velocity));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventDuration(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex,
+        jint duration)
+{
+    if (env == nullptr) return nullptr;
+    if (duration < 0) {
+        return toJString(env, "Event duration failed: negative value");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& history = core.editHistory();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event duration failed: invalid target");
+    }
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
+        return toJString(env, "Event duration failed: index out of range");
+    }
+    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
+    if (static_cast<std::int64_t>(duration) > length) {
+        return toJString(env, "Event duration failed: exceeds pattern length");
+    }
+
+    const auto previousDuration = pattern->notes[eventIndex].durationTicks;
+    auto before = pattern->notes;
+    auto after = before;
+    after[eventIndex].durationTicks = static_cast<std::int32_t>(duration);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Duration",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event duration failed: history record rejected");
+    }
+    return toJString(env,
+            "Event duration " + std::to_string(previousDuration)
+                    + " -> " + std::to_string(duration));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex,
+        jint tick)
+{
+    if (env == nullptr) return nullptr;
+    if (tick < 0) {
+        return toJString(env, "Event tick failed: negative value");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event edit blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& history = core.editHistory();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event tick failed: invalid target");
+    }
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
+        return toJString(env, "Event tick failed: index out of range");
+    }
+    const auto length = static_cast<std::int64_t>(pattern->lengthTicks);
+    if (static_cast<std::int64_t>(tick) >= length) {
+        return toJString(env, "Event tick failed: exceeds pattern length");
+    }
+
+    const auto previousTick = pattern->notes[static_cast<std::size_t>(eventIndex)].tick;
+    auto before = pattern->notes;
+    auto after = before;
+    if (!mpc::sequencer::list_edit::setPatternEventTick(
+            *pattern, static_cast<std::size_t>(eventIndex), tick)) {
+        return toJString(env, "Event tick failed: same-pitch event or invalid target");
+    }
+    after = pattern->notes;
+    pattern->notes = before;
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Change Event Tick",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event tick failed: history record rejected");
+    }
+    return toJString(env,
+            "Event tick " + std::to_string(previousTick)
+                    + " -> " + std::to_string(tick));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint padIndex, jint tick,
+        jint velocity, jint duration)
+{
+    if (env == nullptr) return nullptr;
+    if (padIndex < 0
+            || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) {
+        return toJString(env, "Event add failed: invalid Pad target");
+    }
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event add blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+
+    auto& state = core.projectState();
+    auto& tracks = state.activeSequence().tracks;
+    const auto trackIndex = state.activeTrackIndex();
+    if (trackIndex >= tracks.size()
+            || tracks[trackIndex].kind != mpc::domain::TrackKind::Drum) {
+        return toJString(env, "Event add failed: no selected Drum Track");
+    }
+    const auto* program = state.findDrumProgram(tracks[trackIndex].programId);
+    if (program == nullptr || program->type != mpc::domain::ProgramType::Drum) {
+        return toJString(env, "Event add failed: selected Track has no Drum Program");
+    }
+
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event add failed: invalid Pattern target");
+    }
+    auto before = pattern->notes;
+    auto after = before;
+    const auto mappedMidiNote = program->pad(static_cast<std::size_t>(padIndex)).midiNote;
+    const auto inserted = mpc::sequencer::list_edit::appendPadNoteEvent(
+            after,
+            pattern->lengthTicks,
+            *program,
+            static_cast<std::size_t>(padIndex),
+            tick,
+            velocity,
+            duration);
+    switch (inserted) {
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPattern:
+            return toJString(env, "Event add failed: invalid Pattern length");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidTick:
+            return toJString(env, "Event add failed: tick out of range");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidVelocity:
+            return toJString(env, "Event add failed: velocity range 1-127");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidDuration:
+            return toJString(env, "Event add failed: duration out of range");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::SamePitchCollision:
+            return toJString(env, "Event add failed: same-pitch collision");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPad:
+            return toJString(env, "Event add failed: invalid Drum Program Pad mapping");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidMidiNote:
+            return toJString(env, "Event add failed: Drum Program Pad MIDI note out of range");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::Added:
+            break;
+    }
+
+    if (!recordPatternNotesEdit(
+            core.editHistory(), *pattern, "Add Pattern Pad Event",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event add failed: history record rejected");
+    }
+    return toJString(env,
+            "Event added: Pad " + std::to_string(padIndex + 1)
+                    + " note=" + std::to_string(mappedMidiNote)
+                    + " tick=" + std::to_string(tick));
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNudge(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex, jint nudge)
+{
+    if (env == nullptr) return nullptr;
+    if (nudge < -960 || nudge > 960)
+        return toJString(env, "Event nudge failed: range -960 to +960 ticks");
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying())
+        return toJString(env, "Event edit blocked: stop playback first");
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size())
+        return toJString(env, "Event nudge failed: invalid target");
+    auto before = pattern->notes;
+    auto after = before;
+    const auto previous = after[static_cast<std::size_t>(eventIndex)].nudgeTicks;
+    after[static_cast<std::size_t>(eventIndex)].nudgeTicks = nudge;
+    if (!recordPatternNotesEdit(core.editHistory(), *pattern, "Change Event Nudge",
+            std::move(before), std::move(after)))
+        return toJString(env, "Event nudge failed: history record rejected");
+    return toJString(env, "NUDGE • " + std::to_string(previous) + " -> " + std::to_string(nudge) + " ticks");
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTuning(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex, jint tuningMilliSemitones)
+{
+    if (env == nullptr) return nullptr;
+    if (tuningMilliSemitones < -24000 || tuningMilliSemitones > 24000)
+        return toJString(env, "Event tuning failed: range -24 to +24 semitones");
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying())
+        return toJString(env, "Event edit blocked: stop playback first");
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size())
+        return toJString(env, "Event tuning failed: invalid target");
+    auto before = pattern->notes;
+    auto after = before;
+    const auto previous = after[static_cast<std::size_t>(eventIndex)].tuningOffsetMilliSemitones;
+    after[static_cast<std::size_t>(eventIndex)].tuningOffsetMilliSemitones = tuningMilliSemitones;
+    if (!recordPatternNotesEdit(core.editHistory(), *pattern, "Change Event Pitch",
+            std::move(before), std::move(after)))
+        return toJString(env, "Event pitch failed: history record rejected");
+    return toJString(env, "PITCH • " + std::to_string(previous) + " -> " + std::to_string(tuningMilliSemitones) + " mST");
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternMoveEvent(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex, jint deltaTicks)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying())
+        return toJString(env, "Event move blocked: stop playback first");
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size())
+        return toJString(env, "Event move failed: invalid target");
+    auto before = pattern->notes;
+    auto edited = *pattern;
+    if (!mpc::sequencer::list_edit::movePatternEvent(
+            edited, static_cast<std::size_t>(eventIndex), deltaTicks))
+        return toJString(env, "Event move failed: target outside Pattern or note collision");
+    auto after = std::move(edited.notes);
+    if (!recordPatternNotesEdit(core.editHistory(), *pattern, "Move Pattern Event",
+            std::move(before), std::move(after)))
+        return toJString(env, "Event move failed: history record rejected");
+    return toJString(env, "Event moved by " + std::to_string(deltaTicks) + " ticks");
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDuplicateEvent(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex, jint deltaTicks)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying())
+        return toJString(env, "Event duplicate blocked: stop playback first");
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size())
+        return toJString(env, "Event duplicate failed: invalid target");
+    auto before = pattern->notes;
+    auto edited = *pattern;
+    if (!mpc::sequencer::list_edit::duplicatePatternEvent(
+            edited, static_cast<std::size_t>(eventIndex), deltaTicks))
+        return toJString(env, "Event duplicate failed: target outside Pattern or note collision");
+    auto after = std::move(edited.notes);
+    if (!recordPatternNotesEdit(core.editHistory(), *pattern, "Duplicate Pattern Event",
+            std::move(before), std::move(after)))
+        return toJString(env, "Event duplicate failed: history record rejected");
+    return toJString(env, "Event duplicated by " + std::to_string(deltaTicks) + " ticks");
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternTranspose(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint semitones)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying())
+        return toJString(env, "Pattern transpose blocked: stop playback first");
+    stopSequenceForMutation();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) return toJString(env, "Pattern transpose failed: invalid target");
+    auto before = pattern->notes;
+    auto edited = *pattern;
+    if (!mpc::sequencer::list_edit::transposePattern(edited, semitones))
+        return toJString(env, "Pattern transpose failed: empty Pattern or MIDI pitch out of range");
+    auto after = std::move(edited.notes);
+    if (!recordPatternNotesEdit(core.editHistory(), *pattern, "Transpose Pattern",
+            std::move(before), std::move(after)))
+        return toJString(env, "Pattern transpose failed: history record rejected");
+    return toJString(env, "Pattern transposed " + std::to_string(semitones) + " semitones");
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternDeleteEvent(
+        JNIEnv* env, jobject /* thiz */, jint patternIndex, jint eventIndex)
+{
+    if (env == nullptr) return nullptr;
+    auto& core = mpc::MpcCore::instance();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "Event delete blocked: stop playback first");
+    }
+    stopSequenceForMutation();
+    auto& history = core.editHistory();
+    auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr) {
+        return toJString(env, "Event delete failed: invalid target");
+    }
+    if (eventIndex < 0
+            || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
+        return toJString(env, "Event delete failed: index out of range");
+    }
+
+    const auto deletedEvent = pattern->notes[eventIndex];
+    auto before = pattern->notes;
+    auto after = before;
+    after.erase(after.begin() + eventIndex);
+    if (!recordPatternNotesEdit(
+            history, *pattern, "Delete Pattern Event",
+            std::move(before), std::move(after))) {
+        return toJString(env, "Event delete failed: history record rejected");
+    }
+    return toJString(env,
+            "Event deleted: note=" + std::to_string(deletedEvent.note)
+                    + " tick=" + std::to_string(deletedEvent.tick));
+}
+
+} // extern "C"
+
+// AndroidMidiBridge JNI exports are owned by src/Midi/NativeMidi.cpp.
+// Keeping one implementation prevents duplicate symbols and preserves its
+// lock-free semantic-action and sequence-launcher queues.

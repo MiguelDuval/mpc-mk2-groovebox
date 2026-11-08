@@ -7,9 +7,9 @@
 
 namespace mpc::persistence {
 
-// Version 2 adds explicit Pattern-placement records. Version 1 is accepted
-// for projects whose Tracks contain Patterns but no explicit placements.
-inline constexpr int kCurrentProjectFormatVersion = 2;
+// Version 4 embeds unique referenced PCM assets in binary blocks. Versions 1-3
+// remain readable; legacy files without PCM retain explicit missing-asset state.
+inline constexpr int kCurrentProjectFormatVersion = 4;
 
 std::string serializeProject(const domain::Project& project, std::string* error = nullptr);
 bool deserializeProject(

@@ -1,8 +1,10 @@
 #include "NativeMidi.h"
+#include "MpcStudioMk2PadInputPolicy.h"
 #include "../Audio/AudioEngine.h"
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
 #include "../MPC/MpcStudioMk2SemanticAdapter.h"
+#include "../MPC/MpcPadPerformPolicy.h"
 #include "../MPC/Sequencer/MpcNoteRepeatScheduler.h"
 #include "../MPC/Sequencer/MpcNoteRepeatTiming.h"
 #include "../MPC/Sequencer/MpcStepEditRouting.h"
@@ -37,6 +39,7 @@ std::atomic<std::size_t> semanticActionHead{0};
 std::atomic<std::size_t> semanticActionTail{0};
 mpc::studio::MpcStudioMk2SemanticAdapter semanticAdapter;
 std::unique_ptr<mpc::sequencer::MpcNoteRepeatScheduler> noteRepeatScheduler;
+mpc::midi::PadRecordingTargetTracker padRecordingTargetTracker;
 
 std::vector<std::uint8_t> makeNoteRepeatRateFeedback(
         bool enabled,
@@ -64,9 +67,30 @@ mpc::sequencer::MpcNoteRepeatScheduler& repeatScheduler() {
         noteRepeatScheduler =
                 std::make_unique<mpc::sequencer::MpcNoteRepeatScheduler>(
                         core.audio(),
-                        core.sequenceTransportClock());
+                        core.sequenceTransportClock(),
+                        core.sequenceRecordQueue());
     }
     return *noteRepeatScheduler;
+}
+
+std::uint8_t currentRecordableDrumTrack(mpc::MpcCore& core) noexcept {
+    if (!core.sequenceTransportClock().snapshot().playing) {
+        return 0xFF;
+    }
+
+    const auto& state = core.projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()
+            || trackIndex >= mpc::domain::kMaxSequenceTracks) {
+        return 0xFF;
+    }
+
+    const auto& track = tracks[trackIndex];
+    if (!track.recordArmed || track.kind != mpc::domain::TrackKind::Drum) {
+        return 0xFF;
+    }
+    return static_cast<std::uint8_t>(trackIndex);
 }
 
 bool enqueueSemanticAction(
@@ -126,13 +150,13 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadAftertouch) {
         const auto action = semanticAdapter.handleControl(*event);
+        const auto targetPadIndex =
+                semanticAdapter.padTargetForPhysicalPad(event->padIndex);
         if (action.has_value()
                 && action->type == mpc::studio::SemanticActionType::PadAftertouch
-                && action->value0 >= 0
-                && action->value0 < static_cast<std::int32_t>(
-                        mpc::domain::kMaxProgramPads)) {
+                && targetPadIndex < mpc::domain::kMaxProgramPads) {
             mpc::MpcCore::instance().audio().setPadAftertouch(
-                    static_cast<std::uint8_t>(action->value0),
+                    targetPadIndex,
                     static_cast<std::uint8_t>(
                             std::clamp(action->value1, 0, 127)));
         }
@@ -141,14 +165,9 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 
     if (event->type == mpc::studio::InputEventType::PadNote) {
         auto& core = mpc::MpcCore::instance();
-        if (event->padIndex < mpc::domain::kMaxProgramPads) {
-            core.audio().setPadAftertouch(event->padIndex, 0);
-        }
 
-        if (stepEditEnabled.load(std::memory_order_acquire)) {
-            if (!event->pressed) {
-                return std::nullopt;
-            }
+        if (stepEditEnabled.load(std::memory_order_acquire)
+                && event->pressed) {
             const auto page =
                     stepEditPage.load(std::memory_order_acquire);
             const auto stepIndex =
@@ -163,6 +182,13 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
         }
 
         const auto padRouting = semanticAdapter.handlePad(*event);
+        if (event->padIndex < mpc::domain::kMaxProgramPads) {
+            const auto expressionPad = padRouting.targetPadIndex
+                            < mpc::domain::kMaxProgramPads
+                    ? padRouting.targetPadIndex
+                    : semanticAdapter.padTargetForPhysicalPad(event->padIndex);
+            core.audio().setPadAftertouch(expressionPad, 0);
+        }
         if (padRouting.action.has_value()) {
             enqueueSemanticAction(*padRouting.action);
         }
@@ -194,6 +220,8 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                             .activeDrumProgram()
                             .pad(padRouting.targetPadIndex);
                     if (!pad.muted) {
+                        scheduler.setRecordingTrack(
+                                currentRecordableDrumTrack(core));
                         scheduler.setPad(
                                 padRouting.targetPadIndex,
                                 padRouting.velocity);
@@ -202,7 +230,14 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
                     }
                 }
             } else if (!semanticAdapter.noteRepeatLatched()) {
-                scheduler.clearPad();
+                const auto heldPad = semanticAdapter.heldRepeatPad();
+                if (semanticAdapter.noteRepeatActive() && heldPad.has_value()) {
+                    scheduler.setRecordingTrack(
+                            currentRecordableDrumTrack(core));
+                    scheduler.setPad(heldPad->targetPadIndex, heldPad->velocity);
+                } else {
+                    scheduler.clearPad();
+                }
             }
 
             const std::uint8_t level =
@@ -213,41 +248,84 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             return std::vector<std::uint8_t>(led.begin(), led.end());
         }
 
-        if (event->pressed && padRouting.targetPadIndex != 0xFF) {
-            const auto& pad =
-                    core.projectState().activeDrumProgram()
-                            .pad(padRouting.targetPadIndex);
-            if (!pad.muted) {
+        bool padMuted = true;
+        if (padRouting.targetPadIndex < mpc::domain::kMaxProgramPads) {
+            padMuted = core.projectState().activeDrumProgram()
+                    .pad(padRouting.targetPadIndex).muted;
+        }
+        const auto padInput = mpc::midi::makePadInputPlan(
+                padRouting, event->pressed, padMuted);
+
+        bool triggerAccepted = false;
+        if (padInput.triggerRequested) {
+            if (padInput.tuningMode) {
+                triggerAccepted = core.audio().triggerPadWithTuningOffset(
+                        padInput.targetPadIndex,
+                        padInput.velocity,
+                        padInput.tuningOffsetMilliSemitones);
+            } else {
                 core.audio().triggerPad(
-                        padRouting.targetPadIndex,
-                        padRouting.velocity);
+                        padInput.targetPadIndex,
+                        padInput.velocity);
+                triggerAccepted = true;
             }
         }
 
         const auto& state = core.projectState();
-        const auto trackIndex = state.activeTrackIndex();
         const auto& tracks = state.activeSequence().tracks;
+        const auto activeTrackIndex = state.activeTrackIndex();
+        const bool transportPlaying =
+                core.sequenceTransportClock().snapshot().playing;
+        const bool activeTrackRecordable = activeTrackIndex < tracks.size()
+                && activeTrackIndex < mpc::domain::kMaxSequenceTracks
+                && tracks[activeTrackIndex].recordArmed
+                && tracks[activeTrackIndex].kind == mpc::domain::TrackKind::Drum
+                && transportPlaying;
 
-        if (trackIndex < tracks.size()
-                && tracks[trackIndex].recordArmed
-                && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum
-                && core.sequenceTransportClock().snapshot().playing) {
+        std::optional<std::uint8_t> recordingTrackIndex;
+        if (event->pressed) {
+            const auto capturedTrack = activeTrackRecordable
+                    ? static_cast<std::uint8_t>(activeTrackIndex)
+                    : std::uint8_t{0xFF};
+            padRecordingTargetTracker.capture(
+                    event->padIndex,
+                    padInput.hasTarget && activeTrackRecordable,
+                    capturedTrack);
+            if (padInput.hasTarget && activeTrackRecordable) {
+                recordingTrackIndex = capturedTrack;
+            }
+        } else {
+            // A held hardware note must close on the Track that received its
+            // Note On, even if the user changes the active Track before release.
+            recordingTrackIndex = padRecordingTargetTracker.take(event->padIndex);
+            if (recordingTrackIndex.has_value()
+                    && (!transportPlaying
+                        || *recordingTrackIndex >= tracks.size()
+                        || !tracks[*recordingTrackIndex].recordArmed
+                        || tracks[*recordingTrackIndex].kind
+                                != mpc::domain::TrackKind::Drum)) {
+                recordingTrackIndex.reset();
+            }
+        }
+
+        if (recordingTrackIndex.has_value()) {
             const auto tick =
                     core.sequenceTransportClock().positionAtTimestamp(timestamp);
-            const mpc::sequencer::SequenceRecordEvent captured{
+            const auto captured = mpc::midi::makePadSequenceRecordEvent(
+                    padInput,
+                    event->pressed,
+                    true,
+                    *recordingTrackIndex,
                     tick,
-                    static_cast<std::uint8_t>(trackIndex),
-                    padRouting.targetPadIndex,
-                    event->pressed
-                            ? padRouting.velocity
-                            : static_cast<std::uint8_t>(0),
-                    event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
-
-            if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
+                    triggerAccepted);
+            if (captured.has_value()
+                    && !core.sequenceRecordQueue().tryEnqueue(*captured)) {
                 __android_log_print(
                         ANDROID_LOG_WARN,
                         kTag,
-                        "Sequence record queue full");
+                        padInput.tuningMode
+                                ? "16 Levels Tune record queue full"
+                                : "Sequence record queue full");
             }
         }
 
@@ -297,7 +375,58 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
     return std::nullopt;
 }
 
+void invalidateNoteRepeatRecordingTarget() noexcept {
+    if (noteRepeatScheduler) {
+        noteRepeatScheduler->setRecordingTrack(0xFF);
+    }
+}
+
+void invalidatePadRecordingTargets() noexcept {
+    padRecordingTargetTracker.clear();
+}
+
 } // namespace mpc::midi
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetSixteenLevelTuneMode(
+        JNIEnv* /* env */, jclass /* clazz */, jboolean enabled)
+{
+    semanticAdapter.setSixteenLevelTuneMode(enabled == JNI_TRUE);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetPadPerformContext(
+        JNIEnv* /* env */, jclass /* clazz */,
+        jboolean enabled, jint sourcePadIndex, jint scaleIndex, jint octaveShift,
+        jint rootNoteIndex)
+{
+    semanticAdapter.setPadPerformContext(
+            enabled == JNI_TRUE,
+            static_cast<std::int32_t>(sourcePadIndex),
+            static_cast<std::int32_t>(scaleIndex),
+            static_cast<std::int32_t>(octaveShift),
+            static_cast<std::int32_t>(rootNoteIndex));
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiGetPadPerformSemitoneOffset(
+        JNIEnv* /* env */, jclass /* clazz */,
+        jint padIndex, jint scaleIndex, jint octaveShift, jint rootNoteIndex)
+{
+    if (padIndex < 0 || padIndex >= 16
+            || !mpc::studio::pad_perform::isValidScaleIndex(scaleIndex)
+            || octaveShift < mpc::studio::pad_perform::kMinimumOctaveShift
+            || octaveShift > mpc::studio::pad_perform::kMaximumOctaveShift
+            || !mpc::studio::pad_perform::isValidRootNoteIndex(rootNoteIndex)) {
+        return 0;
+    }
+
+    return static_cast<jint>(mpc::studio::pad_perform::semitoneOffset(
+            static_cast<std::uint8_t>(padIndex),
+            static_cast<std::int32_t>(scaleIndex),
+            static_cast<std::int32_t>(octaveShift),
+            static_cast<std::int32_t>(rootNoteIndex)));
+}
 
 template <std::size_t Size>
 jbyteArray toJavaByteArray(

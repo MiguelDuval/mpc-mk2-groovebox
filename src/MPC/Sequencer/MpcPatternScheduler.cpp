@@ -6,6 +6,8 @@
 namespace mpc::sequencer {
 namespace {
 
+constexpr std::size_t kMaxSchedulerNoteEvaluations = 65'536;
+
 std::int64_t normalizedNoteTick(
         const domain::MidiNoteEvent& note,
         std::int64_t patternLength) noexcept {
@@ -46,6 +48,21 @@ std::uint32_t mixCycleSeed(
     return state;
 }
 
+bool windowOffsetFitsInt64(
+        std::int64_t loopLength,
+        std::int64_t begin,
+        std::int64_t end,
+        std::uint64_t completedCycles) noexcept {
+    if (completedCycles == 0 || loopLength <= 0) return true;
+    const auto maximum = static_cast<std::uint64_t>(
+            std::numeric_limits<std::int64_t>::max());
+    const auto length = static_cast<std::uint64_t>(loopLength);
+    if (completedCycles > maximum / length) return false;
+    const auto cycleTicks = completedCycles * length;
+    if (end <= begin) return true;
+    return static_cast<std::uint64_t>(end - begin) <= maximum - cycleTicks;
+}
+
 } // namespace
 
 ScheduleResult schedulePatternWindow(
@@ -55,7 +72,7 @@ ScheduleResult schedulePatternWindow(
         std::span<ScheduledMidiEvent> output) noexcept {
     ScheduleResult result;
 
-    if (pattern.lengthTicks <= 0) {
+    if (pattern.lengthTicks <= 0 || pattern.notes.empty()) {
         return result;
     }
 
@@ -69,12 +86,17 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
-    if (window.completedCycles >
-        static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) /
-                static_cast<std::uint64_t>(length)) {
+    if (!windowOffsetFitsInt64(
+                length, window.begin, window.end, window.completedCycles)) {
+        result.truncated = true;
         return result;
     }
 
+    const std::size_t workBudget = pattern.notes.size() > kMaxSchedulerNoteEvaluations
+            ? pattern.notes.size()
+            : kMaxSchedulerNoteEvaluations;
+    std::size_t noteEvaluations = 0;
+    bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
                                  std::int64_t segmentEnd,
                                  std::int64_t baseOffset,
@@ -82,6 +104,15 @@ ScheduleResult schedulePatternWindow(
         if (segmentBegin >= segmentEnd) {
             return;
         }
+        // Finish one complete Pattern scan or skip the next segment entirely.
+        // This avoids emitting a partial segment solely because the work cap
+        // was reached and guarantees at least one full segment can be handled.
+        if (noteEvaluations > workBudget - pattern.notes.size()) {
+            result.truncated = true;
+            workBudgetExhausted = true;
+            return;
+        }
+        noteEvaluations += pattern.notes.size();
 
         const auto cycleSeed = mixCycleSeed(seed, cycleIndex);
 
@@ -107,7 +138,7 @@ ScheduleResult schedulePatternWindow(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
@@ -115,6 +146,8 @@ ScheduleResult schedulePatternWindow(
             scheduled.ratchetCount = static_cast<std::uint8_t>(
                     ratchetCount(note));
             scheduled.sourceNoteIndex = noteIndex;
+            scheduled.tuningOffsetMilliSemitones =
+                    note.tuningOffsetMilliSemitones;
         }
     };
 
@@ -125,25 +158,19 @@ ScheduleResult schedulePatternWindow(
         return result;
     }
 
-    emitSegment(
-            window.begin,
-            length,
-            baseOffset,
-            0);
+    emitSegment(window.begin, length, baseOffset, 0);
+    if (workBudgetExhausted) return result;
     baseOffset += length - window.begin;
 
     for (std::uint64_t cycle = 1;
          cycle < window.completedCycles;
          ++cycle) {
         emitSegment(0, length, baseOffset, cycle);
+        if (workBudgetExhausted) return result;
         baseOffset += length;
     }
 
-    emitSegment(
-            0,
-            window.end,
-            baseOffset,
-            window.completedCycles);
+    emitSegment(0, window.end, baseOffset, window.completedCycles);
 
     return result;
 }
@@ -158,6 +185,7 @@ ScheduleResult schedulePatternWindowInRange(
     ScheduleResult result;
 
     if (pattern.lengthTicks <= 0
+            || pattern.notes.empty()
             || loopStartTicks < 0
             || loopEndTicks <= loopStartTicks
             || loopEndTicks > pattern.lengthTicks
@@ -169,7 +197,17 @@ ScheduleResult schedulePatternWindowInRange(
     }
 
     const auto loopLength = loopEndTicks - loopStartTicks;
+    if (!windowOffsetFitsInt64(
+                loopLength, window.begin, window.end, window.completedCycles)) {
+        result.truncated = true;
+        return result;
+    }
 
+    const std::size_t workBudget = pattern.notes.size() > kMaxSchedulerNoteEvaluations
+            ? pattern.notes.size()
+            : kMaxSchedulerNoteEvaluations;
+    std::size_t noteEvaluations = 0;
+    bool workBudgetExhausted = false;
     const auto emitSegment = [&](std::int64_t segmentBegin,
                                  std::int64_t segmentEnd,
                                  std::int64_t baseOffset,
@@ -177,6 +215,15 @@ ScheduleResult schedulePatternWindowInRange(
         if (segmentBegin >= segmentEnd) {
             return;
         }
+        // Finish one complete Pattern scan or skip the next segment entirely.
+        // This avoids emitting a partial segment solely because the work cap
+        // was reached and guarantees at least one full segment can be handled.
+        if (noteEvaluations > workBudget - pattern.notes.size()) {
+            result.truncated = true;
+            workBudgetExhausted = true;
+            return;
+        }
+        noteEvaluations += pattern.notes.size();
 
         const auto cycleSeed = mixCycleSeed(seed, cycleIndex);
         for (std::size_t noteIndex = 0;
@@ -206,7 +253,7 @@ ScheduleResult schedulePatternWindowInRange(
 
             auto& scheduled = output[result.written++];
             scheduled.offsetTicks =
-                    baseOffset + effectiveTick - segmentBegin;
+                    baseOffset + (effectiveTick - segmentBegin);
             scheduled.patternTick = note.tick;
             scheduled.durationTicks = note.durationTicks;
             scheduled.note = note.note;
@@ -214,6 +261,8 @@ ScheduleResult schedulePatternWindowInRange(
             scheduled.ratchetCount = static_cast<std::uint8_t>(
                     ratchetCount(note));
             scheduled.sourceNoteIndex = noteIndex;
+            scheduled.tuningOffsetMilliSemitones =
+                    note.tuningOffsetMilliSemitones;
         }
     };
 
@@ -226,12 +275,14 @@ ScheduleResult schedulePatternWindowInRange(
     }
 
     emitSegment(window.begin, loopEndTicks, 0, 0);
+    if (workBudgetExhausted) return result;
 
     std::int64_t baseOffset = loopEndTicks - window.begin;
     for (std::uint64_t cycle = 1;
          cycle < window.completedCycles;
          ++cycle) {
         emitSegment(loopStartTicks, loopEndTicks, baseOffset, cycle);
+        if (workBudgetExhausted) return result;
         if (baseOffset > std::numeric_limits<std::int64_t>::max() - loopLength) {
             result.truncated = true;
             return result;

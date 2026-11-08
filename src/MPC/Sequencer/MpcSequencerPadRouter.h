@@ -14,6 +14,7 @@ struct ScheduledPadEvent final {
     std::size_t padIndex = 0;
     std::uint8_t velocity = 0;
     std::size_t sourceNoteIndex = 0;
+    std::int32_t tuningOffsetMilliSemitones = 0;
 };
 
 struct PadRouteResult final {
@@ -51,6 +52,7 @@ struct PadRouteResult final {
         routed.padIndex = *padIndex;
         routed.velocity = event.velocity;
         routed.sourceNoteIndex = event.sourceNoteIndex;
+        routed.tuningOffsetMilliSemitones = event.tuningOffsetMilliSemitones;
         ++result.routed;
     }
 

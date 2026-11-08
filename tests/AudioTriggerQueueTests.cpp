@@ -7,6 +7,29 @@
 #include <vector>
 
 int main() {
+    assert(!mpc::audio::isValidAudioTriggerVelocity(0));
+    assert(mpc::audio::isValidAudioTriggerVelocity(1));
+    assert(mpc::audio::isValidAudioTriggerVelocity(64));
+    assert(mpc::audio::isValidAudioTriggerVelocity(127));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(128));
+    assert(!mpc::audio::isValidAudioTriggerVelocity(255));
+    constexpr std::size_t pads = 16;
+    assert(mpc::audio::isValidAudioTriggerEvent({15, 127, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({16, 127, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 0, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 128, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 255, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, -1}, pads));
+    assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 48000}, pads, 48000));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 48001}, pads, 48000));
+    assert(mpc::audio::isValidAudioTriggerTuningOffset(-48000));
+    assert(mpc::audio::isValidAudioTriggerTuningOffset(0));
+    assert(mpc::audio::isValidAudioTriggerTuningOffset(48000));
+    assert(!mpc::audio::isValidAudioTriggerTuningOffset(-48001));
+    assert(!mpc::audio::isValidAudioTriggerTuningOffset(48001));
+    assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 0, -48000}, pads));
+    assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 0, 48000}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 0, 48001}, pads));
     mpc::audio::AudioTriggerQueue queue;
 
     mpc::audio::AudioTriggerEvent initiallyEmpty;
@@ -17,7 +40,8 @@ int main() {
                 mpc::audio::AudioTriggerEvent{
                     index,
                     static_cast<std::uint8_t>(80 + index),
-                    static_cast<std::int32_t>(index * 3)}));
+                    static_cast<std::int32_t>(index * 3),
+                    static_cast<std::int32_t>(index * 1000)}));
     }
 
     for (std::uint8_t index = 0; index < 16; ++index) {
@@ -26,6 +50,8 @@ int main() {
         assert(event.padIndex == index);
         assert(event.velocity == static_cast<std::uint8_t>(80 + index));
         assert(event.offsetFrames == static_cast<std::int32_t>(index * 3));
+        assert(event.tuningOffsetMilliSemitones
+                == static_cast<std::int32_t>(index * 1000));
     }
 
     mpc::audio::AudioTriggerEvent empty;

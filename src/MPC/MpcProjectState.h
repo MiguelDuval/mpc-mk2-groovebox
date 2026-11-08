@@ -29,6 +29,11 @@ public:
         return project_;
     }
 
+    // Distinguishes a newly opened Project even when serialized IDs are reused.
+    std::uint64_t projectGeneration() const noexcept {
+        return projectGeneration_;
+    }
+
     domain::DrumProgram& activeDrumProgram() noexcept {
         return project_.drumPrograms[activeDrumProgramIndex_];
     }
@@ -62,6 +67,18 @@ public:
     std::size_t activeTrackIndex() const noexcept {
         return activeTrackIndex_;
     }
+
+    // Selected Pattern is editor context owned by the authoritative project state.
+    std::size_t activePatternIndex() const noexcept { return activePatternIndex_; }
+    std::size_t activePatternCount() const noexcept {
+        if (activeSequenceIndex_ >= project_.sequences.size()) return 0;
+        const auto& tracks = activeSequence().tracks;
+        if (activeTrackIndex_ >= tracks.size()) return 0;
+        return tracks[activeTrackIndex_].patterns.size();
+    }
+    domain::Pattern* activePattern() noexcept;
+    const domain::Pattern* activePattern() const noexcept;
+    bool selectPattern(std::size_t patternIndex) noexcept;
 
     bool selectTrack(std::size_t trackIndex) noexcept;
     bool setTrackProgram(
@@ -105,9 +122,11 @@ public:
 
 private:
     domain::Project project_{};
+    std::uint64_t projectGeneration_ = 1;
     std::size_t activeDrumProgramIndex_ = 0;
     std::size_t activeSequenceIndex_ = 0;
     std::size_t activeTrackIndex_ = 0;
+    std::size_t activePatternIndex_ = 0;
     std::uint32_t nextSampleId_ = 1;
 };
 
