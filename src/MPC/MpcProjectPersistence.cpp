@@ -875,7 +875,7 @@ std::string serializeProject(const domain::Project& project, std::string* error)
     }
 
     out << "END_PROJECT\n";
-    auto bytes = out.str();
+    auto bytes = std::move(out).str();
     if (bytes.size() > kMaxProjectFileBytes) {
         setError(error, "Serialized project exceeds the supported file-size limit");
         return {};
