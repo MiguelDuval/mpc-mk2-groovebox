@@ -66,19 +66,23 @@ std::uint32_t pcmCrc32(const audio::SampleBuffer& sample) noexcept {
 }
 
 void writePcmBlock(std::ostream& out, const audio::SampleBuffer& sample) {
-    std::array<char, 4096> chunk{};
+    std::array<std::uint8_t, 4096> chunk{};
     std::size_t used = 0;
+    const auto flush = [&out, &chunk, &used]() {
+        if (used > 0) {
+            out.write(reinterpret_cast<const char*>(chunk.data()),
+                    static_cast<std::streamsize>(used));
+            used = 0;
+        }
+    };
     for (const float value : sample.interleaved) {
         const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
         for (std::size_t byte = 0; byte < 4; ++byte) {
-            chunk[used++] = static_cast<char>(bits >> (byte * 8u));
-            if (used == chunk.size()) {
-                out.write(chunk.data(), static_cast<std::streamsize>(used));
-                used = 0;
-            }
+            chunk[used++] = static_cast<std::uint8_t>(bits >> (byte * 8u));
+            if (used == chunk.size()) flush();
         }
     }
-    if (used > 0) out.write(chunk.data(), static_cast<std::streamsize>(used));
+    flush();
     out.put('\n');
 }
 
