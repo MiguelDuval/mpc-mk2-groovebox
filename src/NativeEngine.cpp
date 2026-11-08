@@ -1409,7 +1409,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsGridEditable(
     const auto& track = tracks[trackIndex];
     if (track.kind != mpc::domain::TrackKind::Drum
             || track.patterns.empty()
-            || track.patterns.front().lengthTicks <= 0) {
+            || state.activePattern() == nullptr
+            || state.activePattern()->lengthTicks <= 0) {
         return JNI_FALSE;
     }
 
@@ -1455,7 +1456,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetGridVelocitie
         return result;
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto& pattern = *state.activePattern();
     const auto& program = state.activeDrumProgram();
 
     std::array<int, 128> noteToPad{};
@@ -1545,7 +1546,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetStepParameter
         const auto noteNumber = state.activeDrumProgram()
                 .pads[static_cast<std::size_t>(padIndex)].midiNote;
         const auto* note = mpc::sequencer::findStepNote(
-                track.patterns.front(),
+                *state.activePattern(),
                 stepIndex,
                 gridTicks,
                 noteNumber);
@@ -1607,7 +1608,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepVelocity(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteVelocity(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1656,7 +1657,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepProbabili
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteProbability(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1707,7 +1708,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepRatchet(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteRatchet(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1764,7 +1765,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepDuration(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteDuration(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1821,7 +1822,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetStepNudge(
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
     if (!mpc::sequencer::setStepNoteNudge(
-            track.patterns.front(),
+            *state.activePattern(),
             stepIndex,
             gridTicks,
             noteNumber,
@@ -1873,7 +1874,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleGridStep(
         return toJString(env, "Grid edit failed: selected track is not DRUM");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto noteNumber = state.activeDrumProgram()
             .pads[static_cast<std::size_t>(padIndex)].midiNote;
 
@@ -2301,7 +2302,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceQuantizeSelected
                 "QUANTIZE unavailable: selected track has no Drum pattern");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto gridTicks =
             state.activeSequence().quantizeGridTicks;
     const auto changed =
@@ -3875,7 +3876,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceErasePadAtPlayhe
         return toJString(env, "ERASE • selected track is not DRUM");
     }
 
-    auto& pattern = track.patterns.front();
+    auto& pattern = *state.activePattern();
     const auto noteNumber =
             state.activeDrumProgram()
                     .pads[static_cast<std::size_t>(padIndex)]
@@ -4091,7 +4092,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveToPreviousOr
         return toJString(env, "Locate event failed: selected track has no Drum pattern");
     }
 
-    const auto& pattern = track.patterns.front();
+    const auto& pattern = *state.activePattern();
     const auto now = monotonicNanos();
     const auto current =
             core.sequenceTransportClock().positionAtTimestamp(now);
