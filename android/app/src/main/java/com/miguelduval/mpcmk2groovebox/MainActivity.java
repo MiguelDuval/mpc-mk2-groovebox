@@ -14292,18 +14292,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         restoredCursorFrame =
                                 nativeAudioGetPadSamplePlaybackCursorFrame(0, 0);
                     }
-                    if (restoredCursorFrame < 0L) {
+                    if (restoredCursorFrame < 0L || restoredCursorFrame >= restoredFrames) {
                         final String failure =
-                                "PROJECT PCM OPEN FAILED • restored Pad did not publish a playback cursor";
-                        Log.e(TAG, failure + " summary=" + pcmSummary
-                                + " output=" + audioResult);
+                                "PROJECT PCM OPEN FAILED • restored Pad did not publish a valid playback cursor";
+                        Log.e(TAG, failure + " cursorFrame=" + restoredCursorFrame
+                                + " summary=" + pcmSummary + " output=" + audioResult);
                         setBottomStatus(failure);
                         return;
                     }
+
+                    // Cursor telemetry proves a voice is active. The output peak
+                    // independently proves non-silent PCM reached Oboe's callback.
+                    SystemClock.sleep(25L);
+                    final String outputTelemetry = nativeAudioStatus();
+                    int renderedPeakMilli = 0;
+                    if (outputTelemetry != null) {
+                        final int peakStart = outputTelemetry.indexOf("peak=");
+                        final int peakEnd = peakStart < 0 ? -1
+                                : outputTelemetry.indexOf('/', peakStart + 5);
+                        if (peakStart >= 0 && peakEnd > peakStart + 5) {
+                            try {
+                                renderedPeakMilli = Integer.parseInt(
+                                        outputTelemetry.substring(peakStart + 5, peakEnd));
+                            } catch (NumberFormatException ignored) {
+                                renderedPeakMilli = 0;
+                            }
+                        }
+                    }
+                    if (renderedPeakMilli <= 0) {
+                        final String failure =
+                                "PROJECT PCM OPEN FAILED • Oboe output peak remained silent";
+                        Log.e(TAG, failure + " cursorFrame=" + restoredCursorFrame
+                                + " outputTelemetry=" + outputTelemetry);
+                        setBottomStatus(failure);
+                        return;
+                    }
+
                     projectPcmAcceptancePending = false;
                     Log.i(TAG, "PROJECT_PCM_OPEN_VERIFIED frames=" + restoredFrames
                             + " sampleRate=" + restoredSampleRate
                             + " asset=9001 cursorFrame=" + restoredCursorFrame
+                            + " outputPeakMilli=" + renderedPeakMilli
                             + " trigger=PAD_01/VELOCITY_100 " + pcmSummary);
                 }
                 showMainPage();
