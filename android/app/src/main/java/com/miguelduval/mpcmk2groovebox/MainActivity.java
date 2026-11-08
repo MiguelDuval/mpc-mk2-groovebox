@@ -6023,13 +6023,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void transposeSelectedListEditPattern(int semitones) {
+        final int oldTick = listEditSelectedEvent >= 0
+                ? nativePatternGetEventTick(listEditPatternIndex, listEditSelectedEvent) : -1;
+        final int oldNote = listEditSelectedEvent >= 0
+                ? nativePatternGetEventNote(listEditPatternIndex, listEditSelectedEvent) : -1;
         final String result = nativePatternTranspose(listEditPatternIndex, semitones);
         setBottomStatus(result);
-        if (listEditSucceeded(result) && listEditSelectedEvent >= 0) {
+        if (listEditSucceeded(result) && oldTick >= 0 && oldNote >= 0) {
             listEditSelectedEvent = nativePatternFindEvent(
-                    listEditPatternIndex,
-                    nativePatternGetEventTick(listEditPatternIndex, listEditSelectedEvent),
-                    nativePatternGetEventNote(listEditPatternIndex, listEditSelectedEvent) + semitones);
+                    listEditPatternIndex, oldTick, oldNote + semitones);
         }
         refreshListEditPage();
     }
