@@ -275,7 +275,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Sequence or Pattern too short");
     }
     pattern.notes = {
-        mpc::domain::MidiNoteEvent{120, 180, 36, 97, 88, 3, -11},
+        mpc::domain::MidiNoteEvent{120, 180, 36, 97, 127, 3, -11},
         mpc::domain::MidiNoteEvent{600, 90, 42, 111, 123, 2, 7}
     };
     track.placements.clear();
@@ -339,7 +339,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     core.sequenceTransportClock().clearQueuedSequence();
     return toJString(env,
             "PROJECT_TEST_FIXTURE_READY notes=2 "
-            "note1=120/36/180/97/88/3/-11 "
+            "note1=120/36/180/97/127/3/-11 "
             "note2=600/42/90/111/123/2/7 "
             "placement=project-persistence-clip-01/" + patternId + "/480/720/120 "
             + "pcm=24000/48000/96000 asset=9001");

@@ -14290,26 +14290,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         return;
                     }
 
-                    // Exercise the restored Pad/Layer through the native trigger
-                    // queue and wait briefly for realtime cursor telemetry.
-                    nativeAudioTriggerPad(0, 100);
+                    // Exercise the actual restored musical route: the fixture's
+                    // Pattern note at source tick 120 sits in a clipped Arrangement
+                    // placement (destination tick 480, source offset 120). Sequence
+                    // playback must route MIDI note 36 to Pad 01 and enqueue its PCM.
+                    final String sequenceReset = nativeSequenceReset();
+                    final String sequenceStarted = nativeSequenceStart();
+                    final int sequencePositionTicks = nativeSequenceAdvance(300L);
+                    if (sequenceReset == null
+                            || !sequenceReset.startsWith("Sequence position reset")
+                            || sequenceStarted == null
+                            || !sequenceStarted.contains("playing")
+                            || sequencePositionTicks < 576
+                            || !nativeSequenceIsPlaying()) {
+                        nativeSequenceStop();
+                        final String failure =
+                                "PROJECT PCM OPEN FAILED • restored Arrangement Sequence did not start/advance";
+                        Log.e(TAG, failure + " reset=" + sequenceReset
+                                + " start=" + sequenceStarted
+                                + " ticks=" + sequencePositionTicks);
+                        setBottomStatus(failure);
+                        return;
+                    }
+
                     long restoredCursorFrame = -1L;
-                    for (int attempt = 0; attempt < 40 && restoredCursorFrame < 0L; attempt++) {
+                    for (int attempt = 0; attempt < 180
+                            && (restoredCursorFrame < 0L
+                                    || restoredCursorFrame >= restoredFrames); attempt++) {
                         SystemClock.sleep(5L);
                         restoredCursorFrame =
                                 nativeAudioGetPadSamplePlaybackCursorFrame(0, 0);
                     }
                     if (restoredCursorFrame < 0L || restoredCursorFrame >= restoredFrames) {
+                        nativeSequenceStop();
                         final String failure =
-                                "PROJECT PCM OPEN FAILED • restored Pad did not publish a valid playback cursor";
+                                "PROJECT PCM OPEN FAILED • Arrangement MIDI event did not trigger restored Pad 01";
                         Log.e(TAG, failure + " cursorFrame=" + restoredCursorFrame
+                                + " sequenceTicks=" + sequencePositionTicks
                                 + " summary=" + pcmSummary + " output=" + audioResult);
                         setBottomStatus(failure);
                         return;
                     }
 
-                    // Cursor telemetry proves a voice is active. The output peak
-                    // independently proves non-silent PCM reached Oboe's callback.
+                    // Cursor telemetry proves the restored SampleRef became a voice.
+                    // Output peak independently proves non-silent PCM reached Oboe.
                     SystemClock.sleep(25L);
                     final String outputTelemetry = nativeAudioStatus();
                     int renderedPeakMilli = 0;
@@ -14326,11 +14350,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             }
                         }
                     }
-                    if (renderedPeakMilli <= 0) {
+                    final String sequenceStopped = nativeSequenceStop();
+                    if (renderedPeakMilli <= 0 || sequenceStopped == null
+                            || !sequenceStopped.startsWith("Sequence stopped")
+                            || nativeSequenceIsPlaying()) {
                         final String failure =
-                                "PROJECT PCM OPEN FAILED • Oboe output peak remained silent";
+                                "PROJECT PCM OPEN FAILED • Oboe output peak remained silent or Sequence stop failed";
                         Log.e(TAG, failure + " cursorFrame=" + restoredCursorFrame
-                                + " outputTelemetry=" + outputTelemetry);
+                                + " outputTelemetry=" + outputTelemetry
+                                + " stop=" + sequenceStopped);
                         setBottomStatus(failure);
                         return;
                     }
@@ -14340,7 +14368,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             + " sampleRate=" + restoredSampleRate
                             + " asset=9001 cursorFrame=" + restoredCursorFrame
                             + " outputPeakMilli=" + renderedPeakMilli
-                            + " trigger=PAD_01/VELOCITY_100 " + pcmSummary);
+                            + " sequenceTicks=" + sequencePositionTicks
+                            + " route=ARRANGEMENT_MIDI_TO_PAD_01 "
+                            + "transportStop=verified " + pcmSummary);
                 }
                 showMainPage();
                 refreshAllInspectorState();

@@ -13689,7 +13689,7 @@ fi
 project_fixture_line="$(grep -F -- "PROJECT_TEST_FIXTURE_READY" <<<"$project_logs" | tail -n 1)"
 for expected_fixture_field in \
     "notes=2" \
-    "note1=120/36/180/97/88/3/-11" \
+    "note1=120/36/180/97/127/3/-11" \
     "note2=600/42/90/111/123/2/7" \
     "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120"; do
   if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line"; then
@@ -14082,7 +14082,7 @@ open_project_document() {
 # Verify the dedicated debug-only native fixture populated actual non-default
 # MIDI events and a clipped placement before the real Save As → mutate → Open.
 project_fixture_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_TEST_FIXTURE_READY" | tail -n 1 || true)"
-for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120" "pcm=24000/48000/96000 asset=9001"; do
+for expected_fixture_field in "note1=120/36/180/97/127/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120" "pcm=24000/48000/96000 asset=9001"; do
   if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line_ext"; then
     echo "ERROR: native persistence fixture missing field $expected_fixture_field"
     echo "$project_fixture_line_ext"; exit 1
@@ -14112,6 +14112,13 @@ if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
         < <(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null); then
   echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
   echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1
+fi
+if ! grep -Fq -- "route=ARRANGEMENT_MIDI_TO_PAD_01" \
+    < <(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null) \
+    || ! grep -Fq -- "transportStop=verified" \
+        < <(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null); then
+  echo "ERROR: Project PCM was not played by the restored Arrangement Sequence or transport did not stop"
+  exit 1
 fi
 echo "Project v4 Save/Open exact domain + PCM playback SHA passed: $project_saved_sha_ext"
 
