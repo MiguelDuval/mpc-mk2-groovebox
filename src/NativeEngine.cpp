@@ -4567,6 +4567,20 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventPad(
 }
 
 JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetPadMidiNote(
+        JNIEnv* /* env */, jobject /* thiz */, jint padIndex)
+{
+    if (padIndex < 0 || padIndex >= static_cast<jint>(mpc::domain::kMaxProgramPads)) return -1;
+    auto& state = mpc::MpcCore::instance().projectState();
+    const auto trackIndex = state.activeTrackIndex();
+    const auto& tracks = state.activeSequence().tracks;
+    if (trackIndex >= tracks.size()) return -1;
+    const auto* program = state.findDrumProgram(tracks[trackIndex].programId);
+    if (program == nullptr || program->type != mpc::domain::ProgramType::Drum) return -1;
+    return static_cast<jint>(program->pad(static_cast<std::size_t>(padIndex)).midiNote);
+}
+
+JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternFindEvent(
         JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint tick, jint note)
 {
@@ -4679,25 +4693,15 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
             || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event note failed: index out of range");
     }
-    const auto targetTick = pattern->notes[static_cast<std::size_t>(eventIndex)].tick;
-    for (std::size_t index = 0; index < pattern->notes.size(); ++index) {
-        if (index != static_cast<std::size_t>(eventIndex)
-                && pattern->notes[index].tick == targetTick
-                && pattern->notes[index].note == static_cast<std::uint8_t>(note)) {
-            return toJString(env, "Event note failed: same-pitch event already exists at this tick");
-        }
-    }
-
-    const auto previousNote = pattern->notes[eventIndex].note;
+    const auto previousNote = pattern->notes[static_cast<std::size_t>(eventIndex)].note;
     auto before = pattern->notes;
     auto after = before;
-    after[eventIndex].note = static_cast<std::uint8_t>(note);
-    std::stable_sort(
-            after.begin(), after.end(),
-            [](const mpc::domain::MidiNoteEvent& lhs,
-               const mpc::domain::MidiNoteEvent& rhs) {
-                return lhs.tick < rhs.tick;
-            });
+    if (!mpc::sequencer::list_edit::setPatternEventNote(
+            *pattern, static_cast<std::size_t>(eventIndex), note)) {
+        return toJString(env, "Event note failed: same-pitch event or invalid target");
+    }
+    after = pattern->notes;
+    pattern->notes = before;
     if (!recordPatternNotesEdit(
             history, *pattern, "Change Event Note",
             std::move(before), std::move(after))) {
@@ -4816,24 +4820,15 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
         return toJString(env, "Event tick failed: exceeds pattern length");
     }
 
-    const auto previousTick = pattern->notes[eventIndex].tick;
-    const auto noteNumber = pattern->notes[static_cast<std::size_t>(eventIndex)].note;
-    for (std::size_t index = 0; index < pattern->notes.size(); ++index) {
-        if (index != static_cast<std::size_t>(eventIndex)
-                && pattern->notes[index].tick == tick
-                && pattern->notes[index].note == noteNumber) {
-            return toJString(env, "Event tick failed: same-pitch event already exists at this tick");
-        }
-    }
+    const auto previousTick = pattern->notes[static_cast<std::size_t>(eventIndex)].tick;
     auto before = pattern->notes;
     auto after = before;
-    after[eventIndex].tick = static_cast<std::int32_t>(tick);
-    std::stable_sort(
-            after.begin(), after.end(),
-            [](const mpc::domain::MidiNoteEvent& lhs,
-               const mpc::domain::MidiNoteEvent& rhs) {
-                return lhs.tick < rhs.tick;
-            });
+    if (!mpc::sequencer::list_edit::setPatternEventTick(
+            *pattern, static_cast<std::size_t>(eventIndex), tick)) {
+        return toJString(env, "Event tick failed: same-pitch event or invalid target");
+    }
+    after = pattern->notes;
+    pattern->notes = before;
     if (!recordPatternNotesEdit(
             history, *pattern, "Change Event Tick",
             std::move(before), std::move(after))) {

@@ -96,6 +96,17 @@ int main() {
     assert(mpc::sequencer::list_edit::movePatternEvent(pattern,1,120));
     assert(pattern.notes[1].tick==840);
     assert(!mpc::sequencer::list_edit::movePatternEvent(pattern,1,100000));
+    // Event field edits reject ambiguous same-tick MIDI identities.
+    assert(mpc::sequencer::list_edit::setPatternEventNote(pattern, 0, 72));
+    assert(pattern.notes[0].note == 72);
+    const auto beforeNoteCollision = pattern.notes;
+    assert(!mpc::sequencer::list_edit::setPatternEventNote(pattern, 1, 72));
+    assert(pattern.notes[1].note == beforeNoteCollision[1].note);
+    assert(mpc::sequencer::list_edit::setPatternEventTick(pattern, 1, 960));
+    const auto beforeTickCollision = pattern.notes;
+    assert(!mpc::sequencer::list_edit::setPatternEventTick(pattern, 1, 840));
+    assert(pattern.notes[1].tick == beforeTickCollision[1].tick);
+
     const auto beforeTranspose=pattern.notes;
     assert(mpc::sequencer::list_edit::transposePattern(pattern,12));
     assert(pattern.notes[0].note==72 && pattern.notes[1].note==72);

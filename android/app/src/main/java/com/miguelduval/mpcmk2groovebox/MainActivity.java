@@ -685,6 +685,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native int nativePatternGetEventCount(int patternIndex);
     private static native int nativePatternGetEventNote(int patternIndex, int eventIndex);
     private static native int nativePatternGetEventPad(int patternIndex, int eventIndex);
+    private static native int nativePatternGetPadMidiNote(int padIndex);
     private static native int nativePatternGetEventVelocity(int patternIndex, int eventIndex);
     private static native int nativePatternGetEventDuration(int patternIndex, int eventIndex);
     private static native int nativePatternGetEventTick(int patternIndex, int eventIndex);
@@ -5929,7 +5930,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         setBottomStatus(result);
                         if (listEditSucceeded(result)) {
                             selectedPad = pad;
-                            listEditSelectedEvent = -1;
+                            listEditSelectedEvent = nativePatternFindEvent(
+                                    listEditPatternIndex, at, nativePatternGetPadMidiNote(pad));
                             refreshListEditPage();
                         }
                     } catch (NumberFormatException error) {
@@ -5974,10 +5976,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("LIST EDIT • select an event to duplicate");
             return;
         }
+        final int sourceTick = nativePatternGetEventTick(listEditPatternIndex, listEditSelectedEvent);
+        final int sourceNote = nativePatternGetEventNote(listEditPatternIndex, listEditSelectedEvent);
         final int grid = Math.max(1, nativeSequenceGetQuantizeGrid());
         final String result = nativePatternDuplicateEvent(
                 listEditPatternIndex, listEditSelectedEvent, grid);
         setBottomStatus(result);
+        if (listEditSucceeded(result)) {
+            listEditSelectedEvent = nativePatternFindEvent(
+                    listEditPatternIndex, sourceTick + grid, sourceNote);
+        }
         refreshListEditPage();
     }
 

@@ -3,6 +3,7 @@
 #include "MPC/Domain/MpcDomain.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -80,6 +81,39 @@ enum class PadNoteEventInsertResult : std::uint8_t {
             durationTicks);
 }
 
+
+
+[[nodiscard]] inline bool setPatternEventNote(
+        domain::Pattern& pattern, std::size_t eventIndex, std::int32_t noteNumber) {
+    if (eventIndex >= pattern.notes.size() || noteNumber < 0 || noteNumber > 127) return false;
+    const auto tick = pattern.notes[eventIndex].tick;
+    for (std::size_t i = 0; i < pattern.notes.size(); ++i) {
+        if (i != eventIndex && pattern.notes[i].tick == tick
+                && pattern.notes[i].note == static_cast<std::uint8_t>(noteNumber)) return false;
+    }
+    pattern.notes[eventIndex].note = static_cast<std::uint8_t>(noteNumber);
+    std::stable_sort(pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& a, const domain::MidiNoteEvent& b) {
+                return a.tick < b.tick;
+            });
+    return true;
+}
+
+[[nodiscard]] inline bool setPatternEventTick(
+        domain::Pattern& pattern, std::size_t eventIndex, std::int32_t tick) {
+    if (eventIndex >= pattern.notes.size() || tick < 0 || tick >= pattern.lengthTicks) return false;
+    const auto note = pattern.notes[eventIndex].note;
+    for (std::size_t i = 0; i < pattern.notes.size(); ++i) {
+        if (i != eventIndex && pattern.notes[i].tick == tick
+                && pattern.notes[i].note == note) return false;
+    }
+    pattern.notes[eventIndex].tick = tick;
+    std::stable_sort(pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& a, const domain::MidiNoteEvent& b) {
+                return a.tick < b.tick;
+            });
+    return true;
+}
 
 [[nodiscard]] inline bool movePatternEvent(
         domain::Pattern& pattern, std::size_t eventIndex,
