@@ -12444,7 +12444,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         TextView note = label(
-                "PCM_ASSETS and MISSING_PCM in the native summary report embedded audio. Legacy v1-v3 projects may need WAV reimport before a complete v4 save.",
+                "PCM_ASSETS and PCM_BYTES report embedded audio; AUDIO_READY shows whether every assigned sample can play. Legacy v1-v3 projects may need WAV reimport.",
                 10, MUTED);
         note.setContentDescription(
                 "MPC Project PCM asset counts are read from the native sample registry; legacy projects may need WAV reimport");

@@ -173,7 +173,8 @@ std::string projectSummary(const mpc::domain::Project& project) {
             + " SAMPLE_ASSETS=" + std::to_string(usedSampleAssets.size())
             + " PCM_ASSETS=" + std::to_string(embeddedPcmAssets)
             + " PCM_BYTES=" + std::to_string(pcmBytes)
-            + " MISSING_PCM=" + std::to_string(missingPcmAssets);
+            + " MISSING_PCM=" + std::to_string(missingPcmAssets)
+            + " AUDIO_READY=" + (missingPcmAssets == 0 ? "YES" : "NO");
 }
 } // namespace
 
