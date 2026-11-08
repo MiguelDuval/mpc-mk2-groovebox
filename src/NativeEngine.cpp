@@ -286,6 +286,36 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     placement.lengthTicks = 720;
     placement.sourceOffsetTicks = 120;
     track.placements.push_back(placement);
+
+    // Embed a deterministic, non-silent PCM asset so the real SAF Save/Open
+    // acceptance exercises the v4 audio block, not only MIDI/Arrangement data.
+    constexpr std::uint32_t kFixtureSampleRate = 48000;
+    constexpr std::size_t kFixtureFrameCount = 24000;
+    constexpr std::uint32_t kFixtureSampleId = 9001;
+    auto fixturePcm = std::make_shared<mpc::audio::SampleBuffer>();
+    fixturePcm->sampleRate = kFixtureSampleRate;
+    fixturePcm->channelCount = 1;
+    fixturePcm->interleaved.resize(kFixtureFrameCount);
+    constexpr double kFixturePi = 3.14159265358979323846;
+    for (std::size_t frame = 0; frame < kFixtureFrameCount; ++frame) {
+        fixturePcm->interleaved[frame] = static_cast<float>(
+                0.25 * std::sin(2.0 * kFixturePi * 440.0
+                        * static_cast<double>(frame)
+                        / static_cast<double>(kFixtureSampleRate)));
+    }
+
+    mpc::domain::SampleRef fixtureSample;
+    fixtureSample.id = "sample-project-persistence-fixture";
+    fixtureSample.name = "Project Persistence Fixture";
+    fixtureSample.sampleRate = static_cast<double>(kFixtureSampleRate);
+    fixtureSample.lengthSamples = static_cast<std::int64_t>(kFixtureFrameCount);
+    fixtureSample.assetId.value = kFixtureSampleId;
+    fixtureSample.pcm = fixturePcm;
+    candidate.samples.push_back(fixtureSample);
+    auto& fixtureLayer = candidate.drumPrograms.front().pads[0].layer(0);
+    fixtureLayer.sample = fixtureSample.assetId;
+    fixtureLayer.region = mpc::domain::SampleRegion{std::size_t{0}, kFixtureFrameCount};
+
     std::string validationError;
     if (mpc::persistence::serializeProject(candidate, &validationError).empty()) {
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • " + validationError);
@@ -293,6 +323,15 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     const std::string patternId = pattern.id;
     if (!core.projectState().replaceProject(std::move(candidate))) {
         return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
+    }
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
+    if (projectionStatus.find("failed") != std::string::npos
+            || core.audio().padSampleFrameCount(0, 0) != kFixtureFrameCount
+            || core.audio().padSampleRate(0, 0) != kFixtureSampleRate) {
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • runtime PCM projection mismatch • "
+                        + projectionStatus);
     }
     core.editHistory().clear();
     arrangementEventClipboard.reset();
@@ -302,7 +341,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
             "PROJECT_TEST_FIXTURE_READY notes=2 "
             "note1=120/36/180/97/88/3/-11 "
             "note2=600/42/90/111/123/2/7 "
-            "placement=project-persistence-clip-01/" + patternId + "/480/720/120");
+            "placement=project-persistence-clip-01/" + patternId + "/480/720/120 "
+            + "pcm=24000/48000/96000 asset=9001");
 }
 
 extern "C" JNIEXPORT jstring JNICALL

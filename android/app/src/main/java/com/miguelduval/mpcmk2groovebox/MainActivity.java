@@ -477,6 +477,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             () -> captureProjectPersistenceViewHierarchyForSmoke("BROWSE");
     private boolean projectRecoveryExportSmokeMode;
     private boolean projectPersistenceFixtureMode;
+    private boolean projectPcmAcceptancePending;
     private boolean uiAuditAwaitingBrowserStoragePickerResult;
     private final ExecutorService startupExecutor = Executors.newSingleThreadExecutor();
 
@@ -842,6 +843,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                                     throw new IllegalStateException(
                                             fixture == null ? "native persistence fixture unavailable" : fixture);
                                 }
+                                projectPcmAcceptancePending = true;
                                 Log.i(TAG, fixture + " stateSha256=" + currentProjectStateSha256());
                                 refreshAllInspectorState();
                                 refreshSequenceControls();
@@ -14260,6 +14262,50 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 refreshProjectIdentity();
                 final String audioResult = nativeAudioStart();
                 setAudioStateFromResult(audioResult);
+                if (projectPcmAcceptancePending) {
+                    final String pcmSummary = nativeProjectGetSummary();
+                    final long restoredFrames = nativeAudioGetPadSampleFrameCount(0, 0);
+                    final int restoredSampleRate = nativeAudioGetPadSampleRate(0, 0);
+                    final boolean pcmModelReady = restoredFrames == 24000L
+                            && restoredSampleRate == 48000
+                            && pcmSummary != null
+                            && pcmSummary.contains("PCM_ASSETS=1")
+                            && pcmSummary.contains("PCM_BYTES=96000")
+                            && pcmSummary.contains("MISSING_PCM=0")
+                            && pcmSummary.contains("AUDIO_READY=YES");
+                    if (!pcmModelReady || audioResult == null
+                            || !audioResult.startsWith("Audio output")) {
+                        final String failure = "PROJECT PCM OPEN FAILED • frames="
+                                + restoredFrames + " sampleRate=" + restoredSampleRate
+                                + " summary=" + pcmSummary + " output=" + audioResult;
+                        Log.e(TAG, failure);
+                        setBottomStatus(failure);
+                        return;
+                    }
+
+                    // Exercise the restored Pad/Layer through the native trigger
+                    // queue and wait briefly for realtime cursor telemetry.
+                    nativeAudioTriggerPad(0, 100);
+                    long restoredCursorFrame = -1L;
+                    for (int attempt = 0; attempt < 40 && restoredCursorFrame < 0L; attempt++) {
+                        SystemClock.sleep(5L);
+                        restoredCursorFrame =
+                                nativeAudioGetPadSamplePlaybackCursorFrame(0, 0);
+                    }
+                    if (restoredCursorFrame < 0L) {
+                        final String failure =
+                                "PROJECT PCM OPEN FAILED • restored Pad did not publish a playback cursor";
+                        Log.e(TAG, failure + " summary=" + pcmSummary
+                                + " output=" + audioResult);
+                        setBottomStatus(failure);
+                        return;
+                    }
+                    projectPcmAcceptancePending = false;
+                    Log.i(TAG, "PROJECT_PCM_OPEN_VERIFIED frames=" + restoredFrames
+                            + " sampleRate=" + restoredSampleRate
+                            + " asset=9001 cursorFrame=" + restoredCursorFrame
+                            + " trigger=PAD_01/VELOCITY_100 " + pcmSummary);
+                }
                 showMainPage();
                 refreshAllInspectorState();
                 refreshSequenceControls();
@@ -14269,8 +14315,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(loaded + " • " + audioResult);
                 final byte[] restoredDomain = nativeProjectSerialize();
                 final int formatVersion = projectFileFormatVersion(bytes);
-                final String persistedDomainExact = formatVersion == 2
-                        ? Boolean.toString(Arrays.equals(bytes, restoredDomain))
+                final String persistedDomainExact = formatVersion >= 4
+                        ? Boolean.toString(restoredDomain != null
+                                && Arrays.equals(bytes, restoredDomain))
                         : "not-applicable";
                 Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length
                         + " name=" + currentProjectName

@@ -1569,7 +1569,7 @@ if grep -Fq -- 'LinearLayout system = row();' <<<"$menu_block"; then
   echo "ERROR: Menu must not render a second internal bottom command bar"
   exit 1
 fi
-for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'EDIT SHORTCUTS'   'if (mode == MpcUiState.Mode.PROJECT)'   'showProjectPage()'   'MPC Project Open'   'MPC Project Save As'   'MPC Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'nativeProjectGetSummary()'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'   'loaded.startsWith("PROJECT_LOADED")'; do
+for required in   'case MENU:'   'NEW PROJECT'   'SAVE'   'EDIT SHORTCUTS'   'if (mode == MpcUiState.Mode.PROJECT)'   'showProjectPage()'   'MPC Project Open'   'MPC Project Save As'   'MPC Project Save'   'nativeProjectSerialize()'   'nativeProjectLoad(byte[] data)'   'nativeProjectGetSummary()'   'ACTION_CREATE_DOCUMENT'   'ACTION_OPEN_DOCUMENT'   'PROJECT_SAVE_COMPLETE'   'PROJECT_OPEN_COMPLETE'   'PROJECT_PCM_OPEN_VERIFIED'   'loaded.startsWith("PROJECT_LOADED")'; do
   if ! grep -Fq -- "$required" "$MAIN_ACTIVITY_SOURCE"; then
     echo "ERROR: Menu contextual Function Bar contract missing: $required"
     exit 1
@@ -14073,7 +14073,7 @@ open_project_document() {
 # Verify the dedicated debug-only native fixture populated actual non-default
 # MIDI events and a clipped placement before the real Save As → mutate → Open.
 project_fixture_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_TEST_FIXTURE_READY" | tail -n 1 || true)"
-for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120"; do
+for expected_fixture_field in "note1=120/36/180/97/88/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120" "pcm=24000/48000/96000 asset=9001"; do
   if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line_ext"; then
     echo "ERROR: native persistence fixture missing field $expected_fixture_field"
     echo "$project_fixture_line_ext"; exit 1
@@ -14092,13 +14092,19 @@ project_domain_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$
 if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
     || [[ "$project_saved_sha_ext" != "$project_file_sha_ext" ]] \
     || [[ "$project_saved_sha_ext" != "$project_domain_sha_ext" ]] \
-    || ! grep -Fq -- "formatVersion=3" <<<"$project_save_line_ext" \
-    || ! grep -Fq -- "formatVersion=3" <<<"$project_open_line_ext" \
-    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_open_line_ext"; then
+    || ! grep -Fq -- "formatVersion=4" <<<"$project_save_line_ext" \
+    || ! grep -Fq -- "formatVersion=4" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "PCM_ASSETS=1" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "PCM_BYTES=96000" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "MISSING_PCM=0" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "AUDIO_READY=YES" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "PROJECT_PCM_OPEN_VERIFIED frames=24000 sampleRate=48000 asset=9001" \
+        < <(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null); then
   echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
   echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1
 fi
-echo "Project v3 Save/Open exact domain SHA passed: $project_saved_sha_ext"
+echo "Project v4 Save/Open exact domain + PCM playback SHA passed: $project_saved_sha_ext"
 
 # The first Save As/Open round-trip above proves file creation and loading.
 # Now mutate the loaded native model and exercise the distinct SAVE action,
@@ -14120,8 +14126,8 @@ project_save_update_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGrooveb
 project_save_update_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_update_line")"
 if [[ ! "$project_save_update_sha" =~ ^[0-9a-f]{64}$ ]] \
     || [[ "$project_save_update_sha" == "$project_saved_sha_ext" ]] \
-    || ! grep -Fq -- "formatVersion=3" <<<"$project_save_update_line"; then
-  echo "ERROR: SAVE did not serialize the mutated Project to a new v3 domain digest"
+    || ! grep -Fq -- "formatVersion=4" <<<"$project_save_update_line"; then
+  echo "ERROR: SAVE did not serialize the mutated Project to a new v4 domain digest"
   echo "$project_save_update_line"; exit 1
 fi
 project_saved_sha_ext="$project_save_update_sha"
@@ -14273,10 +14279,14 @@ if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE
 fi
 restart_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
 restart_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$restart_open_line")"
-if ! grep -Fq -- "formatVersion=3" <<<"$restart_open_line" \
+if ! grep -Fq -- "formatVersion=4" <<<"$restart_open_line" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$restart_open_line" \
     || ! grep -Fq -- "TRACKS=2" <<<"$restart_open_line" \
     || ! grep -Fq -- "PLACEMENTS=2" <<<"$restart_open_line" \
+    || ! grep -Fq -- "PCM_ASSETS=1" <<<"$restart_open_line" \
+    || ! grep -Fq -- "PCM_BYTES=96000" <<<"$restart_open_line" \
+    || ! grep -Fq -- "MISSING_PCM=0" <<<"$restart_open_line" \
+    || ! grep -Fq -- "AUDIO_READY=YES" <<<"$restart_open_line" \
     || [[ "$restart_open_sha" != "$project_saved_sha_ext" ]]; then
   echo "ERROR: force-stop/relaunch → Open did not restore exact saved native state"
   echo "$restart_open_line"; exit 1
