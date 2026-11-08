@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <sstream>
 #include <vector>
 
 namespace {
@@ -97,6 +98,11 @@ mpc::domain::Project makeProject() {
     program.pads[1].midiNote = 37;
     program.pads[1].layer(0) = layer; // Two Pads share one immutable asset.
     project.drumPrograms.push_back(program);
+    auto alternateProgram = program;
+    alternateProgram.id = "program-drums-02";
+    alternateProgram.name = "Alternate Drum Program";
+    alternateProgram.pads[0].name = "Alternate Kick";
+    project.drumPrograms.push_back(alternateProgram);
 
     Sequence sequence;
     sequence.id = "sequence-main-01";
@@ -194,7 +200,9 @@ int main() {
     assert(loaded.drumPrograms[0].pads[0].layer(0).sample.value
             == loaded.drumPrograms[0].pads[1].layer(0).sample.value);
 
-    assert(loaded.drumPrograms.size() == 1);
+    assert(loaded.drumPrograms.size() == 2);
+    assert(loaded.drumPrograms[1].id == "program-drums-02");
+    assert(loaded.drumPrograms[1].pads[0].layer(0).sample.value == 101);
     const auto& loadedPad = loaded.drumPrograms[0].pads[0];
     assert(loadedPad.index == 0);
     assert(loadedPad.name == "Kick");
@@ -334,6 +342,48 @@ int main() {
     assert(persistence::deserializeProject(legacyV3, legacyV3Project, &error));
     assert(legacyV3Project.sequences[0].tracks[0].patterns[0]
             .notes[0].tuningOffsetMilliSemitones == 0);
+
+    // An actual v3 project with assigned sample metadata remains readable.
+    // It restores the musical references but reports PCM missing, so v4 Save
+    // refuses to produce a project that silently drops the assigned sound.
+    std::string legacyAssignedV3 = serialized;
+    legacyAssignedV3.replace(
+            legacyAssignedV3.find("MPCMK2_PROJECT 4"), 16,
+            "MPCMK2_PROJECT 3");
+    const auto assignedPcmSection = legacyAssignedV3.find("PCM_ASSETS 1\\n");
+    assert(assignedPcmSection != std::string::npos);
+    const auto assignedPcmHeaderEnd = legacyAssignedV3.find('\\n', assignedPcmSection);
+    assert(assignedPcmHeaderEnd != std::string::npos);
+    std::istringstream pcmHeaderFields(legacyAssignedV3.substr(
+            assignedPcmSection, assignedPcmHeaderEnd - assignedPcmSection));
+    std::string pcmTag;
+    std::uint32_t pcmSampleId = 0;
+    std::uint32_t pcmRate = 0;
+    unsigned int pcmChannels = 0;
+    std::uint64_t pcmFrames = 0;
+    std::uint64_t pcmBytes = 0;
+    std::uint32_t pcmChecksum = 0;
+    pcmHeaderFields >> pcmTag >> pcmSampleId >> pcmRate >> pcmChannels
+            >> pcmFrames >> pcmBytes >> pcmChecksum;
+    assert(pcmTag == "PCM_ASSETS");
+    const auto pcmPayloadStart = assignedPcmHeaderEnd + 1;
+    const auto pcmPayloadEnd = pcmPayloadStart
+            + static_cast<std::size_t>(pcmBytes) + 1;
+    assert(pcmPayloadEnd <= legacyAssignedV3.size());
+    legacyAssignedV3.erase(
+            assignedPcmSection, pcmPayloadEnd - assignedPcmSection);
+    domain::Project legacyV3WithAssignments;
+    assert(persistence::deserializeProject(
+            legacyAssignedV3, legacyV3WithAssignments, &error));
+    assert(legacyV3WithAssignments.samples.size() == 1);
+    assert(legacyV3WithAssignments.samples[0].pcm == nullptr);
+    assert(legacyV3WithAssignments.drumPrograms[0].pads[0]
+            .layer(0).sample.value == 101);
+    error.clear();
+    assert(persistence::serializeProject(
+            legacyV3WithAssignments, &error).empty());
+    assert(error.find("has no PCM data") != std::string::npos);
+
 
     // A failed parse must leave every field of the already-open Project intact,
     // not merely preserve its identity. The truncated v2 payload is deliberately
