@@ -15,7 +15,8 @@ enum class PadNoteEventInsertResult : std::uint8_t {
     InvalidVelocity,
     InvalidDuration,
     SamePitchCollision,
-    InvalidPad
+    InvalidPad,
+    InvalidMidiNote
 };
 
 [[nodiscard]] inline PadNoteEventInsertResult appendPadNoteEvent(
@@ -31,6 +32,7 @@ enum class PadNoteEventInsertResult : std::uint8_t {
     if (durationTicks < 0 || durationTicks > patternLengthTicks) {
         return PadNoteEventInsertResult::InvalidDuration;
     }
+    if (mappedMidiNote > 127u) return PadNoteEventInsertResult::InvalidMidiNote;
     const auto duplicate = std::any_of(
             notes.begin(), notes.end(),
             [tick, mappedMidiNote](const domain::MidiNoteEvent& event) {

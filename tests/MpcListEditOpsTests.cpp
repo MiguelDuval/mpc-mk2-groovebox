@@ -52,6 +52,13 @@ int main() {
             notes, 3840, program, 5, 480, 90, 120)
             == PadNoteEventInsertResult::InvalidPad);
 
+    program.type = mpc::domain::ProgramType::Drum;
+    program.pad(5).midiNote = 200;
+    assert(appendPadNoteEvent(
+            notes, 3840, program, 5, 480, 90, 120)
+            == PadNoteEventInsertResult::InvalidMidiNote);
+    assert(notes.size() == beforeMappedInsert + 1);
+
     const auto beforeCollision = notes;
     assert(appendPadNoteEvent(notes, 3840, 38, 120, 90, 240)
             == PadNoteEventInsertResult::SamePitchCollision);

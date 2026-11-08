@@ -4744,6 +4744,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
             return toJString(env, "Event add failed: same-pitch collision");
         case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPad:
             return toJString(env, "Event add failed: invalid Drum Program Pad mapping");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidMidiNote:
+            return toJString(env, "Event add failed: Drum Program Pad MIDI note out of range");
         case mpc::sequencer::list_edit::PadNoteEventInsertResult::Added:
             break;
     }
