@@ -52,7 +52,7 @@ Tests are tools for finding defects. They are not the product and they must not 
 - Compile/package the debug APK.
 - Upload the resulting APK artifact.
 - Do not run the full native test matrix, full JVM/JUnit test matrix, shell smoke preflight or Android emulator smoke test on every commit.
-- Newer fast runs may cancel older fast runs for the same branch; stale fast runs have no value once a newer source revision exists.
+- Every Android Build run is non-cancelable (`cancel-in-progress: false`), including fast runs. Avoid redundant pushes rather than canceling active work; queued runs must finish and retain their exact-SHA evidence.
 - Standalone docs-only pushes/PRs are excluded by path filters. A docs-only commit inside an already mixed product PR may still trigger a fast APK build because GitHub evaluates the PR's cumulative changed-file set; that build is intentionally cheap.
 
 ### Targeted checks — selective
