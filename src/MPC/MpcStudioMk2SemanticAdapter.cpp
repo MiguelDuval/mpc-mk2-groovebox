@@ -382,8 +382,14 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 || n == "Erase" || n == "NoteRepeat" || n == "Level16"
                 || n == "PadMute";
         if (exitsPadPerform) {
-            padPerformConfig_.store(0u, std::memory_order_release);
-            sixteenLevelTuneMode_.store(false, std::memory_order_release);
+            const auto previousPadPerformConfig =
+                    padPerformConfig_.exchange(0u, std::memory_order_acq_rel);
+            // Only clear 16 Levels Tune when this key actually exits an active
+            // Pad Perform context. A later Level16 gesture must retain a Tune
+            // mode selected after Pad Perform has already been dismissed.
+            if ((previousPadPerformConfig & 1u) != 0u) {
+                sixteenLevelTuneMode_.store(false, std::memory_order_release);
+            }
         }
     }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }
