@@ -30,6 +30,14 @@ public final class MpcModeRegistryTest {
     }
 
     @Test
+    public void implementedPerformanceWorkspacesAreReachableFromMenu() {
+        assertTrue(MpcModeRegistry.menuEntry(10).available);
+        assertEquals(MpcUiState.Mode.LEVELS_16, MpcModeRegistry.menuEntry(10).mode);
+        assertTrue(MpcModeRegistry.menuEntry(11).available);
+        assertEquals(MpcUiState.Mode.PAD_PERFORM, MpcModeRegistry.menuEntry(11).mode);
+    }
+
+    @Test
     public void unavailableModesAreExplicitlyReserved() {
         assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);
