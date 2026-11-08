@@ -15,10 +15,12 @@ int main() {
     assert(state.activePatternIndex() == 0);
     assert(state.activePattern() != nullptr);
     assert(state.activePattern()->name == "Pattern 01");
+    assert(state.activeSequence().tracks.front().patterns.size() == 1);
     auto secondPattern = *state.activePattern();
     secondPattern.id = "pattern-02";
     secondPattern.name = "Pattern 02";
     state.activeSequence().tracks.front().patterns.push_back(secondPattern);
+    assert(state.activeSequence().tracks.front().patterns.size() == 2);
     assert(state.activePatternCount() == 2);
     assert(state.selectPattern(1));
     assert(state.activePatternIndex() == 1);
@@ -72,7 +74,7 @@ int main() {
     assert(sequence.loopEndTicks == sequence.lengthTicks);
     assert(sequence.tracks.size() == 2);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
-    assert(sequence.tracks[0].patterns.size() == 1);
+    assert(sequence.tracks[0].patterns.size() == 2);
     assert(sequence.tracks[0].placements.size() == 1);
     assert(sequence.tracks[0].placements.front().patternId
             == sequence.tracks[0].patterns.front().id);
