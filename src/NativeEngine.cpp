@@ -3821,6 +3821,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceUndo(
         jobject /* thiz */)
 {
     auto& history = mpc::MpcCore::instance().editHistory();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "UNDO • stop playback before editing Pattern data");
+    }
     if (!history.canUndo()) {
         return toJString(env, "UNDO • nothing to undo");
     }
@@ -3841,6 +3844,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceRedo(
         jobject /* thiz */)
 {
     auto& history = mpc::MpcCore::instance().editHistory();
+    if (sequenceSession().isPlaying()) {
+        return toJString(env, "REDO • stop playback before editing Pattern data");
+    }
     if (!history.canRedo()) {
         return toJString(env, "REDO • nothing to redo");
     }
@@ -4642,6 +4648,24 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventNote(
     if (eventIndex < 0
             || static_cast<std::size_t>(eventIndex) >= pattern->notes.size()) {
         return toJString(env, "Event note failed: index out of range");
+    }
+    const auto targetTick = pattern->notes[static_cast<std::size_t>(eventIndex)].tick;
+    if (std::any_of(pattern->notes.begin(), pattern->notes.end(),
+            [eventIndex, targetTick, note](const mpc::domain::MidiNoteEvent& event) {
+                const auto index = static_cast<std::size_t>(&event);
+                static_cast<void>(index);
+                return event.tick == targetTick && event.note == static_cast<std::uint8_t>(note);
+            })) {
+        // The current event itself is allowed to retain its pitch.
+        const auto collisionCount = std::count_if(
+                pattern->notes.begin(), pattern->notes.end(),
+                [targetTick, note](const mpc::domain::MidiNoteEvent& event) {
+                    return event.tick == targetTick
+                            && event.note == static_cast<std::uint8_t>(note);
+                });
+        if (collisionCount > (pattern->notes[static_cast<std::size_t>(eventIndex)].note == note ? 1 : 0)) {
+            return toJString(env, "Event note failed: same-pitch event already exists at this tick");
+        }
     }
 
     const auto previousNote = pattern->notes[eventIndex].note;
