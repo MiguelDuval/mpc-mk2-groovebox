@@ -14362,22 +14362,54 @@ fi
 if ! python3 - "$PROJECT_V3_HOST" "$PROJECT_V2_HOST" "$PROJECT_V2_CANONICAL_HOST" "$PROJECT_V1_HOST" "$PROJECT_V1_CANONICAL_HOST" "$PROJECT_MALFORMED_HOST" <<'PY'
 import pathlib, sys
 source_path, v2_path, v2_canonical_path, v1_path, v1_canonical_path, malformed_path = map(pathlib.Path, sys.argv[1:])
-lines = source_path.read_text(encoding="utf-8").splitlines()
-if not lines or lines[0] != "MPCMK2_PROJECT 3":
-    raise AssertionError("expected the actual Save As document in v3 format")
+# v4 keeps textual domain records but inserts raw float32 PCM blocks. Walk as
+# bytes and skip length-delimited blocks before decoding text records.
+data = source_path.read_bytes()
+header_end = data.find(b"\n")
+if header_end < 0 or data[:header_end] != b"MPCMK2_PROJECT 4":
+    raise AssertionError("expected the actual Save As document in v4 format")
+lines = ["MPCMK2_PROJECT 4"]
+cursor = header_end + 1
+while cursor < len(data):
+    line_end = data.find(b"\n", cursor)
+    if line_end < 0:
+        raise AssertionError("unterminated textual Project record")
+    line = data[cursor:line_end].decode("utf-8")
+    cursor = line_end + 1
+    if line.startswith("PCM_ASSETS "):
+        asset_count = int(line.split()[1])
+        for _ in range(asset_count):
+            pcm_header_end = data.find(b"\n", cursor)
+            if pcm_header_end < 0:
+                raise AssertionError("unterminated PCM_ASSET header")
+            fields = data[cursor:pcm_header_end].decode("ascii").split()
+            if len(fields) != 7 or fields[0] != "PCM_ASSET":
+                raise AssertionError(f"invalid PCM_ASSET header: {fields!r}")
+            block_bytes = int(fields[5])
+            cursor = pcm_header_end + 1 + block_bytes
+            if cursor >= len(data) or data[cursor:cursor + 1] != b"\n":
+                raise AssertionError("PCM_ASSET block is truncated or unterminated")
+            cursor += 1
+        continue
+    lines.append(line)
+if not any(line.startswith("END_PROJECT") for line in lines):
+    raise AssertionError("v4 Project text stream did not resume after PCM blocks")
 if not any(line.startswith('PROGRAM "') for line in lines):
     raise AssertionError("legacy fixtures must retain a runtime-valid Program")
 if not any(line.startswith("PLACEMENT ") for line in lines) or not any(line.startswith("NOTE ") for line in lines):
     raise AssertionError("source fixture needs a placement and non-default MIDI events")
 
-# v2 stores Pattern placements but predates per-note tuning offsets.
-# v1 stores neither. Both files must normalize to current v3 domain bytes.
+# v2 stores Pattern placements but predates per-note tuning offsets. v1 stores
+# neither. Both deliberately retain SampleRef and Pad assignment metadata but
+# have no embedded PCM, so the app must expose AUDIO_READY=NO after loading.
 v2, v2_canonical, v1, v1_canonical = [], [], [], []
 for line in lines:
+    if line.startswith("PCM_ASSETS "):
+        continue
     if line.startswith("NOTE "):
         fields = line.split()
         if len(fields) != 9:
-            raise AssertionError(f"v3 NOTE must have 8 payload fields: {line!r}")
+            raise AssertionError(f"v4 NOTE must have 8 payload fields: {line!r}")
         old_note = " ".join(fields[:-1])
         zero_offset_note = " ".join(fields[:-1] + ["0"])
         v2.append(old_note)
@@ -14412,7 +14444,7 @@ if not any(line.startswith("PLACEMENT ") for line in v2) or any(line.startswith(
     raise AssertionError("legacy v2/v1 placement expectations are inconsistent")
 if not any(line.startswith('TRACK "') for line in v1) or not any(line.startswith("NOTE ") for line in v1):
     raise AssertionError("legacy fixture lost its Track or MIDI events")
-print("Derived legacy v2/v1 fixtures and exact canonical-v3 state oracles from the real SAF project.")
+print("Derived binary-safe legacy v2/v1 fixtures from the real v4 SAF project with explicit missing PCM.");
 PY
 then
   echo "ERROR: failed to produce checked v1/malformed fixtures"; exit 1
@@ -14465,14 +14497,18 @@ if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE
   echo "ERROR: legacy v2 Project was not loaded from SAF"; exit 1
 fi
 legacy_v2_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
-legacy_v2_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$legacy_v2_line_ext")"
 if ! grep -Fq -- "formatVersion=2" <<<"$legacy_v2_line_ext" \
     || ! grep -Fq -- "persistedDomainExact=not-applicable" <<<"$legacy_v2_line_ext" \
+    || ! grep -Fq -- "domainSha256=unavailable" <<<"$legacy_v2_line_ext" \
     || ! grep -Fq -- "TRACKS=2" <<<"$legacy_v2_line_ext" \
+    || ! grep -Fq -- "PATTERNS=2" <<<"$legacy_v2_line_ext" \
     || ! grep -Fq -- "PLACEMENTS=2" <<<"$legacy_v2_line_ext" \
-    || [[ "$legacy_v2_sha_ext" != "$expected_v2_sha_ext" ]]; then
-  echo "ERROR: v2 Open failed to preserve placements or default pitch offsets"
-  echo "Expected canonical-v3 state: $expected_v2_sha_ext"; echo "$legacy_v2_line_ext"; exit 1
+    || ! grep -Fq -- "MIDI_NOTES=2" <<<"$legacy_v2_line_ext" \
+    || ! grep -Fq -- "SAMPLE_ASSETS=1" <<<"$legacy_v2_line_ext" \
+    || ! grep -Fq -- "MISSING_PCM=1" <<<"$legacy_v2_line_ext" \
+    || ! grep -Fq -- "AUDIO_READY=NO" <<<"$legacy_v2_line_ext"; then
+  echo "ERROR: v2 Open failed to preserve musical state or report its unavailable legacy PCM"
+  echo "$legacy_v2_line_ext"; exit 1
 fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V2_PNG" 10; then
   echo "ERROR: could not capture v2-loaded state"; exit 1
@@ -14487,20 +14523,24 @@ if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE
   echo "ERROR: runtime-valid placement-free v1 Project was not loaded from SAF"; exit 1
 fi
 legacy_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
-legacy_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$legacy_line_ext")"
 if ! grep -Fq -- "formatVersion=1" <<<"$legacy_line_ext" \
     || ! grep -Fq -- "persistedDomainExact=not-applicable" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "domainSha256=unavailable" <<<"$legacy_line_ext" \
     || ! grep -Fq -- "TRACKS=2" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "PATTERNS=2" <<<"$legacy_line_ext" \
     || ! grep -Fq -- "PLACEMENTS=0" <<<"$legacy_line_ext" \
-    || [[ "$legacy_sha_ext" != "$expected_v1_sha_ext" ]]; then
-  echo "ERROR: v1 Open fabricated placements or changed persisted MIDI/domain values"
-  echo "Expected canonical-v3 state: $expected_v1_sha_ext"; echo "$legacy_line_ext"; exit 1
+    || ! grep -Fq -- "MIDI_NOTES=2" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "SAMPLE_ASSETS=1" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "MISSING_PCM=1" <<<"$legacy_line_ext" \
+    || ! grep -Fq -- "AUDIO_READY=NO" <<<"$legacy_line_ext"; then
+  echo "ERROR: v1 Open fabricated placements or hid the unavailable legacy PCM"
+  echo "$legacy_line_ext"; exit 1
 fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
-echo "Extended Project UI acceptance passed: exact v3 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation, and legacy v1/v2 canonical-v3 round trips."
+echo "Extended Project UI acceptance passed: exact v4 PCM round-trip, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation, and legacy v1/v2 musical-state recovery with explicit missing-PCM reporting."
 
 # SAMP-007: adjust a real sample region# SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
 echo "Running SAMP-007 real sample-region audition and native playback-cursor acceptance..."
