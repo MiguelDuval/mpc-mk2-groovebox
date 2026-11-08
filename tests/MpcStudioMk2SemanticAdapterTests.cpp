@@ -46,6 +46,17 @@ int main(){
   const auto afterPadPerform = padPerform.handlePad(pad(2));
   assert(!afterPadPerform.tuningMode && afterPadPerform.targetPadIndex == 2);
 
+  // Invalid UI-provided contexts fail closed and restore ordinary pad routing.
+  padPerform.setPadPerformContext(true, 5, 99, 0);
+  const auto invalidScale = padPerform.handlePad(pad(0));
+  assert(!invalidScale.tuningMode && invalidScale.targetPadIndex == 0);
+  padPerform.setPadPerformContext(true, 16, 1, 0);
+  const auto invalidSource = padPerform.handlePad(pad(1));
+  assert(!invalidSource.tuningMode && invalidSource.targetPadIndex == 1);
+  padPerform.setPadPerformContext(true, 5, 1, 3);
+  const auto invalidOctave = padPerform.handlePad(pad(2));
+  assert(!invalidOctave.tuningMode && invalidOctave.targetPadIndex == 2);
+
   // Leaving Pad Perform before the first new hardware hit must reset the old
   // mode before a newly selected 16 Levels Tune mode is applied.
   MpcStudioMk2SemanticAdapter modeTransition;

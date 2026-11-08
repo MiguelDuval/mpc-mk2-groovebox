@@ -21,6 +21,33 @@ void MpcStudioMk2SemanticAdapter::setSixteenLevelTuneMode(bool enabled) noexcept
     sixteenLevelTuneMode_.store(enabled, std::memory_order_release);
 }
 
+void MpcStudioMk2SemanticAdapter::setPadPerformContext(
+        bool enabled,
+        std::int32_t sourcePadIndex,
+        std::int32_t scaleIndex,
+        std::int32_t octaveShift) noexcept {
+    if (!enabled
+            || sourcePadIndex < 0
+            || sourcePadIndex >= static_cast<std::int32_t>(padPresses_.size())
+            || !pad_perform::isValidScaleIndex(scaleIndex)
+            || octaveShift < pad_perform::kMinimumOctaveShift
+            || octaveShift > pad_perform::kMaximumOctaveShift) {
+        padPerformConfig_.store(0u, std::memory_order_release);
+        sixteenLevelTuneMode_.store(false, std::memory_order_release);
+        return;
+    }
+
+    // Pad Perform and 16 Levels Tune are mutually exclusive performance modes.
+    sixteenLevelTuneMode_.store(false, std::memory_order_release);
+    const auto encodedOctave = static_cast<std::uint32_t>(
+            octaveShift - pad_perform::kMinimumOctaveShift);
+    const auto packed = 1u
+            | (static_cast<std::uint32_t>(sourcePadIndex) << 1u)
+            | (static_cast<std::uint32_t>(scaleIndex) << 5u)
+            | (encodedOctave << 8u);
+    padPerformConfig_.store(packed, std::memory_order_release);
+}
+
 std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleControl(const InputEvent& e) noexcept {
     switch(e.type){
         case InputEventType::Button: return handleButton(e.number,e.pressed,e.timestampNanos);
@@ -356,7 +383,7 @@ std::optional<SemanticAction> MpcStudioMk2SemanticAdapter::handleButton(std::uin
                 || n == "PadMute";
         if (exitsPadPerform) {
             padPerformConfig_.store(0u, std::memory_order_release);
-            resetPerformanceModePending_.store(true, std::memory_order_release);
+            sixteenLevelTuneMode_.store(false, std::memory_order_release);
         }
     }
     if(n=="Shift"){ shiftHeld_=pressed; return std::nullopt; }

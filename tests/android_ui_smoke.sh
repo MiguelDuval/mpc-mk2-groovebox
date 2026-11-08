@@ -13545,7 +13545,9 @@ PY
 
 tap_mpc_menu_tile() {
   local row="$1" col="$2" target_xml="${3:-/tmp/mpc-groovebox-project-current-view-hierarchy.xml}"
-  local description page render_before shell_before capture_timeout=10
+  # Main's native hierarchy can be posted after the normal shell-settle marker.
+  # Use the same bounded 45s window as Project without relaxing freshness checks.
+  local description page render_before shell_before capture_timeout=45
   case "$row:$col" in
     3:3) description="MPC Menu PROJECT"; page="PROJECT" ;;
     0:0) description="MPC Menu MAIN"; page="MAIN" ;;
