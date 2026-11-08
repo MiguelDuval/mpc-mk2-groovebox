@@ -2261,7 +2261,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
   fi
 done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
-    'open_project_document()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
+    'open_project_document()' 'project_view_tree_generated_at()' 'wait_for_new_project_view_tree()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
@@ -13387,6 +13387,9 @@ PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJ
 PROJECT_BROWSER_TREE_MARKER_BEFORE=0
 PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
 PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
+PROJECT_MENU_TREE_UPTIME_BEFORE=0 PROJECT_MAIN_TREE_UPTIME_BEFORE=0 PROJECT_PROJECT_TREE_UPTIME_BEFORE=0
+PROJECT_BROWSER_TREE_UPTIME_BEFORE=0 PROJECT_SEQUENCE_TREE_UPTIME_BEFORE=0
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE=0 PROJECT_SAMPLE_TREE_UPTIME_BEFORE=0
 
 project_marker_count() {
   local marker="$1" timeout_seconds="${2:-5}" logs
@@ -13401,6 +13404,34 @@ project_marker_count() {
   grep -F -c -- "$marker" <<<"$logs" || true
 }
 
+project_view_tree_generated_at() {
+  local page="$1" remote xml
+  case "$page" in
+    MENU) remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
+    MAIN|BROWSE|PROJECT|SHORTCUTS|SEQ|SAMPLE) remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    *) echo 0; return 0 ;;
+  esac
+  # Use the app-owned tree's monotonic device-uptime timestamp rather than
+  # counting repeated Logcat markers in a bounded ring-buffer window.
+  # Logcat marker counts can decrease when older records leave that window.
+  xml="$(adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" 2>/dev/null || true)"
+  python3 -c '
+import sys
+import xml.etree.ElementTree as ET
+page = sys.argv[1]
+try:
+    root = ET.fromstring(sys.stdin.read())
+    if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != page:
+        raise ValueError("wrong View-tree page or source")
+    generated = int(root.attrib.get("generated-at-uptime-ms", ""))
+    if generated <= 0:
+        raise ValueError("invalid View-tree generation timestamp")
+except (ET.ParseError, TypeError, ValueError):
+    generated = 0
+print(generated)
+' "$page" <<<"$xml"
+}
+
 snapshot_project_view_tree_marker_baselines() {
   PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
   PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
@@ -13413,28 +13444,55 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
   PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
   PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+  PROJECT_MENU_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MENU)"
+  PROJECT_MAIN_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MAIN)"
+  PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)"
+  PROJECT_PROJECT_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PROJECT)"
+  PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
+  PROJECT_SEQUENCE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SEQ)"
+  PROJECT_SAMPLE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SAMPLE)"
 }
 
 snapshot_browser_view_tree_marker_baseline() {
   PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)"
+}
+
+wait_for_new_project_view_tree() {
+  local page="$1" before="$2" timeout_seconds="${3:-20}"
+  local deadline=$((SECONDS + timeout_seconds)) generated remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    generated="$(project_view_tree_generated_at "$page")"
+    if [[ "$generated" =~ ^[0-9]+$ ]] && (( generated > before )); then
+      echo "Observed fresh app-owned Android View tree: page=$page generated-at-uptime-ms=$generated"
+      return 0
+    fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+  done
+  generated="$(project_view_tree_generated_at "$page")"
+  if [[ "$generated" =~ ^[0-9]+$ ]] && (( generated > before )); then
+    echo "Observed fresh app-owned Android View tree on final bounded read: page=$page generated-at-uptime-ms=$generated"
+    return 0
+  fi
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for fresh app-owned View tree page=$page (baseline=$before current=$generated)"
+  return 1
 }
 
 capture_project_persistence_view_tree() {
-  # Project Open may publish its fresh MAIN View tree ~13s after DocumentsUI
-  # settles on a loaded emulator. Keep provenance/freshness checks intact;
-  # the marker waiter also performs a final bounded read at the deadline.
-  local page="$1" target_xml="$2" timeout_seconds="${3:-20}" marker before remote
+  # Compare the app-owned XML's monotonic device-uptime timestamp. Repeated
+  # Logcat marker counts are not monotonic when the bounded ring buffer rolls.
+  local page="$1" target_xml="$2" timeout_seconds="${3:-20}" before_uptime remote
   case "$page" in
-    MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
-    MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    BROWSE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE"; before="$PROJECT_BROWSER_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SAMPLE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE"; before="$PROJECT_SAMPLE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    MENU) before_uptime="$PROJECT_MENU_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
+    MAIN) before_uptime="$PROJECT_MAIN_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    BROWSE) before_uptime="$PROJECT_BROWSER_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    PROJECT) before_uptime="$PROJECT_PROJECT_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SHORTCUTS) before_uptime="$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SEQ) before_uptime="$PROJECT_SEQUENCE_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SAMPLE) before_uptime="$PROJECT_SAMPLE_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
-  if ! wait_for_new_project_marker "$marker" "$before" "$timeout_seconds"; then
+  if ! wait_for_new_project_view_tree "$page" "$before_uptime" "$timeout_seconds"; then
     echo "ERROR: no fresh Android View-tree snapshot for app page $page"; return 1
   fi
   if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
@@ -13497,15 +13555,30 @@ PY_PROJECT_APP_VIEW_TREE
     echo "ERROR: app View tree for $page is malformed, stale or lacks required enabled controls"; return 1
   fi
   PROJECT_CURRENT_APP_XML="$target_xml"
-  # Refresh baseline so subsequent captures require fresh snapshots
+  # Refresh both diagnostic marker and monotonic XML baselines so the next
+  # capture must publish a strictly newer app-owned View tree.
   case "$page" in
-    MENU) PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")" ;;
-    MAIN) PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")" ;;
-    BROWSE) PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")" ;;
-    PROJECT) PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")" ;;
-    SHORTCUTS) PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")" ;;
-    SEQ) PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")" ;;
-    SAMPLE) PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")" ;;
+    MENU)
+      PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+      PROJECT_MENU_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MENU)" ;;
+    MAIN)
+      PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+      PROJECT_MAIN_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MAIN)" ;;
+    BROWSE)
+      PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+      PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)" ;;
+    PROJECT)
+      PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+      PROJECT_PROJECT_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PROJECT)" ;;
+    SHORTCUTS)
+      PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
+      PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)" ;;
+    SEQ)
+      PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+      PROJECT_SEQUENCE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SEQ)" ;;
+    SAMPLE)
+      PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+      PROJECT_SAMPLE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SAMPLE)" ;;
   esac
   return 0
 }
