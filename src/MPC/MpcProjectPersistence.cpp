@@ -101,6 +101,7 @@ std::set<std::uint32_t> referencedSampleAssetIds(
 
 bool validateEmbeddedPcmAssets(
         const domain::Project& project, std::string* error) {
+    std::uint64_t totalPcmBytes = 0;
     for (const auto id : referencedSampleAssetIds(project)) {
         const auto found = std::find_if(project.samples.begin(), project.samples.end(),
                 [id](const domain::SampleRef& sample) {
@@ -121,6 +122,13 @@ bool validateEmbeddedPcmAssets(
                 || found->lengthSamples != static_cast<std::int64_t>(pcm.frameCount())) {
             return setError(error, "SampleRef metadata does not match its PCM asset");
         }
+        const auto assetBytes =
+                static_cast<std::uint64_t>(pcm.interleaved.size()) * sizeof(float);
+        if (assetBytes > kMaxProjectFileBytes - totalPcmBytes) {
+            return setError(error,
+                    "PCM assets exceed the 128 MiB project size limit");
+        }
+        totalPcmBytes += assetBytes;
         for (const float value : pcm.interleaved) {
             if (!std::isfinite(value) || value < -1.0f || value > 1.0f) {
                 return setError(error, "PCM asset contains invalid float samples");
