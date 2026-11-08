@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <string_view>
 #include <sstream>
 #include <vector>
 
@@ -197,6 +198,17 @@ int main() {
     assert(loaded.samples[0].pcm->frameCount() == 24000);
     assert(std::abs(loaded.samples[0].pcm->interleaved[0] - 0.125f) < 0.000001f);
     assert(loaded.drumPrograms[0].pads[1].layer(0).sample.value == 101);
+
+    // The decoder must read a non-owning byte view with binary PCM and strict
+    // bounds; the data is deliberately embedded between unrelated prefix/suffix.
+    const std::string wrappedBytes = "prefix:" + serialized + ":suffix";
+    const std::string_view projectView(
+            wrappedBytes.data() + 7u, serialized.size());
+    domain::Project loadedFromView;
+    error.clear();
+    assert(persistence::deserializeProject(projectView, loadedFromView, &error));
+    assert(error.empty());
+    assert(persistence::serializeProject(loadedFromView) == serialized);
     assert(loaded.drumPrograms[0].pads[0].layer(0).sample.value
             == loaded.drumPrograms[0].pads[1].layer(0).sample.value);
 

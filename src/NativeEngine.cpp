@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <span>
+#include <string_view>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -54,6 +55,25 @@ std::int64_t monotonicNanos() noexcept {
 jstring toJString(JNIEnv* env, const std::string& text) {
     return env->NewStringUTF(text.c_str());
 }
+
+struct ScopedJavaByteArrayRead final {
+    JNIEnv* env = nullptr;
+    jbyteArray array = nullptr;
+    jbyte* data = nullptr;
+
+    ScopedJavaByteArrayRead(
+            JNIEnv* sourceEnv, jbyteArray sourceArray, jbyte* sourceData) noexcept
+        : env(sourceEnv), array(sourceArray), data(sourceData) {}
+
+    ~ScopedJavaByteArrayRead() {
+        if (env != nullptr && array != nullptr && data != nullptr) {
+            env->ReleaseByteArrayElements(array, data, JNI_ABORT);
+        }
+    }
+
+    ScopedJavaByteArrayRead(const ScopedJavaByteArrayRead&) = delete;
+    ScopedJavaByteArrayRead& operator=(const ScopedJavaByteArrayRead&) = delete;
+};
 
 void stopSequenceForMutation() {
     mpc::midi::invalidateNoteRepeatRecordingTarget();
@@ -417,14 +437,22 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     if (length <= 0 || length > kMaxJavaProjectBytes) {
         return toJString(env, "PROJECT_LOAD_FAILED • invalid project file size");
     }
-    jbyte* raw = env->GetByteArrayElements(data, nullptr);
-    if (raw == nullptr) return toJString(env, "PROJECT_LOAD_FAILED • could not read project bytes");
-    const std::string bytes(reinterpret_cast<const char*>(raw), static_cast<std::size_t>(length));
-    env->ReleaseByteArrayElements(data, raw, JNI_ABORT);
-
     mpc::domain::Project candidate;
     std::string error;
-    if (!mpc::persistence::deserializeProject(bytes, candidate, &error)) {
+    bool decoded = false;
+    {
+        ScopedJavaByteArrayRead source{
+                env, data, env->GetByteArrayElements(data, nullptr)};
+        if (source.data == nullptr) {
+            return toJString(
+                    env, "PROJECT_LOAD_FAILED • could not read project bytes");
+        }
+        const std::string_view bytes(
+                reinterpret_cast<const char*>(source.data),
+                static_cast<std::size_t>(length));
+        decoded = mpc::persistence::deserializeProject(bytes, candidate, &error);
+    }
+    if (!decoded) {
         return toJString(env, "PROJECT_LOAD_FAILED • " + error);
     }
     if (!mpc::MpcProjectState::canReplaceProject(candidate)) {

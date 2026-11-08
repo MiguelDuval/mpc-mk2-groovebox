@@ -15,7 +15,9 @@
 #include <map>
 #include <set>
 #include <sstream>
+#include <streambuf>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -151,6 +153,20 @@ bool validateRequiredPcmPresent(
     }
     return true;
 }
+
+class ReadOnlyMemoryInputBuffer final : public std::streambuf {
+public:
+    explicit ReadOnlyMemoryInputBuffer(std::string_view bytes) noexcept {
+        if (bytes.empty()) {
+            setg(nullptr, nullptr, nullptr);
+            return;
+        }
+        // std::streambuf exposes a mutable get area even for input-only streams.
+        // No write path is provided; the source remains owned by the caller.
+        auto* const begin = const_cast<char*>(bytes.data());
+        setg(begin, begin, begin + bytes.size());
+    }
+};
 
 class Decoder final {
 public:
@@ -892,7 +908,8 @@ bool deserializeProject(
         return setError(error, "Project data exceeds the supported file-size limit");
     }
 
-    std::istringstream stream{std::string(bytes)};
+    ReadOnlyMemoryInputBuffer buffer(bytes);
+    std::istream stream(&buffer);
     Decoder in(stream, error);
     std::string magic;
     int version = 0;
