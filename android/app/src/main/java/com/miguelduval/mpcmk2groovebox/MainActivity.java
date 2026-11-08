@@ -675,12 +675,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     // List Edit — selected Pattern and complete MIDI event editing.
     private static native int nativePatternGetPatternCount();
-    private static native int nativeSequenceGetSelectedPatternIndex();
     private static native String nativePatternGetPatternName(int patternIndex);
     private static native String nativePatternSelectPattern(int patternIndex);
     private static native int nativePatternGetLengthTicks(int patternIndex);
     private static native int nativePatternGetEventCount(int patternIndex);
-    private static native int nativePatternFindEvent(int patternIndex, int tick, int note);
     private static native int nativePatternGetEventNote(int patternIndex, int eventIndex);
     private static native int nativePatternGetEventPad(int patternIndex, int eventIndex);
     private static native int nativePatternGetEventVelocity(int patternIndex, int eventIndex);
@@ -5527,13 +5525,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         pageTitle.setText("LIST EDIT • EVENTS");
         content.removeAllViews();
 
-        listEditPatternIndex = Math.max(0, Math.min(
-                nativePatternGetPatternCount() - 1,
-                nativeSequenceGetSelectedPatternIndex()));
-        if (nativePatternGetPatternCount() > 0) {
+        final int patternCount = nativePatternGetPatternCount();
+        listEditPatternIndex = patternCount > 0
+                ? Math.max(0, Math.min(patternCount - 1, listEditPatternIndex)) : 0;
+        if (patternCount > 0) {
             nativePatternSelectPattern(listEditPatternIndex);
-        } else {
-            listEditPatternIndex = 0;
         }
         listEditSelectedEvent = -1;
 
