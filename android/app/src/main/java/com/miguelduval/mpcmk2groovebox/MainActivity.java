@@ -14028,7 +14028,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final String nativeSummary = nativeProjectGetSummary();
             final String pcmDetail = nativeSummary != null
                     && nativeSummary.contains("MISSING_PCM=")
-                    && !nativeSummary.endsWith("MISSING_PCM=0")
+                    && !nativeSummary.contains("MISSING_PCM=0")
                     ? " • assigned PCM is missing; reimport those WAVs • " + nativeSummary
                     : "";
             setBottomStatus(

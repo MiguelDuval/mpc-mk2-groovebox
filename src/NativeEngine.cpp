@@ -174,7 +174,8 @@ std::string projectSummary(const mpc::domain::Project& project) {
             + " PCM_ASSETS=" + std::to_string(embeddedPcmAssets)
             + " PCM_BYTES=" + std::to_string(pcmBytes)
             + " MISSING_PCM=" + std::to_string(missingPcmAssets)
-            + " AUDIO_READY=" + (missingPcmAssets == 0 ? "YES" : "NO");
+            + " AUDIO_READY=" + (!usedSampleAssets.empty() && missingPcmAssets == 0
+                    ? "YES" : "NO");
 }
 } // namespace
 
@@ -314,6 +315,9 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     candidate.samples.push_back(fixtureSample);
     auto& fixtureLayer = candidate.drumPrograms.front().pads[0].layer(0);
     fixtureLayer.sample = fixtureSample.assetId;
+    fixtureLayer.enabled = true;
+    fixtureLayer.velocityMinimum = 0;
+    fixtureLayer.velocityMaximum = 127;
     fixtureLayer.region = mpc::domain::SampleRegion{std::size_t{0}, kFixtureFrameCount};
 
     std::string validationError;
@@ -378,10 +382,25 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
         return toJString(env, "PROJECT_LOAD_FAILED • " + stopped);
     }
     if (!core.audio().clearRuntimeSamplesForProjectReplacement()) {
-        return toJString(env, "PROJECT_LOAD_FAILED • audio streams did not stop");
+        const auto restoredProjection =
+                core.audio().refreshActiveProgramRuntimeProjection();
+        const auto restoredAudio = core.audio().start();
+        return toJString(env,
+                "PROJECT_LOAD_FAILED • audio streams did not stop; "
+                "previous Project retained • " + restoredProjection
+                        + " • " + restoredAudio);
     }
     if (!core.projectState().replaceProject(std::move(candidate))) {
-        return toJString(env, "PROJECT_LOAD_FAILED • project state rejected replacement");
+        // replaceProject validates before mutating, so the existing Project
+        // remains authoritative. The runtime slots were cleared immediately
+        // before the attempted replacement; rebuild them and restart output.
+        const auto restoredProjection =
+                core.audio().refreshActiveProgramRuntimeProjection();
+        const auto restoredAudio = core.audio().start();
+        return toJString(env,
+                "PROJECT_LOAD_FAILED • project state rejected replacement; "
+                "previous Project retained • " + restoredProjection
+                        + " • " + restoredAudio);
     }
     const auto projectionStatus =
             core.audio().refreshActiveProgramRuntimeProjection();
