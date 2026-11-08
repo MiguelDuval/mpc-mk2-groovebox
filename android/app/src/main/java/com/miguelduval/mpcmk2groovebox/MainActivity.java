@@ -2920,7 +2920,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         });
         root.addView(enabled,
                 new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
 
         final TextView timeDiv = label(
                 "TIME DIV\n" + sequenceGridLabel(divisionState[0]),
@@ -12419,7 +12419,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         page.addView(identity, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(40)));
 
-        TextView summary = label(nativeProjectGetSummary(), 12, ACCENT);
+        TextView summary = label(nativeProjectGetSummary(), 11, ACCENT);
         summary.setContentDescription("MPC Project content summary");
         summary.setPadding(dp(6), dp(6), dp(6), dp(6));
         page.addView(summary, new LinearLayout.LayoutParams(
@@ -12444,9 +12444,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(46)));
 
         TextView note = label(
-                "Pattern placements and MIDI data are stored. Sample PCM is external; reload or relink assigned WAV assets after opening.",
+                "PCM_ASSETS and MISSING_PCM in the native summary report embedded audio. Legacy v1-v3 projects may need WAV reimport before a complete v4 save.",
                 10, MUTED);
-        note.setContentDescription("MPC Project persistence limits");
+        note.setContentDescription(
+                "MPC Project PCM asset counts are read from the native sample registry; legacy projects may need WAV reimport");
         page.addView(note, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(54)));
 
@@ -14015,7 +14016,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
         if (bytes == null || bytes.length == 0 || bytes.length > MAX_PROJECT_FILE_BYTES) {
-            setBottomStatus("PROJECT SAVE FAILED • native project serialization unavailable");
+            final String nativeSummary = nativeProjectGetSummary();
+            final String pcmDetail = nativeSummary != null
+                    && nativeSummary.contains("MISSING_PCM=")
+                    && !nativeSummary.endsWith("MISSING_PCM=0")
+                    ? " • assigned PCM is missing; reimport those WAVs • " + nativeSummary
+                    : "";
+            setBottomStatus(
+                    "PROJECT SAVE FAILED • native project serialization unavailable"
+                            + pcmDetail);
             return;
         }
 

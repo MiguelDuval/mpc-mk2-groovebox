@@ -7,9 +7,9 @@
 
 namespace mpc::persistence {
 
-// Version 2 adds explicit Pattern-placement records. Version 3 adds per-note
-// transient pitch offsets; versions 1 and 2 remain readable with a zero offset.
-inline constexpr int kCurrentProjectFormatVersion = 3;
+// Version 4 embeds unique referenced PCM assets in binary blocks. Versions 1-3
+// remain readable; legacy files without PCM retain explicit missing-asset state.
+inline constexpr int kCurrentProjectFormatVersion = 4;
 
 std::string serializeProject(const domain::Project& project, std::string* error = nullptr);
 bool deserializeProject(

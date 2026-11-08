@@ -1,9 +1,11 @@
 #include "MPC/MpcEditHistory.h"
 #include "MPC/MpcProjectPersistence.h"
+#include "Audio/WavSample.h"
 #include "MPC/Sequencer/MpcArrangementOps.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory>
 #include <cmath>
 #include <cstdio>
 #include <filesystem>
@@ -53,6 +55,11 @@ mpc::domain::Project makeProject() {
     sample.sampleRate = 48000.0;
     sample.lengthSamples = 24000;
     sample.assetId.value = 101;
+    auto pcm = std::make_shared<mpc::audio::SampleBuffer>();
+    pcm->sampleRate = 48000;
+    pcm->channelCount = 1;
+    pcm->interleaved.assign(24000, 0.125f);
+    sample.pcm = pcm;
     project.samples.push_back(sample);
 
     DrumProgram program;
@@ -85,6 +92,10 @@ mpc::domain::Project makeProject() {
     layer.loopStartSample = 100;
     layer.loopEndSample = 1700;
     layer.enabled = true;
+    program.pads[1].index = 1;
+    program.pads[1].name = "Snare";
+    program.pads[1].midiNote = 37;
+    program.pads[1].layer(0) = layer; // Two Pads share one immutable asset.
     project.drumPrograms.push_back(program);
 
     Sequence sequence;
@@ -146,7 +157,8 @@ int main() {
     domain::Project source = makeProject();
     const auto baselineNotes = source.sequences[0].tracks[0].patterns[0].notes;
     const auto serialized = persistence::serializeProject(source);
-    assert(serialized.find("MPCMK2_PROJECT 3") == 0);
+    assert(serialized.find("MPCMK2_PROJECT 4") == 0);
+    assert(serialized.find("PCM_ASSETS 1\n") != std::string::npos);
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
@@ -173,6 +185,14 @@ int main() {
     assert(loaded.samples[0].sampleRate == 48000.0);
     assert(loaded.samples[0].lengthSamples == 24000);
     assert(loaded.samples[0].assetId.value == 101);
+    assert(loaded.samples[0].pcm != nullptr);
+    assert(loaded.samples[0].pcm->sampleRate == 48000);
+    assert(loaded.samples[0].pcm->channelCount == 1);
+    assert(loaded.samples[0].pcm->frameCount() == 24000);
+    assert(std::abs(loaded.samples[0].pcm->interleaved[0] - 0.125f) < 0.000001f);
+    assert(loaded.drumPrograms[0].pads[1].layer(0).sample.value == 101);
+    assert(loaded.drumPrograms[0].pads[0].layer(0).sample.value
+            == loaded.drumPrograms[0].pads[1].layer(0).sample.value);
 
     assert(loaded.drumPrograms.size() == 1);
     const auto& loadedPad = loaded.drumPrograms[0].pads[0];
@@ -302,6 +322,19 @@ int main() {
     assert(legacyV2Project.sequences[0].tracks[0].patterns[0]
             .notes[0].tuningOffsetMilliSemitones == 0);
 
+    // Version 3 adds the per-note tuning-offset field but has no PCM chunks.
+    std::string legacyV3 = legacyV2;
+    legacyV3.replace(legacyV3.find("MPCMK2_PROJECT 2"), 16, "MPCMK2_PROJECT 3");
+    const std::string oldNoteLine = "NOTE 120 240 36 101 99 2 -3\n";
+    const auto legacyNoteLine = legacyV3.find(oldNoteLine);
+    assert(legacyNoteLine != std::string::npos);
+    legacyV3.replace(legacyNoteLine, oldNoteLine.size(),
+            "NOTE 120 240 36 101 99 2 -3 0\n");
+    domain::Project legacyV3Project;
+    assert(persistence::deserializeProject(legacyV3, legacyV3Project, &error));
+    assert(legacyV3Project.sequences[0].tracks[0].patterns[0]
+            .notes[0].tuningOffsetMilliSemitones == 0);
+
     // A failed parse must leave every field of the already-open Project intact,
     // not merely preserve its identity. The truncated v2 payload is deliberately
     // valid through all serialized model records and fails only at END_PROJECT,
@@ -317,6 +350,24 @@ int main() {
     assert(!persistence::deserializeProject(truncatedAfterRecords, loaded, &error));
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    // Damaged PCM bytes are rejected by checksum and cannot replace live state.
+    const auto pcmHeader = serialized.find("PCM_ASSET 101 ");
+    assert(pcmHeader != std::string::npos);
+    const auto pcmHeaderEnd = serialized.find('\n', pcmHeader);
+    assert(pcmHeaderEnd != std::string::npos && pcmHeaderEnd + 1 < serialized.size());
+    std::string corruptedPcm = serialized;
+    corruptedPcm[pcmHeaderEnd + 1] ^= 1;
+    error.clear();
+    assert(!persistence::deserializeProject(corruptedPcm, loaded, &error));
+    assert(error == "PCM asset checksum mismatch");
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
+    auto missingPcm = source;
+    missingPcm.samples.front().pcm.reset();
+    error.clear();
+    assert(persistence::serializeProject(missingPcm, &error).empty());
+    assert(error.find("has no PCM data") != std::string::npos);
 
     // Unsupported format versions must obey the same all-or-nothing contract.
     error.clear();

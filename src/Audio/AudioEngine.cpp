@@ -994,6 +994,29 @@ std::string AudioEngine::loadSample(
     return "Fallback sample loaded | " + sampleDescription_;
 }
 
+
+mpc::domain::SampleId AudioEngine::registerSampleAsset(
+        std::string name,
+        const std::shared_ptr<const SampleBuffer>& sample) {
+    if (sample == nullptr || sample->sampleRate == 0
+            || sample->channelCount == 0 || sample->frameCount() == 0
+            || sample->interleaved.size()
+                    != sample->frameCount() * sample->channelCount) {
+        return {};
+    }
+    const auto id = projectState_.registerSample(
+            std::move(name), "", static_cast<double>(sample->sampleRate),
+            static_cast<std::int64_t>(sample->frameCount()));
+    if (!id.isAssigned()) return {};
+    for (auto& reference : projectState_.project().samples) {
+        if (reference.assetId.value == id.value) {
+            reference.pcm = sample;
+            return id;
+        }
+    }
+    return {};
+}
+
 AudioEngine::PadEditSnapshot AudioEngine::capturePadEditSnapshot(
         std::uint8_t padIndex) const {
     PadEditSnapshot snapshot;
@@ -1231,11 +1254,10 @@ std::string AudioEngine::chopPadSampleToPads(
 
     mpc::domain::SampleId resolvedSourceSampleId = sourceSampleId;
     if (!resolvedSourceSampleId.isAssigned()) {
-        resolvedSourceSampleId = projectState_.registerSample(
-                "Chop source sample",
-                "",
-                static_cast<double>(sourceSample->sampleRate),
-                static_cast<std::int64_t>(sourceSample->frameCount()));
+        resolvedSourceSampleId = registerSampleAsset("Chop source sample", sourceSample);
+    }
+    if (!resolvedSourceSampleId.isAssigned()) {
+        return "Chop failed: could not register source PCM asset";
     }
 
     for (std::size_t destinationPad = 0;
@@ -1347,13 +1369,13 @@ std::string AudioEngine::cropPadSampleRegion(
 
     auto croppedSample = std::make_shared<SampleBuffer>(*cropped);
     const std::size_t croppedFrames = croppedSample->frameCount();
+    const auto croppedSampleId = registerSampleAsset("Cropped sample", croppedSample);
+    if (!croppedSampleId.isAssigned()) {
+        return "Crop failed: could not register PCM asset";
+    }
     padSamples_[padIndex][layerIndex] = croppedSample;
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
-    layerState.sample = projectState_.registerSample(
-            "Cropped sample",
-            "",
-            static_cast<double>(croppedSample->sampleRate),
-            static_cast<std::int64_t>(croppedSample->frameCount()));
+    layerState.sample = croppedSampleId;
     layerState.region = fullSampleRegion(croppedFrames);
     layerState.loopStartSample = croppedLoop.startFrame;
     layerState.loopEndSample = croppedLoop.endFrame;
@@ -1737,13 +1759,14 @@ std::string AudioEngine::loadSampleForPadLayer(
         return "Sample load failed: unsupported or invalid PCM WAV";
     }
 
-    padSamples_[padIndex][layerIndex] = std::make_shared<SampleBuffer>(*decoded);
+    auto importedSample = std::make_shared<SampleBuffer>(*decoded);
+    const auto importedSampleId = registerSampleAsset("Imported sample", importedSample);
+    if (!importedSampleId.isAssigned()) {
+        return "Sample load failed: could not register PCM asset";
+    }
+    padSamples_[padIndex][layerIndex] = std::move(importedSample);
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
-    layerState.sample = projectState_.registerSample(
-            "Imported sample",
-            "",
-            static_cast<double>(padSamples_[padIndex][layerIndex]->sampleRate),
-            static_cast<std::int64_t>(padSamples_[padIndex][layerIndex]->frameCount()));
+    layerState.sample = importedSampleId;
     layerState.region =
             fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
@@ -2241,14 +2264,14 @@ std::string AudioEngine::assignRecordingToPadLayer(
             recordedSamples_.begin(),
             recordedSamples_.begin() + frameCount);
 
-    padSamples_[padIndex][layerIndex] =
-            std::make_shared<SampleBuffer>(std::move(recordedSample));
+    auto recordedPcm = std::make_shared<SampleBuffer>(std::move(recordedSample));
+    const auto recordedSampleId = registerSampleAsset("Recorded sample", recordedPcm);
+    if (!recordedSampleId.isAssigned()) {
+        return "Recording assign failed: could not register PCM asset";
+    }
+    padSamples_[padIndex][layerIndex] = std::move(recordedPcm);
     auto& layerState = projectState_.activeDrumProgram().pad(padIndex).layer(layerIndex);
-    layerState.sample = projectState_.registerSample(
-            "Recorded sample",
-            "",
-            static_cast<double>(padSamples_[padIndex][layerIndex]->sampleRate),
-            static_cast<std::int64_t>(padSamples_[padIndex][layerIndex]->frameCount()));
+    layerState.sample = recordedSampleId;
     layerState.region =
             fullSampleRegion(padSamples_[padIndex][layerIndex]->frameCount());
     padSampleDescriptions_[padIndex][layerIndex] =
@@ -2687,10 +2710,50 @@ bool AudioEngine::clearRuntimeSamplesForProjectReplacement() noexcept {
     return true;
 }
 
-void AudioEngine::refreshActiveProgramRuntimeProjection() noexcept {
+std::string AudioEngine::refreshActiveProgramRuntimeProjection() {
+    // The output callback owns a snapshot of the Pad/Layer grid. Quiesce it
+    // before replacing slots so no callback races the control-thread projection.
+    const bool restartOutput = stream_ != nullptr;
+    if (restartOutput) {
+        const auto stopped = stopOutputStream();
+        if (stream_ != nullptr) {
+            return "PCM projection failed: output stream remained active | " + stopped;
+        }
+        if (stopped.rfind("Audio stop failed:", 0) == 0
+                || stopped.rfind("Audio close failed:", 0) == 0) {
+            const auto restarted = start();
+            return "PCM projection failed: " + stopped
+                    + (stream_ != nullptr ? " | audio restarted"
+                                          : " | audio restart failed: " + restarted);
+        }
+    }
+
+    // Project SampleRefs are the central immutable asset registry. Every Pad
+    // and Program references an ID; active runtime slots share the same buffer.
+    const auto& program = projectState_.activeDrumProgram();
     for (std::size_t pad = 0; pad < kPadCount; ++pad) {
+        for (std::size_t layer = 0; layer < kSampleLayerCount; ++layer) {
+            const auto& layerState = program.pad(pad).layer(layer);
+            const auto* reference = projectState_.findSample(layerState.sample);
+            padSamples_[pad][layer] = reference != nullptr ? reference->pcm : nullptr;
+            if (padSamples_[pad][layer] != nullptr) {
+                const auto& sample = *padSamples_[pad][layer];
+                padSampleDescriptions_[pad][layer] =
+                        std::to_string(sample.sampleRate) + " Hz "
+                        + std::to_string(sample.channelCount) + " ch "
+                        + std::to_string(sample.frameCount()) + " frames";
+            } else {
+                padSampleDescriptions_[pad][layer].clear();
+            }
+        }
         syncPadRuntimeProjection(static_cast<std::uint8_t>(pad));
     }
+
+    if (!restartOutput) return "PCM projection ready";
+    const auto restarted = start();
+    return stream_ != nullptr
+            ? "PCM projection ready | audio restarted"
+            : "PCM projection ready | audio restart failed: " + restarted;
 }
 
 std::string AudioEngine::status() const {

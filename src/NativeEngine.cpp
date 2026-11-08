@@ -11,6 +11,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -132,6 +133,30 @@ std::string projectSummary(const mpc::domain::Project& project) {
     std::size_t patternCount = 0;
     std::size_t placementCount = 0;
     std::size_t noteCount = 0;
+    std::set<std::uint32_t> usedSampleAssets;
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) usedSampleAssets.insert(layer.sample.value);
+            }
+        }
+    }
+    std::uint64_t pcmBytes = 0;
+    std::size_t embeddedPcmAssets = 0;
+    std::size_t missingPcmAssets = 0;
+    for (const auto assetId : usedSampleAssets) {
+        const auto sample = std::find_if(project.samples.begin(), project.samples.end(),
+                [assetId](const mpc::domain::SampleRef& value) {
+                    return value.assetId.value == assetId;
+                });
+        if (sample == project.samples.end() || sample->pcm == nullptr) {
+            ++missingPcmAssets;
+        } else {
+            ++embeddedPcmAssets;
+            pcmBytes += static_cast<std::uint64_t>(
+                    sample->pcm->interleaved.size()) * sizeof(float);
+        }
+    }
     for (const auto& sequence : project.sequences) {
         trackCount += sequence.tracks.size();
         for (const auto& track : sequence.tracks) {
@@ -144,7 +169,11 @@ std::string projectSummary(const mpc::domain::Project& project) {
             + " TRACKS=" + std::to_string(trackCount)
             + " PATTERNS=" + std::to_string(patternCount)
             + " PLACEMENTS=" + std::to_string(placementCount)
-            + " MIDI_NOTES=" + std::to_string(noteCount);
+            + " MIDI_NOTES=" + std::to_string(noteCount)
+            + " SAMPLE_ASSETS=" + std::to_string(usedSampleAssets.size())
+            + " PCM_ASSETS=" + std::to_string(embeddedPcmAssets)
+            + " PCM_BYTES=" + std::to_string(pcmBytes)
+            + " MISSING_PCM=" + std::to_string(missingPcmAssets);
 }
 } // namespace
 
@@ -212,7 +241,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
         return toJString(env, "PROJECT_NEW_FAILED • default Project replacement rejected");
     }
 
-    core.audio().refreshActiveProgramRuntimeProjection();
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();
@@ -221,7 +251,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectNew(
             core.projectState().activeSequence(), 0, monotonicNanos());
 
     return toJString(env,
-            "PROJECT_CREATED • " + projectSummary(core.projectState().project()));
+            "PROJECT_CREATED • " + projectSummary(core.projectState().project())
+                    + " • " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -311,7 +342,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     if (!core.projectState().replaceProject(std::move(candidate))) {
         return toJString(env, "PROJECT_LOAD_FAILED • project state rejected replacement");
     }
-    core.audio().refreshActiveProgramRuntimeProjection();
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     core.editHistory().clear();
     arrangementEventClipboard.reset();
     sequencePlayback.reset();
@@ -319,7 +351,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectLoad(
     return toJString(env,
             "PROJECT_LOADED • "
             + projectSummary(core.projectState().project())
-            + " • sample PCM is not embedded; assigned WAVs may need reload");
+            + " • " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -1949,6 +1981,8 @@ jstring selectSequenceForUi(
     if (!state.selectSequence(sequenceIndex)) {
         return toJString(env, "Sequence selection failed");
     }
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
 
     core.sequenceTransportClock().clearQueuedSequence();
     core.sequenceTransportClock().update(
@@ -1957,7 +1991,7 @@ jstring selectSequenceForUi(
             monotonicNanos(),
             false);
 
-    return toJString(env, state.sequenceStatus());
+    return toJString(env, state.sequenceStatus() + " | " + projectionStatus);
 }
 
 } // namespace
@@ -2013,10 +2047,13 @@ jstring selectSequenceFromPadForUi(
     if (action != mpc::sequencer::SequenceLaunchAction::Selected) {
         return toJString(env, "Sequence launch failed");
     }
+    const auto projectionStatus =
+            core.audio().refreshActiveProgramRuntimeProjection();
     return toJString(
             env,
             "Sequence selected: " + std::to_string(sequenceIndex + 1)
-                    + " | " + state.sequenceStatus());
+                    + " | " + state.sequenceStatus()
+                    + " | " + projectionStatus);
 }
 
 } // namespace
@@ -3425,10 +3462,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackProgram(
                 env,
                 "Program selection failed: Track requires a Drum Program");
     }
+    std::string projectionStatus;
+    if (static_cast<std::size_t>(trackIndex) == state.activeTrackIndex()) {
+        projectionStatus = mpc::MpcCore::instance().audio()
+                .refreshActiveProgramRuntimeProjection();
+    }
 
     return toJString(
             env,
-            "Program • " + programs[static_cast<std::size_t>(programIndex)].name);
+            "Program • " + programs[static_cast<std::size_t>(programIndex)].name
+                    + (projectionStatus.empty() ? "" : " | " + projectionStatus));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -3438,12 +3481,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSelectTrack(
     if (trackIndex < 0) {
         return toJString(env, "Track selection failed");
     }
-    auto& state = mpc::MpcCore::instance().projectState();
+    auto& core = mpc::MpcCore::instance();
+    auto& state = core.projectState();
     mpc::midi::invalidateNoteRepeatRecordingTarget();
     if (state.selectTrack(static_cast<std::size_t>(trackIndex))) {
+        const auto projectionStatus =
+                core.audio().refreshActiveProgramRuntimeProjection();
         return toJString(
                 env,
-                state.trackStatus(static_cast<std::size_t>(trackIndex)));
+                state.trackStatus(static_cast<std::size_t>(trackIndex))
+                        + " | " + projectionStatus);
     }
     return toJString(env, "Track selection failed");
 }
@@ -3461,9 +3508,11 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAddTrack(
             static_cast<mpc::domain::TrackKind>(kind))) {
         return toJString(env, "Track creation failed");
     }
+    const auto projectionStatus =
+            mpc::MpcCore::instance().audio().refreshActiveProgramRuntimeProjection();
     return toJString(
             env,
-            state.trackStatus(state.activeTrackIndex()));
+            state.trackStatus(state.activeTrackIndex()) + " | " + projectionStatus);
 }
 
 extern "C" JNIEXPORT jstring JNICALL

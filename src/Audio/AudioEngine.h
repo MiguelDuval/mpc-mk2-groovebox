@@ -165,7 +165,7 @@ public:
     std::string stop();
     std::string status() const;
     bool clearRuntimeSamplesForProjectReplacement() noexcept;
-    void refreshActiveProgramRuntimeProjection() noexcept;
+    std::string refreshActiveProgramRuntimeProjection();
 
     // Starts a bounded microphone capture buffer in RAM.
     // The capture callback writes only into preallocated storage.
@@ -230,6 +230,9 @@ private:
 
     std::string openInputStream();
     mpc::domain::SampleId allocateSampleId();
+    mpc::domain::SampleId registerSampleAsset(
+            std::string name,
+            const std::shared_ptr<const SampleBuffer>& sample);
     std::string stopInputStream();
     std::string stopOutputStream();
     void syncPadRuntimeProjection(

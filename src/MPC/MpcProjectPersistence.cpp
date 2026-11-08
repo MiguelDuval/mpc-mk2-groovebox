@@ -1,8 +1,11 @@
 #include "MPC/MpcProjectPersistence.h"
 #include "Audio/AudioTriggerQueue.h"
+#include "Audio/WavSample.h"
 #include "MPC/Sequencer/MpcSequenceSettings.h"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
@@ -34,6 +37,96 @@ bool setError(std::string* error, const std::string& message) {
     return false;
 }
 
+std::uint32_t pcmCrc32(const audio::SampleBuffer& sample) noexcept {
+    std::uint32_t crc = 0xFFFFFFFFu;
+    for (const float value : sample.interleaved) {
+        const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            crc ^= static_cast<std::uint8_t>(bits >> (byte * 8u));
+            for (int bit = 0; bit < 8; ++bit) {
+                crc = (crc >> 1u)
+                        ^ (0xEDB88320u & (0u - (crc & 1u)));
+            }
+        }
+    }
+    return crc ^ 0xFFFFFFFFu;
+}
+
+void writePcmBlock(std::ostream& out, const audio::SampleBuffer& sample) {
+    std::array<char, 4096> chunk{};
+    std::size_t used = 0;
+    for (const float value : sample.interleaved) {
+        const std::uint32_t bits = std::bit_cast<std::uint32_t>(value);
+        for (std::size_t byte = 0; byte < 4; ++byte) {
+            chunk[used++] = static_cast<char>(bits >> (byte * 8u));
+            if (used == chunk.size()) {
+                out.write(chunk.data(), static_cast<std::streamsize>(used));
+                used = 0;
+            }
+        }
+    }
+    if (used > 0) out.write(chunk.data(), static_cast<std::streamsize>(used));
+    out.put('\n');
+}
+
+std::set<std::uint32_t> referencedSampleAssetIds(
+        const domain::Project& project) {
+    std::set<std::uint32_t> ids;
+    for (const auto& program : project.drumPrograms) {
+        for (const auto& pad : program.pads) {
+            for (const auto& layer : pad.layers) {
+                if (layer.sample.isAssigned()) ids.insert(layer.sample.value);
+            }
+        }
+    }
+    return ids;
+}
+
+bool validateEmbeddedPcmAssets(
+        const domain::Project& project, std::string* error) {
+    for (const auto id : referencedSampleAssetIds(project)) {
+        const auto found = std::find_if(project.samples.begin(), project.samples.end(),
+                [id](const domain::SampleRef& sample) {
+                    return sample.assetId.value == id;
+                });
+        if (found == project.samples.end()) {
+            return setError(error, "Assigned sample asset references a missing SampleRef");
+        }
+        if (found->pcm == nullptr) {
+            return setError(error, "Assigned sample asset " + std::to_string(id)
+                    + " has no PCM data; reload the WAV before saving this v4 Project");
+        }
+        const auto& pcm = *found->pcm;
+        if (pcm.sampleRate == 0 || (pcm.channelCount != 1 && pcm.channelCount != 2)
+                || pcm.frameCount() == 0
+                || pcm.interleaved.size() != pcm.frameCount() * pcm.channelCount
+                || found->sampleRate != static_cast<double>(pcm.sampleRate)
+                || found->lengthSamples != static_cast<std::int64_t>(pcm.frameCount())) {
+            return setError(error, "SampleRef metadata does not match its PCM asset");
+        }
+        for (const float value : pcm.interleaved) {
+            if (!std::isfinite(value) || value < -1.0f || value > 1.0f) {
+                return setError(error, "PCM asset contains invalid float samples");
+            }
+        }
+    }
+    return true;
+}
+
+bool validateRequiredPcmPresent(
+        const domain::Project& project, std::string* error) {
+    for (const auto id : referencedSampleAssetIds(project)) {
+        const auto found = std::find_if(project.samples.begin(), project.samples.end(),
+                [id](const domain::SampleRef& sample) {
+                    return sample.assetId.value == id;
+                });
+        if (found == project.samples.end() || found->pcm == nullptr) {
+            return setError(error, "v4 Project is missing a referenced PCM asset");
+        }
+    }
+    return true;
+}
+
 class Decoder final {
 public:
     Decoder(std::istream& stream, std::string* error)
@@ -62,6 +155,60 @@ public:
         if (!value(raw)) return false;
         if (raw != 0 && raw != 1) return fail("boolean value must be 0 or 1");
         result = raw != 0;
+        return true;
+    }
+
+    bool pcmBlock(audio::SampleBuffer& sample,
+            std::uint64_t byteCount,
+            std::uint32_t expectedCrc) {
+        const std::uint64_t expectedBytes =
+                static_cast<std::uint64_t>(sample.interleaved.size()) * 4ULL;
+        if (byteCount != expectedBytes || byteCount > kMaxProjectFileBytes) {
+            return fail("PCM block byte count does not match its dimensions");
+        }
+        char headerSeparator = 0;
+        if (!stream_.get(headerSeparator) || headerSeparator != '\n') {
+            return fail("PCM block header is not newline terminated");
+        }
+
+        std::array<std::uint8_t, 4096> chunk{};
+        std::uint64_t remaining = byteCount;
+        std::size_t sampleIndex = 0;
+        std::uint32_t crc = 0xFFFFFFFFu;
+        while (remaining > 0) {
+            const auto amount = static_cast<std::size_t>(
+                    std::min<std::uint64_t>(remaining, chunk.size()));
+            stream_.read(reinterpret_cast<char*>(chunk.data()),
+                    static_cast<std::streamsize>(amount));
+            if (stream_.gcount() != static_cast<std::streamsize>(amount)) {
+                return fail("truncated PCM asset block");
+            }
+            for (std::size_t offset = 0; offset < amount; offset += 4) {
+                std::uint32_t bits = 0;
+                for (std::size_t byte = 0; byte < 4; ++byte) {
+                    const auto value = chunk[offset + byte];
+                    crc ^= value;
+                    for (int bit = 0; bit < 8; ++bit) {
+                        crc = (crc >> 1u)
+                                ^ (0xEDB88320u & (0u - (crc & 1u)));
+                    }
+                    bits |= static_cast<std::uint32_t>(value) << (byte * 8u);
+                }
+                const float value = std::bit_cast<float>(bits);
+                if (!std::isfinite(value) || value < -1.0f || value > 1.0f
+                        || sampleIndex >= sample.interleaved.size()) {
+                    return fail("PCM asset contains invalid float samples");
+                }
+                sample.interleaved[sampleIndex++] = value;
+            }
+            remaining -= amount;
+        }
+        char blockSeparator = 0;
+        if (!stream_.get(blockSeparator) || blockSeparator != '\n') {
+            return fail("PCM asset block is not terminated");
+        }
+        crc ^= 0xFFFFFFFFu;
+        if (crc != expectedCrc) return fail("PCM asset checksum mismatch");
         return true;
     }
 
@@ -470,6 +617,17 @@ bool validateSampleReferences(
         if (sample.lengthSamples < 0) {
             return setError(error, "Sample length is out of range");
         }
+        if (sample.pcm != nullptr) {
+            const auto& pcm = *sample.pcm;
+            if (pcm.sampleRate == 0
+                    || (pcm.channelCount != 1 && pcm.channelCount != 2)
+                    || pcm.frameCount() == 0
+                    || pcm.interleaved.size() != pcm.frameCount() * pcm.channelCount
+                    || sample.sampleRate != static_cast<double>(pcm.sampleRate)
+                    || sample.lengthSamples != static_cast<std::int64_t>(pcm.frameCount())) {
+                return setError(error, "SampleRef metadata does not match its PCM asset");
+            }
+        }
     }
     return true;
 }
@@ -596,6 +754,7 @@ std::string serializeProject(const domain::Project& project, std::string* error)
             || !validateSerializableNumericFields(project, error)
             || !validateSampleReferences(project, error)
             || !validateSampleLayerState(project, error)
+            || !validateEmbeddedPcmAssets(project, error)
             || !validatePatternData(project, error)
             || !validatePlacements(project, error)) {
         return {};
@@ -611,6 +770,26 @@ std::string serializeProject(const domain::Project& project, std::string* error)
             << std::quoted(sample.name) << ' ' << std::quoted(sample.path)
             << ' ' << sample.sampleRate << ' ' << sample.lengthSamples
             << ' ' << sample.assetId.value << '\n';
+    }
+
+    const auto pcmAssetIds = referencedSampleAssetIds(project);
+    out << "PCM_ASSETS " << pcmAssetIds.size() << '\n';
+    for (const auto assetId : pcmAssetIds) {
+        const auto sample = std::find_if(project.samples.begin(), project.samples.end(),
+                [assetId](const domain::SampleRef& value) {
+                    return value.assetId.value == assetId;
+                });
+        if (sample == project.samples.end() || sample->pcm == nullptr) {
+            setError(error, "Assigned sample asset has no PCM data; refusing partial save");
+            return {};
+        }
+        const auto& pcm = *sample->pcm;
+        const std::uint64_t blockBytes =
+                static_cast<std::uint64_t>(pcm.interleaved.size()) * 4ULL;
+        out << "PCM_ASSET " << assetId << ' ' << pcm.sampleRate << ' '
+            << pcm.channelCount << ' ' << pcm.frameCount() << ' '
+            << blockBytes << ' ' << pcmCrc32(pcm) << '\n';
+        writePcmBlock(out, pcm);
     }
 
     out << "PROGRAMS " << project.drumPrograms.size() << '\n';
@@ -722,6 +901,65 @@ bool deserializeProject(
         candidate.samples.push_back(std::move(sample));
     }
 
+    if (version >= 4) {
+        std::size_t pcmAssetCount = 0;
+        if (!in.tag("PCM_ASSETS")
+                || !in.count(pcmAssetCount, kMaxSamples, "PCM asset")) {
+            return false;
+        }
+        std::set<std::uint32_t> decodedAssetIds;
+        for (std::size_t i = 0; i < pcmAssetCount; ++i) {
+            std::uint32_t assetId = 0;
+            std::uint32_t sampleRate = 0;
+            unsigned int channelCount = 0;
+            std::uint64_t frameCount = 0;
+            std::uint64_t blockBytes = 0;
+            std::uint32_t checksum = 0;
+            if (!in.tag("PCM_ASSET")
+                    || !in.value(assetId)
+                    || !in.value(sampleRate)
+                    || !in.value(channelCount)
+                    || !in.value(frameCount)
+                    || !in.value(blockBytes)
+                    || !in.value(checksum)) {
+                return false;
+            }
+            if (assetId == 0 || !decodedAssetIds.insert(assetId).second
+                    || sampleRate == 0
+                    || (channelCount != 1 && channelCount != 2)
+                    || frameCount == 0
+                    || frameCount > kMaxProjectFileBytes
+                            / (static_cast<std::uint64_t>(channelCount) * 4ULL)
+                    || frameCount > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::size_t>::max() / channelCount)
+                    || frameCount > static_cast<std::uint64_t>(
+                            std::numeric_limits<std::int64_t>::max())) {
+                return in.fail("PCM asset metadata is out of range or duplicated");
+            }
+            const auto sample = std::find_if(candidate.samples.begin(),
+                    candidate.samples.end(), [assetId](const domain::SampleRef& value) {
+                        return value.assetId.value == assetId;
+                    });
+            if (sample == candidate.samples.end()
+                    || sample->sampleRate != static_cast<double>(sampleRate)
+                    || sample->lengthSamples != static_cast<std::int64_t>(frameCount)) {
+                return in.fail("PCM asset metadata does not match its SampleRef");
+            }
+            const std::uint64_t expectedBytes =
+                    frameCount * static_cast<std::uint64_t>(channelCount) * 4ULL;
+            if (blockBytes != expectedBytes || blockBytes > kMaxProjectFileBytes) {
+                return in.fail("PCM asset block size is invalid");
+            }
+            auto pcm = std::make_shared<audio::SampleBuffer>();
+            pcm->sampleRate = sampleRate;
+            pcm->channelCount = static_cast<std::uint16_t>(channelCount);
+            pcm->interleaved.resize(static_cast<std::size_t>(frameCount)
+                    * static_cast<std::size_t>(channelCount));
+            if (!in.pcmBlock(*pcm, blockBytes, checksum)) return false;
+            sample->pcm = std::move(pcm);
+        }
+    }
+
     std::size_t programCount = 0;
     if (!in.tag("PROGRAMS") || !in.count(programCount, kMaxPrograms, "Program")) return false;
     candidate.drumPrograms.reserve(programCount);
@@ -826,6 +1064,7 @@ bool deserializeProject(
             || !validateSerializableNumericFields(candidate, error)
             || !validateSampleReferences(candidate, error)
             || !validateSampleLayerState(candidate, error)
+            || (version >= 4 && !validateRequiredPcmPresent(candidate, error))
             || !validatePatternData(candidate, error)
             || !validatePlacements(candidate, error)) {
         return false;
