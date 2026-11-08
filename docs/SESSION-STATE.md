@@ -1,36 +1,46 @@
-# LIVE PRODUCT UPDATE — 2026-11-08 — PCM project persistence v4
+# LIVE PRODUCT UPDATE — 2026-11-08 — PCM persistence v4 + MkII Pad recording
 
-**Canonical branch HEAD:** `4d472b330e847a318e6945667cbfc634400da17d`  
-**PR #133:** OPEN / DRAFT → `feature/mpc-one-ui-fidelity`; clean title, no `full-validation` label.  
-**Main:** untouched. **Physical MPC Studio MkII:** NOT RUN.
+**Canonical branch:** `checkpoint/mpc-ui-reference-and-product-20261030`  
+**Current HEAD:** `06c64a8e14da025b22f89f53abee947b8b785e6b`  
+**PR #133:** OPEN / DRAFT → `feature/mpc-one-ui-fidelity`; temporary `full-validation` label active for this milestone.  
+**main:** untouched. **Physical MPC Studio MkII acceptance:** NOT RUN.
 
 ## Delivered implementation
 
-- Project format v4 stores only unique SampleIds referenced by Pad/Layer as binary little-endian float32 PCM blocks with sample rate, channels, frames, block size and CRC32. Versions v1-v3 remain readable without embedded PCM.
-- Project SampleRefs own shared immutable PCM buffers; Copy Pad, multiple Programs and PadEditSnapshot/Undo references use the same asset by SampleId.
-- WAV import, Crop, Chop-source registration and Recording Assign attach PCM to the central Project registry.
-- Project Open parses and validates the full candidate (including PCM dimensions/checksums) before replacing live state. Active Program projection rebuilds Pad/Layer runtime slots with output stopped safely during slot changes.
-- Project status reports unique assigned assets, embedded PCM asset count, PCM bytes, missing PCM count and AUDIO_READY. V1-v3 projects with missing PCM remain readable but must reimport assigned WAVs before a complete v4 Save.
-- Save rejects missing PCM and preflights aggregate embedded PCM against the 128 MiB cap before building the output buffer. It never silently writes a v4 project that omits assigned audio.
+- Project SampleRefs own shared immutable, domain-neutral PCM assets keyed by stable SampleId. Copy Pad, multiple Drum Programs and Pad Edit/Undo snapshots can share PCM without copying large buffers.
+- WAV import, Crop, Chop source registration and Recording Assign register PCM in the Project asset registry. Active Program projection rebuilds runtime Pad/Layer slots on Program/Track/Sequence selection and Open; callback slots are quiesced before replacement.
+- Project format v4 embeds unique referenced PCM as binary little-endian float32 blocks with SampleId, rate, channels, frames, block size and table-driven CRC32. v1/v2/v3 remain readable; legacy assigned samples without PCM are reported missing.
+- Save refuses assigned assets with missing PCM and preflights aggregate PCM against 128 MiB. Project summary reports asset counts, PCM bytes, missing count and AUDIO_READY.
+- Open validates the complete candidate before replacing the Project. If replacement fails after runtime slots were cleared, the previous Project audio projection is restored and output restarted.
+- The real Android Browser stops output, passes WAV bytes through JNI to AudioEngine::loadSampleForPadLayer(), and restarts output. Acceptance fixture now builds a valid 48 kHz mono PCM16 WAV and imports it through that same method before SAF Save/Open. It then plays the restored Arrangement Sequence to Pad 01 and verifies sample cursor, non-zero Oboe peak and transport stop.
+- New MkII Pad input policy snapshots routed target/velocity/tuning and converts incoming hardware Pad note-on/off into SequenceRecordEvents for an armed Drum Track while transport plays. Muted Pads remain recordable without sounding; 16 Levels Tune records only accepted one-shot hits. Native tests exercise the semantic adapter and actual MpcSequenceRecorder::drain().
 
-Commits on this pass:
-- `0e5e4ed2a40a189fbb64a65c750b378aca8dd23e` — PCM v4 ownership, persistence, native/Open integration and tests.
+## Commits
+
+- `0e5e4ed2a40a189fbb64a65c750b378aca8dd23e` — PCM v4 ownership, persistence, native Open integration and tests.
 - `1b2e926d115557fba820b76bdfad4d0ea547c27d` — table-driven CRC32.
-- `5c1300cd3092f512f19ca8c93f6d7c88522a3119` — portable raw-byte writes.
-- `465b6762f97d70293c0dfe4d0a43fe94bcedc5cb` — Project audio-readiness summary.
-- `4d472b330e847a318e6945667cbfc634400da17d` — aggregate PCM size preflight.
+- `5c1300cd3092f512f19ca8c93f6d7c88522a3119` — portable raw-byte PCM writer.
+- `465b6762f97d70293c0dfe4d0a43fe94bcedc5cb` — Project audio-readiness status.
+- `4d472b330e847a318e6945667cbfc634400da17d` — aggregate 128 MiB PCM preflight.
+- `72f8764064783dd098c3068179ea65e122bd0fd6` — neutral PCM asset type in Domain.
+- `0b4a3ad43aadbd45be04f525637162d395297806` — Oboe peak acceptance.
+- `32e936520345574adfa8497c066acb9872ac9372` — Arrangement playback acceptance.
+- `4c035a5e631f627d36ff5a8e22a65d40dc70302f` — rejected-Open audio rollback and truthful Save error.
+- `aa31bd781fc89f60bb52474605acb2aee7eb2b6d` — preserve session safety tests alongside Arrangement coverage.
+- `683b8bf5f3fc84185dd057f914b339c8eae09d0f` — actual PCM16 WAV import fixture through v4 Save/Open and Arrangement playback.
+- `06c64a8e14da025b22f89f53abee947b8b785e6` — MkII Pad-to-Pattern recording policy and native tests.
 
-## Validation state — do not overclaim
+## Validation — do not overclaim
 
-- Fast Android Build run `42499238514` is still assembling on older SHA `0e5e4ed2a40a189fbb64a65c750b378aca8dd23e`; it is not evidence for current HEAD.
-- Fast run `42499462758` for prior SHA `465b6762f97d70293c0dfe4d0a43fe94bcedc5cb` is queued. Current HEAD `4d472b330e847a318e6945667cbfc634400da17d` still needs an exact-SHA build.
-- A temporary full-validation label attempt was cancelled while queued before the job started. No native/JVM/emulator result was produced; this is not a product failure.
-- PCM persistence tests are updated for v4 round-trip, shared SampleId references, v1-v3 compatibility, checksum corruption, and rejection of missing PCM. They have not yet been executed on the new code.
-- Do not call P1 Save/Open acceptance complete until an exact-current-head build and deliberate full validation pass. Physical controller acceptance remains separate and NOT RUN.
+- Earlier fast APK builds succeeded on older, code-equivalent SHAs; neither is evidence for the current HEAD.
+- Full run `42501007793` on `4433626…` passed 61 steps including native/JVM tests and APK build/upload, then failed later in Android UI smoke waiting for `PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT`. Its v4 SAF Save As had already succeeded (`formatVersion=4`, `readBackVerified=true`). Later commits changed page-hierarchy capture and marker polling.
+- Full run `42503828191` on parent SHA `aa31bd7…` reached Android emulator smoke with 57 successful steps and had no conclusion at last poll.
+- Exact-head full run `42504280902` for `06c64a8…` is pending; its new Pad input tests and PCM16 WAV import fixture are not yet CI-verified.
+- P1 implementation is substantially connected, but the complete scenario is **not accepted** until exact-head full validation passes. Physical controller acceptance remains NOT RUN.
 
-## Next product gate
+## Next product work
 
-Run the fast APK lane on the exact current HEAD, then one deliberate full-validation pass for the high-risk persistence change. Inspect the native project persistence test and exact run artifacts. Continue connecting the WAV → Pad trigger → audible output → MIDI record/edit/play → Save/Open path; do not claim the complete hardware-led P1 scenario until the controller is physically exercised.
+After current validation, continue hardware-independent MIDI record/edit/play integration and then run the full WAV → Pad → MIDI → playback → Save/Open scenario. Keep physical MkII acceptance distinct from emulator evidence.
 
 ---
 

@@ -73,15 +73,16 @@ Defer and document small visual issues, secondary control gaps, non-critical UI 
 
 # CURRENT PRODUCT UPDATE — 2026-11-08
 
-**Live working line:** `checkpoint/mpc-ui-reference-and-product-20261030` — current head `4d472b330e847a318e6945667cbfc634400da17d`. **PR #133:** OPEN / DRAFT. **main:** untouched.
+**Canonical branch:** `checkpoint/mpc-ui-reference-and-product-20261030` — HEAD `06c64a8e14da025b22f89f53abee947b8b785e6`. **PR #133:** OPEN / DRAFT; temporary `full-validation` label active. **main:** untouched.  
+**Physical MPC Studio MkII:** NOT RUN.
 
-### P1 persistence gap — implementation delivered, acceptance pending
+### P1 — PCM persistence and hardware Pad recording
 
-The central Project SampleRef registry now owns shared immutable PCM buffers. Project v4 persists unique assigned PCM assets as binary float32 blocks with explicit format metadata and CRC32; v1-v3 remain readable. WAV import, Crop, Chop, recording assignment, Copy Pad and edit-history snapshots retain asset identity/shared ownership. Native Open validates the entire candidate before replacing the live project, restores the active Program PCM runtime projection and reports real missing/embedded PCM counts plus audio readiness. Save refuses missing assigned PCM and preflights the aggregate 128 MiB asset limit.
+Project v4 embeds unique assigned PCM assets as binary float32 blocks with explicit metadata and CRC32; v1-v3 remain readable. Project SampleRefs share immutable PCM by SampleId. WAV import, Crop, Chop, Recording Assign, Copy Pad and Pad Edit/Undo retain asset identity. Open validates the complete candidate before replacement and restores the previous audio projection on rejected replacement; Save refuses missing assigned PCM and preflights the 128 MiB asset limit. Native Project status reports real sample/PCM counts, bytes, missing assets and audio readiness.
 
-**Not yet accepted:** new persistence tests have not yet run on this code. The current tip needs its own exact-SHA APK build and one deliberate full-validation run. Physical MPC Studio MkII validation remains NOT RUN. Do not mark the full P1 scenario complete yet.
+The milestone fixture imports a generated PCM16 WAV through the same native loader called by Android Browser, then uses actual SAF Save/Open and plays the restored Arrangement Sequence to Pad 01, checking cursor telemetry, non-zero Oboe peak and transport stop. A new MkII Pad input policy routes semantic Pad note-on/off, velocity and tuning into the Pattern recorder; tests include mute semantics, accepted 16 Levels Tune hits and resulting Pattern notes.
 
-
+**Acceptance pending:** full run `42503828191` on parent `aa31bd7…` was in emulator smoke with 57 successful steps at last poll. Exact-head full run `42504280902` for `06c64a8…` is pending and has not run the new input-policy/PCM16-WAV fixture tests yet. An older run `42501007793` failed only at a later Project hierarchy smoke wait after v4 Save As/read-back succeeded; newer smoke harness fixes are present. Do not declare P1 accepted until exact-head full validation passes. Physical MkII remains NOT RUN.
 
 > **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.
 
