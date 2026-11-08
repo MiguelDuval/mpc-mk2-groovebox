@@ -219,6 +219,22 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror -Isrc             tests/MpcStudioMk2SemanticAdapterTests.cpp             src/MPC/MpcStudioMk2SemanticAdapter.cpp             src/MPC/MpcStudioMk2InputDecoder.cpp             src/MPC/MpcStudioMk2ControlMap.cpp             -o build/native-tests/mpc_mk2_semantic_adapter_tests
           build/native-tests/mpc_mk2_semantic_adapter_tests
 
+      - name: Test MkII hardware Pad input to MIDI Pattern recording
+        if: env.RUN_FULL_VALIDATION == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror \
+            -Isrc \
+            tests/MpcStudioMk2PadInputPolicyTests.cpp \
+            src/MPC/MpcProjectState.cpp \
+            src/MPC/MpcStudioMk2SemanticAdapter.cpp \
+            src/MPC/MpcStudioMk2InputDecoder.cpp \
+            src/MPC/MpcStudioMk2ControlMap.cpp \
+            -o build/native-tests/mpc_mk2_pad_input_policy_tests
+          build/native-tests/mpc_mk2_pad_input_policy_tests
+
       - name: Test shared waveform peak extraction
         if: env.RUN_FULL_VALIDATION == 'true'
         shell: bash

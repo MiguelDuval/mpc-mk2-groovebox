@@ -1,4 +1,5 @@
 #include "NativeMidi.h"
+#include "MpcStudioMk2PadInputPolicy.h"
 #include "../Audio/AudioEngine.h"
 #include "../MPC/MpcCore.h"
 #include "../MPC/MpcStudioMk2InputDecoder.h"
@@ -246,70 +247,55 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
             return std::vector<std::uint8_t>(led.begin(), led.end());
         }
 
+        bool padMuted = true;
+        if (padRouting.targetPadIndex < mpc::domain::kMaxProgramPads) {
+            padMuted = core.projectState().activeDrumProgram()
+                    .pad(padRouting.targetPadIndex).muted;
+        }
+        const auto padInput = mpc::midi::makePadInputPlan(
+                padRouting, event->pressed, padMuted);
+
         bool triggerAccepted = false;
-        if (event->pressed && padRouting.targetPadIndex != 0xFF) {
-            const auto& pad =
-                    core.projectState().activeDrumProgram()
-                            .pad(padRouting.targetPadIndex);
-            if (!pad.muted) {
-                if (padRouting.tuningMode) {
-                    triggerAccepted = core.audio().triggerPadWithTuningOffset(
-                            padRouting.targetPadIndex,
-                            padRouting.velocity,
-                            padRouting.tuningOffsetMilliSemitones);
-                } else {
-                    core.audio().triggerPad(
-                            padRouting.targetPadIndex,
-                            padRouting.velocity);
-                    triggerAccepted = true;
-                }
+        if (padInput.triggerRequested) {
+            if (padInput.tuningMode) {
+                triggerAccepted = core.audio().triggerPadWithTuningOffset(
+                        padInput.targetPadIndex,
+                        padInput.velocity,
+                        padInput.tuningOffsetMilliSemitones);
+            } else {
+                core.audio().triggerPad(
+                        padInput.targetPadIndex,
+                        padInput.velocity);
+                triggerAccepted = true;
             }
         }
 
         const auto& state = core.projectState();
         const auto trackIndex = state.activeTrackIndex();
         const auto& tracks = state.activeSequence().tracks;
-
-        if (trackIndex < tracks.size()
+        const bool recordableDrumTrack = trackIndex < tracks.size()
+                && trackIndex < mpc::domain::kMaxSequenceTracks
                 && tracks[trackIndex].recordArmed
                 && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum
-                && core.sequenceTransportClock().snapshot().playing) {
+                && core.sequenceTransportClock().snapshot().playing;
+        if (recordableDrumTrack) {
             const auto tick =
                     core.sequenceTransportClock().positionAtTimestamp(timestamp);
-            if (padRouting.tuningMode) {
-                // Tune is a one-shot Pattern note: physical release must not close
-                // a held note with the source Pad's untransposed base pitch.
-                if (event->pressed && triggerAccepted) {
-                    const mpc::sequencer::SequenceRecordEvent captured{
-                            tick,
-                            static_cast<std::uint8_t>(trackIndex),
-                            padRouting.targetPadIndex,
-                            padRouting.velocity,
-                            mpc::sequencer::kSequenceRecordNoteHit,
-                            padRouting.tuningOffsetMilliSemitones};
-                    if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
-                        __android_log_print(
-                                ANDROID_LOG_WARN,
-                                kTag,
-                                "16 Levels Tune record queue full");
-                    }
-                }
-            } else {
-                const mpc::sequencer::SequenceRecordEvent captured{
-                        tick,
-                        static_cast<std::uint8_t>(trackIndex),
-                        padRouting.targetPadIndex,
-                        event->pressed
-                                ? padRouting.velocity
-                                : static_cast<std::uint8_t>(0),
-                        event->pressed ? static_cast<std::uint8_t>(1) : static_cast<std::uint8_t>(0)};
-
-                if (!core.sequenceRecordQueue().tryEnqueue(captured)) {
-                    __android_log_print(
-                            ANDROID_LOG_WARN,
-                            kTag,
-                            "Sequence record queue full");
-                }
+            const auto captured = mpc::midi::makePadSequenceRecordEvent(
+                    padInput,
+                    event->pressed,
+                    true,
+                    static_cast<std::uint8_t>(trackIndex),
+                    tick,
+                    triggerAccepted);
+            if (captured.has_value()
+                    && !core.sequenceRecordQueue().tryEnqueue(*captured)) {
+                __android_log_print(
+                        ANDROID_LOG_WARN,
+                        kTag,
+                        padInput.tuningMode
+                                ? "16 Levels Tune record queue full"
+                                : "Sequence record queue full");
             }
         }
 
