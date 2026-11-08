@@ -7,9 +7,8 @@
 #include <vector>
 
 #include "MPC/Domain/SampleLayerVelocityRange.h"
+#include "MPC/Domain/SamplePcmAsset.h"
 #include "MPC/Domain/SampleRegion.h"
-
-namespace mpc::audio { struct SampleBuffer; }
 
 namespace mpc::domain {
 
@@ -48,7 +47,7 @@ struct SampleRef {
     SampleId assetId{};
     // Shared immutable PCM ownership; Pad/Layer references and edit snapshots
     // resolve the same asset without copying large audio buffers.
-    std::shared_ptr<const audio::SampleBuffer> pcm;
+    std::shared_ptr<const SamplePcmAsset> pcm;
 };
 
 struct SampleLayer {
