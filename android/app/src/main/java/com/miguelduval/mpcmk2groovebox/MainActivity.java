@@ -14366,7 +14366,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     projectPcmAcceptancePending = false;
                     Log.i(TAG, "PROJECT_PCM_OPEN_VERIFIED frames=" + restoredFrames
                             + " sampleRate=" + restoredSampleRate
-                            + " asset=9001 cursorFrame=" + restoredCursorFrame
+                            + " cursorFrame=" + restoredCursorFrame
                             + " outputPeakMilli=" + renderedPeakMilli
                             + " sequenceTicks=" + sequencePositionTicks
                             + " route=ARRANGEMENT_MIDI_TO_PAD_01 "

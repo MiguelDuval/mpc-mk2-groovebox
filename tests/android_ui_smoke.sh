@@ -14082,7 +14082,7 @@ open_project_document() {
 # Verify the dedicated debug-only native fixture populated actual non-default
 # MIDI events and a clipped placement before the real Save As → mutate → Open.
 project_fixture_line_ext="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_TEST_FIXTURE_READY" | tail -n 1 || true)"
-for expected_fixture_field in "note1=120/36/180/97/127/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120" "pcm=24000/48000/96000 asset=9001"; do
+for expected_fixture_field in "note1=120/36/180/97/127/3/-11" "note2=600/42/90/111/123/2/7" "placement=project-persistence-clip-01/sequence-1-track-1-pattern-1/480/720/120" "pcm=24000/48000/96000"; do
   if ! grep -Fq -- "$expected_fixture_field" <<<"$project_fixture_line_ext"; then
     echo "ERROR: native persistence fixture missing field $expected_fixture_field"
     echo "$project_fixture_line_ext"; exit 1
@@ -14108,7 +14108,7 @@ if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
     || ! grep -Fq -- "PCM_BYTES=96000" <<<"$project_open_line_ext" \
     || ! grep -Fq -- "MISSING_PCM=0" <<<"$project_open_line_ext" \
     || ! grep -Fq -- "AUDIO_READY=YES" <<<"$project_open_line_ext" \
-    || ! grep -Fq -- "PROJECT_PCM_OPEN_VERIFIED frames=24000 sampleRate=48000 asset=9001" \
+    || ! grep -Fq -- "PROJECT_PCM_OPEN_VERIFIED frames=24000 sampleRate=48000" \
         < <(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null); then
   echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
   echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1

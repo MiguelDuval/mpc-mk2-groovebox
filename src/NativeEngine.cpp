@@ -288,54 +288,112 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
     placement.sourceOffsetTicks = 120;
     track.placements.push_back(placement);
 
-    // Embed a deterministic, non-silent PCM asset so the real SAF Save/Open
-    // acceptance exercises the v4 audio block, not only MIDI/Arrangement data.
+    // Seed the authoritative musical model first. The audio asset itself is
+    // then imported through AudioEngine::loadSampleForPadLayer from a valid
+    // PCM16 WAV, exactly like the Android Browser/SAF import route.
     constexpr std::uint32_t kFixtureSampleRate = 48000;
     constexpr std::size_t kFixtureFrameCount = 24000;
-    constexpr std::uint32_t kFixtureSampleId = 9001;
-    auto fixturePcm = std::make_shared<mpc::audio::SampleBuffer>();
-    fixturePcm->sampleRate = kFixtureSampleRate;
-    fixturePcm->channelCount = 1;
-    fixturePcm->interleaved.resize(kFixtureFrameCount);
-    constexpr double kFixturePi = 3.14159265358979323846;
-    for (std::size_t frame = 0; frame < kFixtureFrameCount; ++frame) {
-        fixturePcm->interleaved[frame] = static_cast<float>(
-                0.25 * std::sin(2.0 * kFixturePi * 440.0
-                        * static_cast<double>(frame)
-                        / static_cast<double>(kFixtureSampleRate)));
+    constexpr std::size_t kFixturePcmBytes = kFixtureFrameCount * 2u;
+    std::string validationError;
+    if (!mpc::MpcProjectState::canReplaceProject(candidate)) {
+        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • invalid musical model");
+    }
+    const std::string patternId = pattern.id;
+
+    const auto audioStopped = core.audio().stop();
+    if (audioStopped.rfind("Audio stop failed:", 0) == 0
+            || audioStopped.rfind("Audio close failed:", 0) == 0
+            || audioStopped.rfind("Input stop failed:", 0) == 0
+            || audioStopped.rfind("Input close failed:", 0) == 0
+            || !core.audio().clearRuntimeSamplesForProjectReplacement()) {
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • could not quiesce audio for WAV import • "
+                        + audioStopped + " | " + audioRestarted);
+    }
+    if (!core.projectState().replaceProject(std::move(candidate))) {
+        const auto projection = core.audio().refreshActiveProgramRuntimeProjection();
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected • "
+                        + projection + " | " + audioRestarted);
     }
 
-    mpc::domain::SampleRef fixtureSample;
-    fixtureSample.id = "sample-project-persistence-fixture";
-    fixtureSample.name = "Project Persistence Fixture";
-    fixtureSample.sampleRate = static_cast<double>(kFixtureSampleRate);
-    fixtureSample.lengthSamples = static_cast<std::int64_t>(kFixtureFrameCount);
-    fixtureSample.assetId.value = kFixtureSampleId;
-    fixtureSample.pcm = fixturePcm;
-    candidate.samples.push_back(fixtureSample);
-    auto& fixtureLayer = candidate.drumPrograms.front().pads[0].layer(0);
-    fixtureLayer.sample = fixtureSample.assetId;
+    std::vector<std::uint8_t> fixtureWav(44u + kFixturePcmBytes, 0u);
+    const auto writeU16 = [&fixtureWav](std::size_t offset, std::uint16_t value) {
+        fixtureWav[offset] = static_cast<std::uint8_t>(value & 0xFFu);
+        fixtureWav[offset + 1u] =
+                static_cast<std::uint8_t>((value >> 8u) & 0xFFu);
+    };
+    const auto writeU32 = [&fixtureWav](std::size_t offset, std::uint32_t value) {
+        for (std::size_t byte = 0; byte < 4u; ++byte) {
+            fixtureWav[offset + byte] =
+                    static_cast<std::uint8_t>((value >> (byte * 8u)) & 0xFFu);
+        }
+    };
+    const auto writeTag = [&fixtureWav](std::size_t offset, const char* tag) {
+        for (std::size_t byte = 0; byte < 4u; ++byte) {
+            fixtureWav[offset + byte] = static_cast<std::uint8_t>(tag[byte]);
+        }
+    };
+    writeTag(0u, "RIFF");
+    writeU32(4u, static_cast<std::uint32_t>(36u + kFixturePcmBytes));
+    writeTag(8u, "WAVE");
+    writeTag(12u, "fmt ");
+    writeU32(16u, 16u);
+    writeU16(20u, 1u); // PCM
+    writeU16(22u, 1u); // mono
+    writeU32(24u, kFixtureSampleRate);
+    writeU32(28u, kFixtureSampleRate * 2u);
+    writeU16(32u, 2u);
+    writeU16(34u, 16u);
+    writeTag(36u, "data");
+    writeU32(40u, static_cast<std::uint32_t>(kFixturePcmBytes));
+    constexpr double kFixturePi = 3.14159265358979323846;
+    for (std::size_t frame = 0; frame < kFixtureFrameCount; ++frame) {
+        const double wave = 0.25 * std::sin(2.0 * kFixturePi * 440.0
+                * static_cast<double>(frame) / static_cast<double>(kFixtureSampleRate));
+        const auto pcm16 = static_cast<std::int16_t>(
+                std::lround(wave * 32767.0));
+        writeU16(44u + frame * 2u, static_cast<std::uint16_t>(pcm16));
+    }
+
+    const auto wavImport = core.audio().loadSampleForPadLayer(
+            std::span<const std::uint8_t>(fixtureWav.data(), fixtureWav.size()),
+            0u, 0u);
+    if (wavImport.rfind("Pad 1 layer 1 sample loaded", 0) != 0) {
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • WAV import did not assign Pad 01 • "
+                        + wavImport);
+    }
+    auto& fixtureLayer = core.projectState().activeDrumProgram().pad(0).layer(0);
     fixtureLayer.enabled = true;
     fixtureLayer.velocityMinimum = 0;
     fixtureLayer.velocityMaximum = 127;
-    fixtureLayer.region = mpc::domain::SampleRegion{std::size_t{0}, kFixtureFrameCount};
 
-    std::string validationError;
-    if (mpc::persistence::serializeProject(candidate, &validationError).empty()) {
-        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • " + validationError);
-    }
-    const std::string patternId = pattern.id;
-    if (!core.projectState().replaceProject(std::move(candidate))) {
-        return toJString(env, "PROJECT_TEST_FIXTURE_FAILED • Project replacement rejected");
-    }
     const auto projectionStatus =
             core.audio().refreshActiveProgramRuntimeProjection();
     if (projectionStatus.find("failed") != std::string::npos
             || core.audio().padSampleFrameCount(0, 0) != kFixtureFrameCount
             || core.audio().padSampleRate(0, 0) != kFixtureSampleRate) {
+        const auto audioRestarted = core.audio().start();
         return toJString(env,
-                "PROJECT_TEST_FIXTURE_FAILED • runtime PCM projection mismatch • "
-                        + projectionStatus);
+                "PROJECT_TEST_FIXTURE_FAILED • imported PCM projection mismatch • "
+                        + projectionStatus + " | " + audioRestarted);
+    }
+    const auto fixtureSerialized = mpc::persistence::serializeProject(
+            core.projectState().project(), &validationError);
+    if (fixtureSerialized.empty()) {
+        const auto audioRestarted = core.audio().start();
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • imported WAV is not v4-persistable • "
+                        + validationError + " | " + audioRestarted);
+    }
+    const auto audioStarted = core.audio().start();
+    if (audioStarted.rfind("Audio output", 0) != 0) {
+        return toJString(env,
+                "PROJECT_TEST_FIXTURE_FAILED • imported PCM audio output failed • "
+                        + audioStarted);
     }
     core.editHistory().clear();
     arrangementEventClipboard.reset();
@@ -346,7 +404,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeProjectPreparePersistenc
             "note1=120/36/180/97/127/3/-11 "
             "note2=600/42/90/111/123/2/7 "
             "placement=project-persistence-clip-01/" + patternId + "/480/720/120 "
-            + "pcm=24000/48000/96000 asset=9001");
+            + "pcm=24000/48000/96000 "
+            + "asset=" + std::to_string(fixtureLayer.sample.value));
 }
 
 extern "C" JNIEXPORT jstring JNICALL
