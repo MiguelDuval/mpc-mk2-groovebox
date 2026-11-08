@@ -7580,12 +7580,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     setAudioStateFromResult(restarted);
                     if (loadSucceeded) {
                         // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
+                        final boolean outputReady = restarted != null
+                                && restarted.startsWith("Audio output");
                         final String assignmentStatus = String.format(Locale.ROOT,
-                                "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                                outputReady
+                                        ? "ASSIGNED • %s → PAD %02d / LAYER %02d"
+                                        : "ASSIGNED • %s → PAD %02d / LAYER %02d • AUDIO OUTPUT FAILED",
                                 file.displayName(), targetPad + 1, targetLayer + 1);
-                        setBottomStatus(assignmentStatus);
+                        final String visibleStatus = outputReady
+                                ? assignmentStatus
+                                : assignmentStatus + " • " + restarted;
+                        setBottomStatus(visibleStatus);
                         if (browserView != null) {
-                            browserView.setProviderStatus(assignmentStatus);
+                            browserView.setProviderStatus(visibleStatus);
                             if (selectedPad == targetPad && selectedLayer == targetLayer) {
                                 browserView.setCurrentSampleName(file.displayName());
                             }
@@ -14590,15 +14597,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     && loaded.startsWith("Pad ")
                     && loaded.contains(" sample loaded")) {
                 // The audio state indicator reflects the output result; keep Browser metadata focused on the assignment.
+                final boolean outputReady = restarted != null
+                        && restarted.startsWith("Audio output");
                 final String assignmentStatus = String.format(
                         Locale.ROOT,
-                        "ASSIGNED • %s → PAD %02d / LAYER %02d",
+                        outputReady
+                                ? "ASSIGNED • %s → PAD %02d / LAYER %02d"
+                                : "ASSIGNED • %s → PAD %02d / LAYER %02d • AUDIO OUTPUT FAILED",
                         sampleName, targetPad + 1, targetLayer + 1);
-                setBottomStatus(assignmentStatus);
+                final String visibleStatus = outputReady
+                        ? assignmentStatus : assignmentStatus + " • " + restarted;
+                setBottomStatus(visibleStatus);
                 // Keep the Browser's own result/status surface in sync with
-                // the state change made through Android Document Provider.
+                // both the persistent assignment and the independent output state.
                 if (browserView != null) {
-                    browserView.setProviderStatus(assignmentStatus);
+                    browserView.setProviderStatus(visibleStatus);
                 }
             } else {
                 final String loadFailure = "Local WAV load failed • " + loaded;
