@@ -2909,7 +2909,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementE
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT MOVE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT MOVE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks || targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT MOVE failed: target outside Pattern");
     }
@@ -2920,25 +2925,25 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceMoveArrangementE
     }
     const auto moveStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
-            std::uint8_t storedNote, std::int64_t fromTick,
-            std::int64_t toTick) -> bool {
+            std::size_t storedPatternIndex, std::uint8_t storedNote,
+            std::int64_t fromTick, std::int64_t toTick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
         if (storedSequenceIndex >= project.sequences.size()) return false;
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::movePatternNoteTick(
-                storedTrack.patterns.front(), fromTick, storedNote, toTick);
+                storedTrack.patterns[storedPatternIndex], fromTick, storedNote, toTick);
     };
     if (!core.editHistory().record({
             "Move Arrangement event",
-            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
-                return moveStoredEvent(sequenceIndex, trackIndexValue, note, targetTick, sourceTick);
+            [moveStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, targetTick, sourceTick);
             },
-            [moveStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
-                return moveStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick, targetTick);
+            [moveStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
+                return moveStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick);
             }})) {
         mpc::sequencer::movePatternNoteTick(pattern, targetTick, note, sourceTick);
         return toJString(env, "ARRANGE EVENT MOVE failed: history recording failed");
@@ -2981,7 +2986,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT CUT failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT CUT failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT CUT failed: source outside Pattern");
     }
@@ -2993,6 +3003,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
     }
     const auto restoreStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             const mpc::domain::MidiNoteEvent& event) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3000,12 +3011,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::pastePatternNoteTick(
-                storedTrack.patterns.front(), event, event.tick);
+                storedTrack.patterns[storedPatternIndex], event, event.tick);
     };
     const auto removeStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3013,17 +3025,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCutArrangementEv
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     if (!core.editHistory().record({
             "Cut Arrangement event",
-            [restoreStoredEvent, sequenceIndex, trackIndexValue, cutEvent]() {
-                return restoreStoredEvent(sequenceIndex, trackIndexValue, cutEvent);
+            [restoreStoredEvent, sequenceIndex, trackIndexValue, patternIndex, cutEvent]() {
+                return restoreStoredEvent(sequenceIndex, trackIndexValue, patternIndex, cutEvent);
             },
-            [removeStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick]() {
-                return removeStoredEvent(sequenceIndex, trackIndexValue, note, sourceTick);
+            [removeStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick]() {
+                return removeStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, sourceTick);
             }})) {
         mpc::sequencer::pastePatternNoteTick(pattern, cutEvent, sourceTick);
         return toJString(env, "ARRANGE EVENT CUT failed: history recording failed");
@@ -3064,9 +3076,14 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceCopyArrangementE
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT COPY failed: track has no Pattern");
     }
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT COPY failed: selected Pattern is unavailable");
+    }
     mpc::domain::MidiNoteEvent copiedEvent{};
     if (!mpc::sequencer::copyPatternNoteTick(
-            track.patterns.front(), sourceTick,
+            track.patterns[patternIndex], sourceTick,
             static_cast<std::uint8_t>(noteNumber), copiedEvent)) {
         return toJString(env, "ARRANGE EVENT COPY failed: event missing or ambiguous");
     }
@@ -3100,7 +3117,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT PASTE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT PASTE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT PASTE failed: target outside Pattern");
     }
@@ -3115,6 +3137,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
     }
     const auto eraseStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3122,12 +3145,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     const auto insertStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             const mpc::domain::MidiNoteEvent& event) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3135,18 +3159,18 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequencePasteArrangement
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::pastePatternNoteTick(
-                storedTrack.patterns.front(), event, event.tick);
+                storedTrack.patterns[storedPatternIndex], event, event.tick);
     };
     if (!core.editHistory().record({
             "Paste Arrangement event",
-            [eraseStoredEvent, sequenceIndex, trackIndexValue,
+            [eraseStoredEvent, sequenceIndex, trackIndexValue, patternIndex,
                     note = pastedEvent.note, tick = targetTick]() {
-                return eraseStoredEvent(sequenceIndex, trackIndexValue, note, tick);
+                return eraseStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, tick);
             },
-            [insertStoredEvent, sequenceIndex, trackIndexValue, pastedEvent]() {
-                return insertStoredEvent(sequenceIndex, trackIndexValue, pastedEvent);
+            [insertStoredEvent, sequenceIndex, trackIndexValue, patternIndex, pastedEvent]() {
+                return insertStoredEvent(sequenceIndex, trackIndexValue, patternIndex, pastedEvent);
             }})) {
         mpc::sequencer::erasePatternNoteTick(pattern, targetTick, pastedEvent.note);
         return toJString(env, "ARRANGE EVENT PASTE failed: history recording failed");
@@ -3181,7 +3205,12 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
     if (track.patterns.empty()) {
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: track has no Pattern");
     }
-    auto& pattern = track.patterns.front();
+    const std::size_t patternIndex = trackIndexValue == state.activeTrackIndex()
+            ? state.activePatternIndex() : 0u;
+    if (patternIndex >= track.patterns.size()) {
+        return toJString(env, "ARRANGE EVENT DUPLICATE failed: selected Pattern is unavailable");
+    }
+    auto& pattern = track.patterns[patternIndex];
     if (sourceTick >= pattern.lengthTicks || targetTick >= pattern.lengthTicks) {
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: target outside Pattern");
     }
@@ -3193,6 +3222,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
     }
     const auto eraseStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
+            std::size_t storedPatternIndex,
             std::uint8_t storedNote, std::int64_t tick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
@@ -3200,32 +3230,32 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceDuplicateArrange
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::erasePatternNoteTick(
-                storedTrack.patterns.front(), tick, storedNote);
+                storedTrack.patterns[storedPatternIndex], tick, storedNote);
     };
     const auto duplicateStoredEvent = [](
             std::size_t storedSequenceIndex, std::size_t storedTrackIndex,
-            std::uint8_t storedNote, std::int64_t fromTick,
-            std::int64_t toTick) -> bool {
+            std::size_t storedPatternIndex, std::uint8_t storedNote,
+            std::int64_t fromTick, std::int64_t toTick) -> bool {
         auto& storedState = mpc::MpcCore::instance().projectState();
         auto& project = storedState.project();
         if (storedSequenceIndex >= project.sequences.size()) return false;
         auto& storedSequence = project.sequences[storedSequenceIndex];
         if (storedTrackIndex >= storedSequence.tracks.size()) return false;
         auto& storedTrack = storedSequence.tracks[storedTrackIndex];
-        if (storedTrack.patterns.empty()) return false;
+        if (storedPatternIndex >= storedTrack.patterns.size()) return false;
         return mpc::sequencer::duplicatePatternNoteTick(
-                storedTrack.patterns.front(), fromTick, storedNote, toTick);
+                storedTrack.patterns[storedPatternIndex], fromTick, storedNote, toTick);
     };
     if (!core.editHistory().record({
             "Duplicate Arrangement event",
-            [eraseStoredEvent, sequenceIndex, trackIndexValue, note, targetTick]() {
-                return eraseStoredEvent(sequenceIndex, trackIndexValue, note, targetTick);
+            [eraseStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, targetTick]() {
+                return eraseStoredEvent(sequenceIndex, trackIndexValue, patternIndex, note, targetTick);
             },
-            [duplicateStoredEvent, sequenceIndex, trackIndexValue, note, sourceTick, targetTick]() {
+            [duplicateStoredEvent, sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick]() {
                 return duplicateStoredEvent(
-                        sequenceIndex, trackIndexValue, note, sourceTick, targetTick);
+                        sequenceIndex, trackIndexValue, patternIndex, note, sourceTick, targetTick);
             }})) {
         mpc::sequencer::erasePatternNoteTick(pattern, targetTick, note);
         return toJString(env, "ARRANGE EVENT DUPLICATE failed: history recording failed");
