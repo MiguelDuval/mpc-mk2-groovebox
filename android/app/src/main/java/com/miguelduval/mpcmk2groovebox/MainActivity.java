@@ -271,6 +271,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private WaveformView sampleWaveform;
     private TextView sampleWaveformViewportInfo;
     private LinearLayout listEditEventList;
+    private LinearLayout listEditInspector;
+    private TextView listEditPatternLabel;
+    private int listEditPatternIndex = 0;
+    private int listEditSelectedEvent = -1;
     private WaveformView mainTrackWaveform;
     private Button mainTrackSamplePrimaryButton;
     private Button mainTrackSampleActionButton;
@@ -669,18 +673,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native long nativeSequencePositionTicks();
     private static native boolean nativeSequenceIsPlaying();
 
-    // List Edit — pattern event CRUD
-    private static native int nativePatternGetEventCount(int padIndex);
-    private static native int nativePatternGetEventNote(int padIndex, int eventIndex);
-    private static native int nativePatternGetEventVelocity(int padIndex, int eventIndex);
-    private static native int nativePatternGetEventDuration(int padIndex, int eventIndex);
-    private static native int nativePatternGetEventTick(int padIndex, int eventIndex);
-    private static native String nativePatternSetEventNote(int padIndex, int eventIndex, int note);
-    private static native String nativePatternSetEventVelocity(int padIndex, int eventIndex, int velocity);
-    private static native String nativePatternSetEventDuration(int padIndex, int eventIndex, int duration);
-    private static native String nativePatternSetEventTick(int padIndex, int eventIndex, int tick);
-    private static native String nativePatternAddEvent(int padIndex, int tick, int velocity, int duration);
-    private static native String nativePatternDeleteEvent(int padIndex, int eventIndex);
+    // List Edit — selected Pattern and complete MIDI event editing.
+    private static native int nativePatternGetPatternCount();
+    private static native int nativeSequenceGetSelectedPatternIndex();
+    private static native String nativePatternGetPatternName(int patternIndex);
+    private static native String nativePatternSelectPattern(int patternIndex);
+    private static native int nativePatternGetLengthTicks(int patternIndex);
+    private static native int nativePatternGetEventCount(int patternIndex);
+    private static native int nativePatternFindEvent(int patternIndex, int tick, int note);
+    private static native int nativePatternGetEventNote(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventPad(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventVelocity(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventDuration(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventTick(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventNudge(int patternIndex, int eventIndex);
+    private static native int nativePatternGetEventTuning(int patternIndex, int eventIndex);
+    private static native String nativePatternSetEventNote(int patternIndex, int eventIndex, int note);
+    private static native String nativePatternSetEventVelocity(int patternIndex, int eventIndex, int velocity);
+    private static native String nativePatternSetEventDuration(int patternIndex, int eventIndex, int duration);
+    private static native String nativePatternSetEventTick(int patternIndex, int eventIndex, int tick);
+    private static native String nativePatternSetEventNudge(int patternIndex, int eventIndex, int nudge);
+    private static native String nativePatternSetEventTuning(int patternIndex, int eventIndex, int tuningMilliSemitones);
+    private static native String nativePatternAddEvent(int patternIndex, int padIndex, int tick, int velocity, int duration);
+    private static native String nativePatternDeleteEvent(int patternIndex, int eventIndex);
+    private static native String nativePatternMoveEvent(int patternIndex, int eventIndex, int deltaTicks);
+    private static native String nativePatternDuplicateEvent(int patternIndex, int eventIndex, int deltaTicks);
+    private static native String nativePatternTranspose(int patternIndex, int semitones);
+    private static native int nativePatternFindEvent(int patternIndex, int tick, int note);
 
     @Override
     protected void onCreate(Bundle state) {
@@ -5459,6 +5478,44 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     // List Edit — pattern event list page
     // ------------------------------------------------------------------
 
+    private static final int LIST_EDIT_FIELD_POSITION = 0;
+    private static final int LIST_EDIT_FIELD_NOTE = 1;
+    private static final int LIST_EDIT_FIELD_LENGTH = 2;
+    private static final int LIST_EDIT_FIELD_VELOCITY = 3;
+    private static final int LIST_EDIT_FIELD_PITCH = 4;
+    private static final int LIST_EDIT_FIELD_NUDGE = 5;
+
+    private String listEditNoteName(int note) {
+        final String[] names = {"C", "C#", "D", "D#", "E", "F",
+                "F#", "G", "G#", "A", "A#", "B"};
+        final int safe = Math.max(0, Math.min(127, note));
+        return names[safe % 12] + (safe / 12 - 1)
+                + " (" + String.format(Locale.ROOT, "%03d", safe) + ")";
+    }
+
+    private int listEditSelectedTick() {
+        return listEditSelectedEvent < 0 ? 0
+                : nativePatternGetEventTick(listEditPatternIndex, listEditSelectedEvent);
+    }
+
+    private int listEditSelectedNote() {
+        return listEditSelectedEvent < 0 ? 0
+                : nativePatternGetEventNote(listEditPatternIndex, listEditSelectedEvent);
+    }
+
+    private boolean listEditSucceeded(String result) {
+        if (result == null) return false;
+        return !result.toLowerCase(Locale.ROOT).contains("failed")
+                && !result.toLowerCase(Locale.ROOT).contains("blocked")
+                && !result.toLowerCase(Locale.ROOT).contains("unavailable");
+    }
+
+    private void selectListEditEvent(int eventIndex) {
+        final int count = nativePatternGetEventCount(listEditPatternIndex);
+        listEditSelectedEvent = eventIndex >= 0 && eventIndex < count ? eventIndex : -1;
+        refreshListEditPage();
+    }
+
     private void showListEditPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -5467,145 +5524,496 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.LIST_EDIT);
         navigationController.setSubcontext(MpcUiState.Subcontext.NONE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
-        pageTitle.setText("LIST EDIT • NOTES");
+        pageTitle.setText("LIST EDIT • EVENTS");
         content.removeAllViews();
+
+        listEditPatternIndex = Math.max(0, Math.min(
+                nativePatternGetPatternCount() - 1,
+                nativeSequenceGetSelectedPatternIndex()));
+        if (nativePatternGetPatternCount() > 0) {
+            nativePatternSelectPattern(listEditPatternIndex);
+        } else {
+            listEditPatternIndex = 0;
+        }
+        listEditSelectedEvent = -1;
 
         LinearLayout page = page();
         LinearLayout header = row();
-        header.addView(sectionLabelView(
-                "PATTERN 01 • ADD PAD " + (selectedPad + 1),
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
+        TextView context = sectionLabelView(
+                "LIST EDIT  •  SEQ " + String.format(Locale.ROOT, "%02d", nativeSequenceGetIndex() + 1)
+                        + "  •  TRACK " + String.format(Locale.ROOT, "%02d", nativeSequenceGetSelectedTrack() + 1),
+                new LinearLayout.LayoutParams(0, dp(34), 1));
+        header.addView(context);
+        listEditPatternLabel = actionButton("PATTERN", v -> showListEditPatternChooser());
+        listEditPatternLabel.setTextSize(10);
+        header.addView(listEditPatternLabel, new LinearLayout.LayoutParams(dp(150), dp(34)));
         header.addView(actionButton("BACK", v -> navigateBackFromShell()),
                 new LinearLayout.LayoutParams(dp(62), dp(34)));
-        header.addView(actionButton("ADD", v -> {
-            final String result = nativePatternAddEvent(
-                    selectedPad, 0, 100, 480);
-            if (result != null && !result.startsWith("Event added")) {
-                setBottomStatus(result);
-            } else {
-                refreshListEditPage();
-            }
-        }), new LinearLayout.LayoutParams(dp(62), dp(34)));
         page.addView(header);
 
+        TextView position = label(
+                "TIME COUNTER  " + formatSequencePosition(nativeSequencePositionTicks())
+                        + "     TC  " + (nativeSequenceIsTimingCorrectEnabled() ? "ON" : "OFF")
+                        + "     VIEW  NOTES",
+                10, MPC_TOOLBAR_TEXT);
+        position.setGravity(Gravity.CENTER_VERTICAL);
+        position.setPadding(dp(8), 0, dp(8), 0);
+        position.setBackgroundColor(MPC_TOOLBAR_BG);
+        page.addView(position, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(28)));
+
+        LinearLayout columnHeader = row();
+        columnHeader.setPadding(dp(5), 0, dp(5), 0);
+        columnHeader.setBackgroundColor(MPC_PANEL);
+        addListEditCell(columnHeader, "TIME", 1.25f, TEXT);
+        addListEditCell(columnHeader, "PAD / NOTE", 1.9f, TEXT);
+        addListEditCell(columnHeader, "LENGTH", 0.85f, TEXT);
+        addListEditCell(columnHeader, "VEL", 0.65f, TEXT);
+        addListEditCell(columnHeader, "PITCH", 0.85f, TEXT);
+        addListEditCell(columnHeader, "NUDGE", 0.85f, TEXT);
+        page.addView(columnHeader, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+
+        ScrollView eventScroll = new ScrollView(this);
+        eventScroll.setFillViewport(false);
+        eventScroll.setVerticalScrollBarEnabled(true);
         listEditEventList = new LinearLayout(this);
         listEditEventList.setOrientation(LinearLayout.VERTICAL);
-        listEditEventList.setPadding(dp(10), dp(8), dp(10), dp(8));
-        page.addView(listEditEventList,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        listEditEventList.setPadding(dp(3), dp(3), dp(3), dp(3));
+        eventScroll.addView(listEditEventList, new ScrollView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        page.addView(eventScroll, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
 
-        refreshListEditPage();
+        listEditInspector = column();
+        listEditInspector.setPadding(dp(4), dp(4), dp(4), dp(2));
+        listEditInspector.setBackgroundColor(MPC_PANEL_DARK);
+        page.addView(listEditInspector, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout editActions = row();
+        addListEditAction(editActions, "INSERT", 1.0f, v -> showListEditInsertDialog());
+        addListEditAction(editActions, "DELETE", 1.0f, v -> deleteSelectedListEditEvent());
+        addListEditAction(editActions, "DUPLICATE", 1.15f, v -> duplicateSelectedListEditEvent());
+        addListEditAction(editActions, "MOVE −", 1.0f, v -> moveSelectedListEditEvent(-1));
+        addListEditAction(editActions, "MOVE +", 1.0f, v -> moveSelectedListEditEvent(1));
+        addListEditAction(editActions, "PLAY", 0.9f, v -> toggleListEditPlayback());
+        page.addView(editActions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        LinearLayout historyActions = row();
+        addListEditAction(historyActions, "UNDO", 1.0f, v -> applyListEditHistory(false));
+        addListEditAction(historyActions, "REDO", 1.0f, v -> applyListEditHistory(true));
+        addListEditAction(historyActions, "NUDGE −", 1.0f, v -> adjustSelectedListEditNudge(-10));
+        addListEditAction(historyActions, "NUDGE +", 1.0f, v -> adjustSelectedListEditNudge(10));
+        addListEditAction(historyActions, "PITCH −", 1.0f, v -> adjustSelectedListEditPitch(-1000));
+        addListEditAction(historyActions, "PITCH +", 1.0f, v -> adjustSelectedListEditPitch(1000));
+        page.addView(historyActions, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
         content.addView(page);
+        refreshListEditPage();
+    }
+
+    private void addListEditCell(LinearLayout parent, String value, float weight, int color) {
+        TextView cell = label(value, 10, color);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        cell.setSingleLine(true);
+        cell.setEllipsize(TextUtils.TruncateAt.END);
+        parent.addView(cell, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.MATCH_PARENT, weight));
+    }
+
+    private void addListEditAction(LinearLayout parent, String title, float weight,
+            View.OnClickListener listener) {
+        Button button = actionButton(title, listener);
+        button.setTextSize(9);
+        button.setTypeface(Typeface.DEFAULT_BOLD);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
+                dp(34), weight);
+        params.setMargins(dp(2), dp(1), dp(2), dp(1));
+        parent.addView(button, params);
+    }
+
+    private void showListEditPatternChooser() {
+        final int count = nativePatternGetPatternCount();
+        if (count <= 0) {
+            setBottomStatus("LIST EDIT • selected Track has no Patterns");
+            return;
+        }
+        final String[] names = new String[count];
+        for (int i = 0; i < count; i++) names[i] = nativePatternGetPatternName(i);
+        new AlertDialog.Builder(this)
+                .setTitle("SELECT PATTERN")
+                .setSingleChoiceItems(names, listEditPatternIndex, (dialog, which) -> {
+                    final String result = nativePatternSelectPattern(which);
+                    if (!listEditSucceeded(result)) {
+                        setBottomStatus(result);
+                        return;
+                    }
+                    listEditPatternIndex = which;
+                    listEditSelectedEvent = -1;
+                    dialog.dismiss();
+                    refreshListEditPage();
+                    setBottomStatus(result);
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
     }
 
     private void refreshListEditPage() {
-        if (listEditEventList == null) return;
+        if (listEditEventList == null || listEditInspector == null) return;
         listEditEventList.removeAllViews();
+        final int count = nativePatternGetEventCount(listEditPatternIndex);
+        final int patternCount = nativePatternGetPatternCount();
+        if (patternCount > 0) {
+            final String name = nativePatternGetPatternName(listEditPatternIndex);
+            if (listEditPatternLabel != null) listEditPatternLabel.setText(name);
+        } else if (listEditPatternLabel != null) {
+            listEditPatternLabel.setText("NO PATTERN");
+        }
 
-        final int count = nativePatternGetEventCount(selectedPad);
-        if (count <= 0) {
-            TextView empty = label("No note events in Pattern 01", 12, MUTED);
-            empty.setPadding(dp(10), dp(8), dp(10), dp(8));
+        if (count < 0) {
+            TextView error = label("Selected Track has no editable Drum Pattern.", 12, DANGER);
+            error.setPadding(dp(10), dp(12), dp(10), dp(12));
+            listEditEventList.addView(error);
+            listEditSelectedEvent = -1;
+        } else if (count == 0) {
+            TextView empty = label("No note events in " + nativePatternGetPatternName(listEditPatternIndex)
+                    + "  •  INSERT to create the first mapped Pad event.", 12, MUTED);
+            empty.setPadding(dp(12), dp(12), dp(12), dp(12));
             listEditEventList.addView(empty);
+            listEditSelectedEvent = -1;
+        } else {
+            if (listEditSelectedEvent >= count) listEditSelectedEvent = count - 1;
+            for (int i = 0; i < count; i++) {
+                final int eventIndex = i;
+                final int note = nativePatternGetEventNote(listEditPatternIndex, i);
+                final int velocity = nativePatternGetEventVelocity(listEditPatternIndex, i);
+                final int duration = nativePatternGetEventDuration(listEditPatternIndex, i);
+                final int tick = nativePatternGetEventTick(listEditPatternIndex, i);
+                final int pad = nativePatternGetEventPad(listEditPatternIndex, i);
+                final int tuning = nativePatternGetEventTuning(listEditPatternIndex, i);
+                final int nudge = nativePatternGetEventNudge(listEditPatternIndex, i);
+                final LinearLayout eventRow = row();
+                eventRow.setPadding(dp(5), 0, dp(5), 0);
+                eventRow.setBackground(strokeBackground(
+                        i == listEditSelectedEvent ? Color.rgb(65, 35, 42) : (i % 2 == 0 ? MPC_PANEL_DARK : MPC_PANEL),
+                        i == listEditSelectedEvent ? MPC_SELECTED : Color.TRANSPARENT,
+                        MPC_FLAT_RADIUS_DP));
+                addListEditCell(eventRow, formatSequencePosition(tick), 1.25f, i == listEditSelectedEvent ? TEXT : MUTED);
+                addListEditCell(eventRow, (pad >= 0 ? String.format(Locale.ROOT, "PAD %02d  ", pad + 1) : "MIDI  ")
+                        + listEditNoteName(note), 1.9f, i == listEditSelectedEvent ? TEXT : ACTIVE);
+                addListEditCell(eventRow, duration + " t", 0.85f, TEXT);
+                addListEditCell(eventRow, Integer.toString(velocity), 0.65f, ACCENT_2);
+                addListEditCell(eventRow, String.format(Locale.ROOT, "%+.2f st", tuning / 1000.0), 0.85f, TEXT);
+                addListEditCell(eventRow, String.format(Locale.ROOT, "%+d t", nudge), 0.85f, TEXT);
+                eventRow.setContentDescription("List Edit event " + (i + 1)
+                        + ", " + (pad >= 0 ? "Pad " + (pad + 1) + ", " : "")
+                        + listEditNoteName(note) + ", position " + formatSequencePosition(tick)
+                        + ", velocity " + velocity + ", length " + duration);
+                eventRow.setOnClickListener(v -> selectListEditEvent(eventIndex));
+                listEditEventList.addView(eventRow, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+            }
+        }
+        refreshListEditInspector(count);
+    }
+
+    private void refreshListEditInspector(int eventCount) {
+        if (listEditInspector == null) return;
+        listEditInspector.removeAllViews();
+        if (listEditSelectedEvent < 0 || listEditSelectedEvent >= eventCount) {
+            TextView hint = label("SELECT AN EVENT  •  fields edit the selected MIDI note; MOVE shifts on the active grid.",
+                    10, MUTED);
+            hint.setGravity(Gravity.CENTER_VERTICAL);
+            listEditInspector.addView(hint, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
             return;
         }
+        final int index = listEditSelectedEvent;
+        final int note = nativePatternGetEventNote(listEditPatternIndex, index);
+        final int tick = nativePatternGetEventTick(listEditPatternIndex, index);
+        final int length = nativePatternGetEventDuration(listEditPatternIndex, index);
+        final int velocity = nativePatternGetEventVelocity(listEditPatternIndex, index);
+        final int tuning = nativePatternGetEventTuning(listEditPatternIndex, index);
+        final int nudge = nativePatternGetEventNudge(listEditPatternIndex, index);
+        final int pad = nativePatternGetEventPad(listEditPatternIndex, index);
 
-        for (int i = 0; i < count; i++) {
-            final int note = nativePatternGetEventNote(selectedPad, i);
-            final int velocity = nativePatternGetEventVelocity(selectedPad, i);
-            final int duration = nativePatternGetEventDuration(selectedPad, i);
-            final int tick = nativePatternGetEventTick(selectedPad, i);
+        TextView selection = label("EVENT " + (index + 1) + " / " + eventCount
+                + "     " + (pad >= 0 ? "PAD " + String.format(Locale.ROOT, "%02d", pad + 1) + "  " : "")
+                + listEditNoteName(note) + "     " + formatSequencePosition(tick),
+                10, MPC_TOOLBAR_TEXT);
+        selection.setGravity(Gravity.CENTER_VERTICAL);
+        listEditInspector.addView(selection, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(26)));
 
-            LinearLayout row = row();
-            row.setPadding(dp(8), dp(4), dp(8), dp(4));
-            row.setBackgroundColor(0xFF1A1A1A);
+        LinearLayout fields = row();
+        addListEditAction(fields, "POS  " + formatSequencePosition(tick), 1.35f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_POSITION));
+        addListEditAction(fields, "NOTE  " + note, 0.9f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_NOTE));
+        addListEditAction(fields, "LEN  " + length, 0.85f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_LENGTH));
+        addListEditAction(fields, "VEL  " + velocity, 0.8f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_VELOCITY));
+        addListEditAction(fields, "PITCH  " + String.format(Locale.ROOT, "%+.2f", tuning / 1000.0), 1.05f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_PITCH));
+        addListEditAction(fields, "NUDGE  " + nudge, 0.85f,
+                v -> showListEditValueDialog(LIST_EDIT_FIELD_NUDGE));
+        listEditInspector.addView(fields, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+    }
 
-            TextView tickView = label(String.format(Locale.ROOT, "T%04d", tick), 11, MUTED);
-            tickView.setMinWidth(dp(56));
-            row.addView(tickView, new LinearLayout.LayoutParams(dp(60), ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            TextView noteView = label(String.format(Locale.ROOT, "Note %03d", note), 11, ACTIVE);
-            noteView.setMinWidth(dp(64));
-            row.addView(noteView, new LinearLayout.LayoutParams(dp(70), ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            TextView velView = label("Vel " + velocity, 11, ACTIVE);
-            velView.setMinWidth(dp(56));
-            row.addView(velView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            TextView durView = label("Dur " + duration, 11, ACTIVE);
-            durView.setMinWidth(dp(56));
-            row.addView(durView, new LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT));
-
-            // Edit buttons — each button cycles the value up for immediate editing.
-            // Note: cycles through 0-127. Velocity: cycles through 1-127.
-            // Tick/Duration: increment/decrement by 10 ticks.
-            // Capture per-row state as effectively-final so lambdas reference
-            // the correct event index even if selectedPad changes later.
-            final int eventIndex = i;
-            final int rowSelectedPad = selectedPad;
-
-            Button editNote = actionButton("N" + note, v -> {
-                final int nextNote = (note + 1) % 128;
-                final String result = nativePatternSetEventNote(rowSelectedPad, eventIndex, nextNote);
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editNote.setMinWidth(dp(32));
-            row.addView(editNote, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button editVel = actionButton("V" + velocity, v -> {
-                final int nextVel = (velocity % 127) + 1;
-                final String result = nativePatternSetEventVelocity(rowSelectedPad, eventIndex, nextVel);
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editVel.setMinWidth(dp(32));
-            row.addView(editVel, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button editTickUp = actionButton("T+", v -> {
-                final String result = nativePatternSetEventTick(rowSelectedPad, eventIndex, tick + 10);
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editTickUp.setMinWidth(dp(32));
-            row.addView(editTickUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button editTickDown = actionButton("T-", v -> {
-                final String result = nativePatternSetEventTick(rowSelectedPad, eventIndex, Math.max(0, tick - 10));
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editTickDown.setMinWidth(dp(32));
-            row.addView(editTickDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button editDurUp = actionButton("D+", v -> {
-                final String result = nativePatternSetEventDuration(rowSelectedPad, eventIndex, duration + 10);
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editDurUp.setMinWidth(dp(32));
-            row.addView(editDurUp, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button editDurDown = actionButton("D-", v -> {
-                final String result = nativePatternSetEventDuration(rowSelectedPad, eventIndex, Math.max(0, duration - 10));
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            editDurDown.setMinWidth(dp(32));
-            row.addView(editDurDown, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            Button delBtn = actionButton("DEL", v -> {
-                final String result = nativePatternDeleteEvent(rowSelectedPad, eventIndex);
-                if (result != null) setBottomStatus(result);
-                refreshListEditPage();
-            });
-            delBtn.setMinWidth(dp(32));
-            row.addView(delBtn, new LinearLayout.LayoutParams(dp(40), dp(30)));
-
-            listEditEventList.addView(row);
+    private void showListEditValueDialog(int field) {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event first");
+            return;
         }
+        final int event = listEditSelectedEvent;
+        final int pattern = listEditPatternIndex;
+        final int tick = nativePatternGetEventTick(pattern, event);
+        final int note = nativePatternGetEventNote(pattern, event);
+        final int current;
+        final int minimum;
+        final int maximum;
+        final String title;
+        switch (field) {
+            case LIST_EDIT_FIELD_POSITION:
+                current = tick; minimum = 0;
+                maximum = Math.max(0, nativePatternGetLengthTicks(pattern) - 1);
+                title = "EVENT POSITION • TICKS";
+                break;
+            case LIST_EDIT_FIELD_NOTE:
+                current = note; minimum = 0; maximum = 127; title = "MIDI NOTE • 0–127";
+                break;
+            case LIST_EDIT_FIELD_LENGTH:
+                current = nativePatternGetEventDuration(pattern, event);
+                minimum = 0; maximum = Math.max(0, nativePatternGetLengthTicks(pattern));
+                title = "NOTE LENGTH • TICKS";
+                break;
+            case LIST_EDIT_FIELD_VELOCITY:
+                current = nativePatternGetEventVelocity(pattern, event);
+                minimum = 1; maximum = 127; title = "VELOCITY • 1–127";
+                break;
+            case LIST_EDIT_FIELD_PITCH:
+                current = nativePatternGetEventTuning(pattern, event);
+                minimum = -24000; maximum = 24000; title = "PER-NOTE PITCH • MILLISEMITONES";
+                break;
+            case LIST_EDIT_FIELD_NUDGE:
+                current = nativePatternGetEventNudge(pattern, event);
+                minimum = -960; maximum = 960; title = "TIMING NUDGE • TICKS";
+                break;
+            default:
+                return;
+        }
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        input.setText(Integer.toString(current));
+        input.selectAll();
+        LinearLayout wrapper = column();
+        wrapper.setPadding(dp(20), dp(6), dp(20), dp(4));
+        TextView range = label("Allowed: " + minimum + " to " + maximum, 10, MUTED);
+        wrapper.addView(range);
+        wrapper.addView(input);
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setView(wrapper)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("APPLY", (dialog, which) -> {
+                    final int value;
+                    try {
+                        value = Integer.parseInt(input.getText().toString().trim());
+                    } catch (NumberFormatException error) {
+                        setBottomStatus("LIST EDIT • enter a whole number");
+                        return;
+                    }
+                    if (value < minimum || value > maximum) {
+                        setBottomStatus("LIST EDIT • value outside " + minimum + " to " + maximum);
+                        return;
+                    }
+                    String result;
+                    switch (field) {
+                        case LIST_EDIT_FIELD_POSITION:
+                            result = nativePatternSetEventTick(pattern, event, value);
+                            break;
+                        case LIST_EDIT_FIELD_NOTE:
+                            result = nativePatternSetEventNote(pattern, event, value);
+                            break;
+                        case LIST_EDIT_FIELD_LENGTH:
+                            result = nativePatternSetEventDuration(pattern, event, value);
+                            break;
+                        case LIST_EDIT_FIELD_VELOCITY:
+                            result = nativePatternSetEventVelocity(pattern, event, value);
+                            break;
+                        case LIST_EDIT_FIELD_PITCH:
+                            result = nativePatternSetEventTuning(pattern, event, value);
+                            break;
+                        case LIST_EDIT_FIELD_NUDGE:
+                            result = nativePatternSetEventNudge(pattern, event, value);
+                            break;
+                        default:
+                            result = "LIST EDIT • unsupported field";
+                            break;
+                    }
+                    setBottomStatus(result);
+                    if (listEditSucceeded(result)) {
+                        int newTick = field == LIST_EDIT_FIELD_POSITION ? value : tick;
+                        int newNote = field == LIST_EDIT_FIELD_NOTE ? value : note;
+                        final int found = nativePatternFindEvent(pattern, newTick, newNote);
+                        listEditSelectedEvent = found >= 0 ? found : Math.min(event,
+                                Math.max(0, nativePatternGetEventCount(pattern) - 1));
+                    }
+                    refreshListEditPage();
+                })
+                .show();
+    }
+
+    private void showListEditInsertDialog() {
+        final int length = nativePatternGetLengthTicks(listEditPatternIndex);
+        if (length <= 0) {
+            setBottomStatus("LIST EDIT • no valid selected Pattern");
+            return;
+        }
+        final int grid = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final int tick = (int) (Math.max(0L, nativeSequencePositionTicks()) % length);
+        final int duration = Math.min(length, grid * 2);
+        EditText padInput = listEditNumberInput(selectedPad + 1);
+        EditText tickInput = listEditNumberInput(tick);
+        EditText velocityInput = listEditNumberInput(100);
+        EditText lengthInput = listEditNumberInput(duration);
+        LinearLayout form = column();
+        form.setPadding(dp(18), dp(6), dp(18), dp(4));
+        addListEditInput(form, "DRUM PAD (1–16)", padInput);
+        addListEditInput(form, "POSITION (TICKS)", tickInput);
+        addListEditInput(form, "VELOCITY (1–127)", velocityInput);
+        addListEditInput(form, "LENGTH (TICKS)", lengthInput);
+        new AlertDialog.Builder(this)
+                .setTitle("INSERT NOTE EVENT")
+                .setView(form)
+                .setNegativeButton("CANCEL", null)
+                .setPositiveButton("INSERT", (dialog, which) -> {
+                    try {
+                        final int pad = Integer.parseInt(padInput.getText().toString().trim()) - 1;
+                        final int at = Integer.parseInt(tickInput.getText().toString().trim());
+                        final int velocity = Integer.parseInt(velocityInput.getText().toString().trim());
+                        final int noteLength = Integer.parseInt(lengthInput.getText().toString().trim());
+                        if (pad < 0 || pad >= 16 || at < 0 || at >= length
+                                || velocity < 1 || velocity > 127
+                                || noteLength < 0 || noteLength > length) {
+                            setBottomStatus("LIST EDIT • invalid Pad, position, velocity or length");
+                            return;
+                        }
+                        final String result = nativePatternAddEvent(
+                                listEditPatternIndex, pad, at, velocity, noteLength);
+                        setBottomStatus(result);
+                        if (listEditSucceeded(result)) {
+                            selectedPad = pad;
+                            listEditSelectedEvent = -1;
+                            refreshListEditPage();
+                        }
+                    } catch (NumberFormatException error) {
+                        setBottomStatus("LIST EDIT • enter whole numbers in all fields");
+                    }
+                })
+                .show();
+    }
+
+    private EditText listEditNumberInput(int value) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        input.setText(Integer.toString(value));
+        input.selectAll();
+        return input;
+    }
+
+    private void addListEditInput(LinearLayout parent, String title, EditText input) {
+        TextView label = label(title, 9, MUTED);
+        parent.addView(label);
+        parent.addView(input, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+    }
+
+    private void deleteSelectedListEditEvent() {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event to delete");
+            return;
+        }
+        final String result = nativePatternDeleteEvent(listEditPatternIndex, listEditSelectedEvent);
+        setBottomStatus(result);
+        if (listEditSucceeded(result)) {
+            final int count = nativePatternGetEventCount(listEditPatternIndex);
+            listEditSelectedEvent = count == 0 ? -1 : Math.min(listEditSelectedEvent, count - 1);
+        }
+        refreshListEditPage();
+    }
+
+    private void duplicateSelectedListEditEvent() {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event to duplicate");
+            return;
+        }
+        final int grid = Math.max(1, nativeSequenceGetQuantizeGrid());
+        final String result = nativePatternDuplicateEvent(
+                listEditPatternIndex, listEditSelectedEvent, grid);
+        setBottomStatus(result);
+        refreshListEditPage();
+    }
+
+    private void moveSelectedListEditEvent(int direction) {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event to move");
+            return;
+        }
+        final int oldTick = listEditSelectedTick();
+        final int oldNote = listEditSelectedNote();
+        final int delta = Math.max(1, nativeSequenceGetQuantizeGrid()) * direction;
+        final String result = nativePatternMoveEvent(
+                listEditPatternIndex, listEditSelectedEvent, delta);
+        setBottomStatus(result);
+        if (listEditSucceeded(result)) {
+            final int found = nativePatternFindEvent(listEditPatternIndex, oldTick + delta, oldNote);
+            listEditSelectedEvent = found;
+        }
+        refreshListEditPage();
+    }
+
+    private void adjustSelectedListEditNudge(int delta) {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event to nudge");
+            return;
+        }
+        final int next = nativePatternGetEventNudge(listEditPatternIndex, listEditSelectedEvent) + delta;
+        final String result = nativePatternSetEventNudge(listEditPatternIndex, listEditSelectedEvent, next);
+        setBottomStatus(result);
+        refreshListEditPage();
+    }
+
+    private void adjustSelectedListEditPitch(int deltaMilliSemitones) {
+        if (listEditSelectedEvent < 0) {
+            setBottomStatus("LIST EDIT • select an event to tune");
+            return;
+        }
+        final int next = nativePatternGetEventTuning(listEditPatternIndex, listEditSelectedEvent)
+                + deltaMilliSemitones;
+        final String result = nativePatternSetEventTuning(
+                listEditPatternIndex, listEditSelectedEvent, next);
+        setBottomStatus(result);
+        refreshListEditPage();
+    }
+
+    private void applyListEditHistory(boolean redo) {
+        final String result = redo ? nativeSequenceRedo() : nativeSequenceUndo();
+        setBottomStatus(result);
+        refreshListEditPage();
+    }
+
+    private void toggleListEditPlayback() {
+        final String result = nativeSequenceIsPlaying()
+                ? nativeSequenceStop() : nativeSequenceStart();
+        setBottomStatus(result);
     }
 
     // ------------------------------------------------------------------
