@@ -150,6 +150,34 @@ void testSixteenLevelTuneRecordsOnlyAcceptedOneShotHits() {
             releasePlan, false, true, 0, 480, false).has_value());
 }
 
+void testNoteOffUsesTrackCapturedAtPressAfterTrackSelectionChanges() {
+    mpc::midi::PadRecordingTargetTracker tracker;
+    tracker.capture(0, true, 2);
+    tracker.capture(1, true, 1);
+
+    // The selected Track may now be different, but each physical Pad's
+    // release resolves to the immutable target from its corresponding press.
+    const auto releasedPad0 = tracker.take(0);
+    const auto releasedPad1 = tracker.take(1);
+    assert(releasedPad0.has_value() && *releasedPad0 == 2);
+    assert(releasedPad1.has_value() && *releasedPad1 == 1);
+    assert(!tracker.take(0).has_value());
+
+    tracker.capture(4, true, 3);
+    tracker.clear();
+    assert(!tracker.take(4).has_value());
+
+    // A Pad pressed while recording is not armed must not gain a late
+    // Note Off merely because the Track becomes armed before its release.
+    tracker.capture(2, false, 0);
+    assert(!tracker.take(2).has_value());
+
+    // Invalid physical Pad or Track targets fail closed.
+    tracker.capture(3, true, 0xFF);
+    assert(!tracker.take(3).has_value());
+    assert(!tracker.take(16).has_value());
+}
+
 void testUnarmedOrStoppedTransportDoesNotRecord() {
     mpc::studio::PadRoutingResult routing;
     routing.targetPadIndex = 2;
@@ -183,6 +211,7 @@ int main() {
     testHardwarePadVelocityRecordsIntoPattern();
     testMutedPadRemainsRecordableButDoesNotTriggerAudio();
     testSixteenLevelTuneRecordsOnlyAcceptedOneShotHits();
+    testNoteOffUsesTrackCapturedAtPressAfterTrackSelectionChanges();
     testUnarmedOrStoppedTransportDoesNotRecord();
     testInvalidOrConsumedTargetsFailClosed();
     return 0;

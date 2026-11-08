@@ -77,6 +77,7 @@ struct ScopedJavaByteArrayRead final {
 
 void stopSequenceForMutation() {
     mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     auto& state = core.projectState();
     const auto position = sequenceSession().positionTicks();
@@ -3681,6 +3682,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStart(
         JNIEnv* env, jobject /* thiz */)
 {
     mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto audioResult = core.audio().start();
@@ -3734,6 +3736,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceStop(
         JNIEnv* env, jobject /* thiz */)
 {
     mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3762,6 +3765,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceReset(
         JNIEnv* env, jobject /* thiz */)
 {
     mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     auto& core = mpc::MpcCore::instance();
     core.sequenceTransportClock().clearQueuedSequence();
     const auto position = sequenceSession().positionTicks();
@@ -3815,6 +3819,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceAdvance(
             && queuedIndex >= 0
             && static_cast<std::size_t>(queuedIndex) < state.sequenceCount()) {
         mpc::midi::invalidateNoteRepeatRecordingTarget();
+        mpc::midi::invalidatePadRecordingTargets();
         const bool wasRecording = core.sequenceRecorder().active();
         if (wasRecording) {
             core.sequenceRecorder().finish(
@@ -4549,6 +4554,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetSelectedTrack
     }
 
     mpc::midi::invalidateNoteRepeatRecordingTarget();
+    mpc::midi::invalidatePadRecordingTargets();
     if (core.sequenceRecorder().active()) {
         core.sequenceRecorder().finish(
                 state,

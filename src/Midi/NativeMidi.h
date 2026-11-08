@@ -14,4 +14,5 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
 // Closes the Note Repeat record producer and waits for any in-flight bounded
 // queue write before a take/Track/Sequence transition drains recorder state.
 void invalidateNoteRepeatRecordingTarget() noexcept;
+void invalidatePadRecordingTargets() noexcept;
 }

@@ -39,6 +39,7 @@ std::atomic<std::size_t> semanticActionHead{0};
 std::atomic<std::size_t> semanticActionTail{0};
 mpc::studio::MpcStudioMk2SemanticAdapter semanticAdapter;
 std::unique_ptr<mpc::sequencer::MpcNoteRepeatScheduler> noteRepeatScheduler;
+mpc::midi::PadRecordingTargetTracker padRecordingTargetTracker;
 
 std::vector<std::uint8_t> makeNoteRepeatRateFeedback(
         bool enabled,
@@ -271,21 +272,50 @@ std::optional<std::vector<std::uint8_t>> handleIncoming(
         }
 
         const auto& state = core.projectState();
-        const auto trackIndex = state.activeTrackIndex();
         const auto& tracks = state.activeSequence().tracks;
-        const bool recordableDrumTrack = trackIndex < tracks.size()
-                && trackIndex < mpc::domain::kMaxSequenceTracks
-                && tracks[trackIndex].recordArmed
-                && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum
-                && core.sequenceTransportClock().snapshot().playing;
-        if (recordableDrumTrack) {
+        const auto activeTrackIndex = state.activeTrackIndex();
+        const bool transportPlaying =
+                core.sequenceTransportClock().snapshot().playing;
+        const bool activeTrackRecordable = activeTrackIndex < tracks.size()
+                && activeTrackIndex < mpc::domain::kMaxSequenceTracks
+                && tracks[activeTrackIndex].recordArmed
+                && tracks[activeTrackIndex].kind == mpc::domain::TrackKind::Drum
+                && transportPlaying;
+
+        std::optional<std::uint8_t> recordingTrackIndex;
+        if (event->pressed) {
+            const auto capturedTrack = activeTrackRecordable
+                    ? static_cast<std::uint8_t>(activeTrackIndex)
+                    : std::uint8_t{0xFF};
+            padRecordingTargetTracker.capture(
+                    event->padIndex,
+                    padInput.hasTarget && activeTrackRecordable,
+                    capturedTrack);
+            if (padInput.hasTarget && activeTrackRecordable) {
+                recordingTrackIndex = capturedTrack;
+            }
+        } else {
+            // A held hardware note must close on the Track that received its
+            // Note On, even if the user changes the active Track before release.
+            recordingTrackIndex = padRecordingTargetTracker.take(event->padIndex);
+            if (recordingTrackIndex.has_value()
+                    && (!transportPlaying
+                        || *recordingTrackIndex >= tracks.size()
+                        || !tracks[*recordingTrackIndex].recordArmed
+                        || tracks[*recordingTrackIndex].kind
+                                != mpc::domain::TrackKind::Drum)) {
+                recordingTrackIndex.reset();
+            }
+        }
+
+        if (recordingTrackIndex.has_value()) {
             const auto tick =
                     core.sequenceTransportClock().positionAtTimestamp(timestamp);
             const auto captured = mpc::midi::makePadSequenceRecordEvent(
                     padInput,
                     event->pressed,
                     true,
-                    static_cast<std::uint8_t>(trackIndex),
+                    *recordingTrackIndex,
                     tick,
                     triggerAccepted);
             if (captured.has_value()
@@ -349,6 +379,10 @@ void invalidateNoteRepeatRecordingTarget() noexcept {
     if (noteRepeatScheduler) {
         noteRepeatScheduler->setRecordingTrack(0xFF);
     }
+}
+
+void invalidatePadRecordingTargets() noexcept {
+    padRecordingTargetTracker.clear();
 }
 
 } // namespace mpc::midi
