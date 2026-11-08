@@ -13624,8 +13624,12 @@ assert_latest_project_summary() {
 
 show_project_route_extended() {
   local expected_tracks="${1:-TRACKS=1}" expected_placements="${2:-PLACEMENTS=1}"
+  local target_xml="${3:-/tmp/mpc-groovebox-project-current-view-hierarchy.xml}"
   if ! tap_project_toolbar_menu; then exit 1; fi
-  if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+  # tap_mpc_menu_tile owns the one fresh pre-draw capture for this transition.
+  # Write it directly to the caller's evidence path; never request a second
+  # pre-draw from an unchanged Project page.
+  if ! tap_mpc_menu_tile 3 3 "$target_xml"; then exit 1; fi
   if ! assert_latest_project_summary "$expected_tracks" "$expected_placements"; then exit 1; fi
 }
 
@@ -13821,12 +13825,11 @@ fi
 if ! tap_main_new_track; then exit 1; fi
 sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
-if ! tap_mpc_menu_tile 3 3; then exit 1; fi
+if ! tap_mpc_menu_tile 3 3 "$PROJECT_MUTATED_XML"; then exit 1; fi
 if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_MUTATED_PNG" 10; then
   echo "ERROR: could not capture mutated Project state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo "ERROR: mutated Project View tree missing"; exit 1; fi
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
@@ -13879,12 +13882,11 @@ fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_MAIN_READY_XML"; then
   echo "ERROR: successful Open did not publish a fresh Main View tree"; exit 1
 fi
-show_project_route_extended
+show_project_route_extended "TRACKS=1" "PLACEMENTS=1" "$PROJECT_REOPENED_XML"
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 if ! capture_ui_screenshot "$PROJECT_REOPENED_PNG" 10; then
   echo "ERROR: could not capture the reopened Project screen"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_REOPENED_XML"; then echo "ERROR: reopened Project View tree missing"; exit 1; fi
 echo "Real Project Save As → add Track in memory → Open saved file restored exact persisted Track/Pattern-placement model."
 echo "Initial Project Save As → mutate → Open path passed; continuing with direct SAVE overwrite and extended persistence acceptance."
 
@@ -14224,9 +14226,8 @@ if [[ "$project_doc_a_open_sha" != "$PROJECT_DOC_A_SHA" ]] \
   echo "ERROR: document A changed after Save As/overwrite targeted document B"
   echo "$project_doc_a_open_line"; exit 1
 fi
-if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
+if ! show_project_route_extended "TRACKS=2" "PLACEMENTS=2" "/tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-a-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-a-reopened-view-hierarchy.xml; then exit 1; fi
 
 # B must separately reopen as its newer three-Track snapshot. Restart acceptance
 # below deliberately reopens A and retains the A digest assertion.
@@ -14240,9 +14241,8 @@ if [[ "$project_doc_b_open_sha" != "$project_doc_b_sha" ]] \
   echo "ERROR: document B did not reopen as the independent three-Track snapshot"
   echo "$project_doc_b_open_line"; exit 1
 fi
-if ! show_project_route_extended "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
+if ! show_project_route_extended "TRACKS=3" "PLACEMENTS=3" "/tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml"; then exit 1; fi
 if ! capture_ui_screenshot /tmp/mpc-groovebox-project-two-doc-b-reopened.png 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-two-doc-b-reopened-view-hierarchy.xml; then exit 1; fi
 echo "Two-document isolation passed: A SHA=$project_doc_a_open_sha retains TRACKS=2; B SHA=$project_doc_b_open_sha retains TRACKS=3."
 
 
@@ -14278,7 +14278,8 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_MAIN_PNG" 10; then
   echo "ERROR: could not capture post-restart Main screenshot"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_RESTART_MAIN_XML"; then echo "ERROR: restart Main View tree missing"; exit 1; fi
+# The startup pre-draw already populated the fresh Main evidence above; a second
+# unchanged-page capture would wait for a pre-draw that is not required to recur.
 show_project_route_extended
 open_project_document "Untitled.mpcproj"
 if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE_BEFORE" 45; then
@@ -14298,11 +14299,10 @@ if ! grep -Fq -- "formatVersion=4" <<<"$restart_open_line" \
   echo "ERROR: force-stop/relaunch → Open did not restore exact saved native state"
   echo "$restart_open_line"; exit 1
 fi
-show_project_route_extended "TRACKS=2" "PLACEMENTS=2"
+show_project_route_extended "TRACKS=2" "PLACEMENTS=2" "$PROJECT_EXT_RESTART_PROJECT_XML"
 if ! capture_ui_screenshot "$PROJECT_EXT_RESTART_PROJECT_PNG" 10; then
   echo "ERROR: could not capture reopened Project after process restart"; exit 1
 fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: restart Project View tree missing"; exit 1; fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
 save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
@@ -15127,11 +15127,8 @@ if ! tap_project_toolbar_menu; then
 fi
 PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT" 5)"
-if ! tap_mpc_menu_tile 3 3; then
+if ! tap_mpc_menu_tile 3 3 "$PROJECT_NEW_PROJECT_XML"; then
   echo "ERROR: could not inspect new Project's unlinked status"; exit 1
-fi
-if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_NEW_PROJECT_XML"; then
-  echo "ERROR: new Project View tree unavailable"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_NEW_PROJECT_XML"
 if ! grep -Fq -- "MPC Project current name Untitled" "$PROJECT_NEW_PROJECT_XML" \
@@ -15424,8 +15421,7 @@ project_recovery_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<
 if [[ "$project_recovery_open_sha" != "$project_recovery_source_sha" ]] || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_recovery_open_line"; then
   echo "ERROR: exported recovery file did not reopen to exact canonical state"; echo "$project_recovery_open_line"; exit 1
 fi
-if ! show_project_route_extended; then exit 1; fi
+if ! show_project_route_extended "TRACKS=1" "PLACEMENTS=1" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-recovery-export-roundtrip.png" 10; then exit 1; fi
-if ! capture_project_persistence_view_tree "PROJECT" "/tmp/mpc-groovebox-project-recovery-export-roundtrip-view-hierarchy.xml"; then exit 1; fi
 echo "Project recovery export passed: private source retained; exported destination hash matched and reopened to identical Project state."
 
