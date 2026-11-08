@@ -11,6 +11,22 @@ int main() {
     assert(state.project().drumPrograms.size() == 1);
     assert(state.activeDrumProgram().pads.size() == mpc::domain::kMaxProgramPads);
     assert(state.activeDrumProgram().pad(0).midiNote == 36);
+    assert(state.activePatternCount() == 1);
+    assert(state.activePatternIndex() == 0);
+    assert(state.activePattern() != nullptr);
+    assert(state.activePattern()->name == "Pattern 01");
+    auto secondPattern = *state.activePattern();
+    secondPattern.id = "pattern-02";
+    secondPattern.name = "Pattern 02";
+    state.activeSequence().tracks.front().patterns.push_back(secondPattern);
+    assert(state.activePatternCount() == 2);
+    assert(state.selectPattern(1));
+    assert(state.activePatternIndex() == 1);
+    assert(state.activePattern()->id == "pattern-02");
+    assert(!state.selectPattern(2));
+    assert(state.selectTrack(0));
+    assert(state.activePatternIndex() == 0);
+    assert(state.selectPattern(1));
 
     // Invalid SampleRef metadata is rejected before any ID is consumed.
     assert(!state.registerSample("Negative rate", "", -1.0, 24000).isAssigned());

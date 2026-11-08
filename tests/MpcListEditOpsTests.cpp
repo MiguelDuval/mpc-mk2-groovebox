@@ -81,5 +81,30 @@ int main() {
             == PadNoteEventInsertResult::InvalidDuration);
     assert(notes.size() == beforeCollision.size());
 
+
+    // Duplicate/move preserve the complete MIDI event, including per-note pitch
+    // offsets and microtiming; transpose is all-or-nothing at MIDI boundaries.
+    mpc::domain::Pattern pattern;
+    pattern.lengthTicks = 3840;
+    pattern.notes.push_back(MidiNoteEvent{480,360,60,91,87,3,-17,1250});
+    assert(mpc::sequencer::list_edit::duplicatePatternEvent(pattern,0,240));
+    assert(pattern.notes.size()==2 && pattern.notes[1].tick==720);
+    assert(pattern.notes[1].durationTicks==360 && pattern.notes[1].velocity==91);
+    assert(pattern.notes[1].probability==87 && pattern.notes[1].ratchet==3);
+    assert(pattern.notes[1].nudgeTicks==-17);
+    assert(pattern.notes[1].tuningOffsetMilliSemitones==1250);
+    assert(mpc::sequencer::list_edit::movePatternEvent(pattern,1,120));
+    assert(pattern.notes[1].tick==840);
+    assert(!mpc::sequencer::list_edit::movePatternEvent(pattern,1,100000));
+    const auto beforeTranspose=pattern.notes;
+    assert(mpc::sequencer::list_edit::transposePattern(pattern,12));
+    assert(pattern.notes[0].note==72 && pattern.notes[1].note==72);
+    assert(pattern.notes[0].nudgeTicks==beforeTranspose[0].nudgeTicks);
+    assert(pattern.notes[0].tuningOffsetMilliSemitones==beforeTranspose[0].tuningOffsetMilliSemitones);
+    pattern.notes[0].note=120;
+    const auto beforeRejected=pattern.notes;
+    assert(!mpc::sequencer::list_edit::transposePattern(pattern,12));
+    assert(pattern.notes[0].note==beforeRejected[0].note);
+    assert(pattern.notes[1].note==beforeRejected[1].note);
     return 0;
 }

@@ -229,6 +229,7 @@ bool MpcProjectState::replaceProject(domain::Project project) {
     project_ = std::move(project);
     activeSequenceIndex_ = 0;
     activeTrackIndex_ = 0;
+    activePatternIndex_ = 0;
     activeDrumProgramIndex_ = 0;
     const auto programIndex = activeProgramIndexForTrack(activeTrackIndex_);
     if (programIndex < project_.drumPrograms.size()) activeDrumProgramIndex_ = programIndex;
@@ -272,6 +273,7 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
     }
 
     activeTrackIndex_ = trackIndex;
+    activePatternIndex_ = 0;
     const auto& track = activeSequence().tracks[trackIndex];
     if (track.kind == domain::TrackKind::Drum) {
         const auto index = activeProgramIndexForTrack(trackIndex);
@@ -279,6 +281,29 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
             activeDrumProgramIndex_ = index;
         }
     }
+    return true;
+}
+
+
+domain::Pattern* MpcProjectState::activePattern() noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return nullptr;
+    auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (activePatternIndex_ >= patterns.size()) return nullptr;
+    return &patterns[activePatternIndex_];
+}
+
+const domain::Pattern* MpcProjectState::activePattern() const noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return nullptr;
+    const auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (activePatternIndex_ >= patterns.size()) return nullptr;
+    return &patterns[activePatternIndex_];
+}
+
+bool MpcProjectState::selectPattern(std::size_t patternIndex) noexcept {
+    if (activeTrackIndex_ >= activeSequence().tracks.size()) return false;
+    const auto& patterns = activeSequence().tracks[activeTrackIndex_].patterns;
+    if (patternIndex >= patterns.size()) return false;
+    activePatternIndex_ = patternIndex;
     return true;
 }
 

@@ -80,4 +80,58 @@ enum class PadNoteEventInsertResult : std::uint8_t {
             durationTicks);
 }
 
+
+[[nodiscard]] inline bool movePatternEvent(
+        domain::Pattern& pattern, std::size_t eventIndex,
+        std::int64_t deltaTicks) {
+    if (eventIndex >= pattern.notes.size() || pattern.lengthTicks <= 0) return false;
+    const auto target = static_cast<std::int64_t>(pattern.notes[eventIndex].tick) + deltaTicks;
+    if (target < 0 || target >= pattern.lengthTicks) return false;
+    const auto note = pattern.notes[eventIndex].note;
+    for (std::size_t i = 0; i < pattern.notes.size(); ++i) {
+        if (i != eventIndex && pattern.notes[i].tick == target
+                && pattern.notes[i].note == note) return false;
+    }
+    pattern.notes[eventIndex].tick = static_cast<std::int32_t>(target);
+    std::stable_sort(pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& a, const domain::MidiNoteEvent& b) {
+                return a.tick < b.tick;
+            });
+    return true;
+}
+
+[[nodiscard]] inline bool duplicatePatternEvent(
+        domain::Pattern& pattern, std::size_t eventIndex,
+        std::int64_t deltaTicks) {
+    if (eventIndex >= pattern.notes.size() || pattern.lengthTicks <= 0 || deltaTicks == 0) return false;
+    const auto source = pattern.notes[eventIndex];
+    const auto target = static_cast<std::int64_t>(source.tick) + deltaTicks;
+    if (target < 0 || target >= pattern.lengthTicks) return false;
+    if (std::any_of(pattern.notes.begin(), pattern.notes.end(),
+            [target, &source](const domain::MidiNoteEvent& value) {
+                return value.tick == target && value.note == source.note;
+            })) return false;
+    auto duplicate = source;
+    duplicate.tick = static_cast<std::int32_t>(target);
+    pattern.notes.push_back(duplicate);
+    std::stable_sort(pattern.notes.begin(), pattern.notes.end(),
+            [](const domain::MidiNoteEvent& a, const domain::MidiNoteEvent& b) {
+                return a.tick < b.tick;
+            });
+    return true;
+}
+
+[[nodiscard]] inline bool transposePattern(
+        domain::Pattern& pattern, std::int32_t semitones) {
+    if (semitones == 0 || semitones < -127 || semitones > 127 || pattern.notes.empty()) return false;
+    for (const auto& event : pattern.notes) {
+        const auto next = static_cast<std::int32_t>(event.note) + semitones;
+        if (next < 0 || next > 127) return false;
+    }
+    for (auto& event : pattern.notes) {
+        event.note = static_cast<std::uint8_t>(static_cast<std::int32_t>(event.note) + semitones);
+    }
+    return true;
+}
+
 } // namespace mpc::sequencer::list_edit
