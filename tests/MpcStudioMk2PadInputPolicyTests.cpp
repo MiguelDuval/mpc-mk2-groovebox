@@ -151,24 +151,56 @@ void testSixteenLevelTuneRecordsOnlyAcceptedOneShotHits() {
 }
 
 void testNoteOffUsesTrackCapturedAtPressAfterTrackSelectionChanges() {
+    mpc::MpcProjectState state;
+    state.activeSequence().timingCorrectEnabled = false;
+    state.activeSequence().tracks[0].recordArmed = true;
+    assert(state.addTrack(mpc::domain::TrackKind::Drum, "Track 2"));
+    assert(state.selectTrack(0));
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
     mpc::midi::PadRecordingTargetTracker tracker;
-    tracker.capture(0, true, 2);
-    tracker.capture(1, true, 1);
+    mpc::studio::PadRoutingResult routing;
+    routing.targetPadIndex = 0;
+    routing.velocity = 103;
+    const auto plan = mpc::midi::makePadInputPlan(routing, true, false);
+    assert(plan.hasTarget && plan.triggerRequested);
 
-    // The selected Track may now be different, but each physical Pad's
-    // release resolves to the immutable target from its corresponding press.
-    const auto releasedPad0 = tracker.take(0);
-    const auto releasedPad1 = tracker.take(1);
-    assert(releasedPad0.has_value() && *releasedPad0 == 2);
-    assert(releasedPad1.has_value() && *releasedPad1 == 1);
-    assert(!tracker.take(0).has_value());
+    tracker.capture(0, true, 0);
+    const auto noteOn = mpc::midi::makePadSequenceRecordEvent(
+            plan, true, true, 0, 120, true);
+    assert(noteOn.has_value() && queue.tryEnqueue(*noteOn));
+    assert(recorder.drain(state, queue) == 0); // Note On is held until release.
 
-    tracker.capture(4, true, 3);
+    // Switch the UI-selected Track while physical Pad 01 remains held.
+    assert(state.selectTrack(1));
+    const auto noteOffTrack = tracker.take(0);
+    assert(noteOffTrack.has_value() && *noteOffTrack == 0);
+    const auto noteOff = mpc::midi::makePadSequenceRecordEvent(
+            plan, false, true, *noteOffTrack, 260, false);
+    assert(noteOff.has_value() && queue.tryEnqueue(*noteOff));
+    assert(recorder.drain(state, queue) == 1);
+
+    const auto& originalNotes = state.activeSequence().tracks[0]
+            .patterns.front().notes;
+    const auto& selectedTrackNotes = state.activeSequence().tracks[1]
+            .patterns.front().notes;
+    assert(originalNotes.size() == 1);
+    assert(originalNotes.front().tick == 120);
+    assert(originalNotes.front().durationTicks == 140);
+    assert(originalNotes.front().velocity == 103);
+    assert(originalNotes.front().note
+            == state.activeDrumProgram().pad(0).midiNote);
+    assert(selectedTrackNotes.empty());
+
+    // Context invalidation clears outstanding releases without generating a
+    // late Note Off in a new take/Sequence.
+    tracker.capture(4, true, 0);
     tracker.clear();
     assert(!tracker.take(4).has_value());
-
-    // A Pad pressed while recording is not armed must not gain a late
-    // Note Off merely because the Track becomes armed before its release.
     tracker.capture(2, false, 0);
     assert(!tracker.take(2).has_value());
 
