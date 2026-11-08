@@ -11,7 +11,8 @@ on:
 
 concurrency:
   group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: true
+  # Preserve every exact-SHA Android Build; never cancel active or queued acceptance runs.
+  cancel-in-progress: false
 
 permissions:
   contents: read
