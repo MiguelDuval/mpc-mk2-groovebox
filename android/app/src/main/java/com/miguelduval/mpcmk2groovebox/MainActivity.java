@@ -415,11 +415,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static final int PAD_PERFORM_SCALE_MINOR_PENTATONIC = 4;
     private static final String[] PAD_PERFORM_SCALE_LABELS = {
             "CHROMATIC", "MAJOR", "NATURAL MINOR", "MAJOR PENTA", "MINOR PENTA"};
+    private static final String[] PAD_PERFORM_ROOT_LABELS = {
+            "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
     private int padPerformScale = PAD_PERFORM_SCALE_CHROMATIC;
     private int padPerformOctave = 0;
+    private int padPerformRootNote = 0;
     private static final int HARDWARE_FOCUS_SEQUENCE_START = 17;
     private static final int HARDWARE_FOCUS_SEQUENCE_END = 18;
     private static final int HARDWARE_FOCUS_SEQUENCE_BPM = 19;
@@ -493,9 +496,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int pad, int velocity, int tuningOffsetMilliSemitones);
     private static native void nativeMidiSetSixteenLevelTuneMode(boolean enabled);
     private static native void nativeMidiSetPadPerformContext(
-            boolean enabled, int sourcePad, int scale, int octave);
+            boolean enabled, int sourcePad, int scale, int octave, int rootNote);
     private static native int nativeMidiGetPadPerformSemitoneOffset(
-            int padIndex, int scaleIndex, int octaveShift);
+            int padIndex, int scaleIndex, int octaveShift, int rootNote);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -1677,7 +1680,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         shortcutConfigVisible = false;
         if (mode != MpcUiState.Mode.PAD_PERFORM && NATIVE_LIBRARY_LOADED) {
             nativeMidiSetPadPerformContext(
-                    false, selectedPad, padPerformScale, padPerformOctave);
+                    false, selectedPad, padPerformScale, padPerformOctave, padPerformRootNote);
         }
         switch (mode) {
             case MAIN:
@@ -3288,7 +3291,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void showMainPage() {
         if (NATIVE_LIBRARY_LOADED) {
             nativeMidiSetPadPerformContext(
-                    false, selectedPad, padPerformScale, padPerformOctave);
+                    false, selectedPad, padPerformScale, padPerformOctave, padPerformRootNote);
         }
         /*
          * Main is a persistent workspace, not a disposable page. Preserve
@@ -6077,7 +6080,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void showLevels16Page() {
         if (NATIVE_LIBRARY_LOADED) {
             nativeMidiSetPadPerformContext(
-                    false, selectedPad, padPerformScale, padPerformOctave);
+                    false, selectedPad, padPerformScale, padPerformOctave, padPerformRootNote);
         }
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -6170,6 +6173,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus("PAD PERFORM • " + PAD_PERFORM_SCALE_LABELS[padPerformScale]);
     }
 
+    private void adjustPadPerformRoot(int delta) {
+        padPerformRootNote = Math.floorMod(
+                padPerformRootNote + delta, PAD_PERFORM_ROOT_LABELS.length);
+        showPadPerformPage();
+        setBottomStatus("PAD PERFORM • ROOT " + PAD_PERFORM_ROOT_LABELS[padPerformRootNote]);
+    }
+
+    private void showPadPerformRootChooser() {
+        new AlertDialog.Builder(this)
+                .setTitle("PAD PERFORM • ROOT NOTE")
+                .setSingleChoiceItems(PAD_PERFORM_ROOT_LABELS, padPerformRootNote, (dialog, which) -> {
+                    padPerformRootNote = which;
+                    dialog.dismiss();
+                    showPadPerformPage();
+                    setBottomStatus("PAD PERFORM • ROOT " + PAD_PERFORM_ROOT_LABELS[padPerformRootNote]);
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private String padPerformMidiNoteLabel(int midiNote) {
+        final int safe = Math.max(0, Math.min(127, midiNote));
+        return PAD_PERFORM_ROOT_LABELS[safe % 12] + (safe / 12 - 1);
+    }
+
     private void adjustPadPerformOctave(int delta) {
         final int next = Math.max(-2, Math.min(2, padPerformOctave + delta));
         if (next == padPerformOctave) {
@@ -6184,7 +6212,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private int padPerformSemitoneOffset(int padIndex) {
         return nativeMidiGetPadPerformSemitoneOffset(
-                padIndex, padPerformScale, padPerformOctave);
+                padIndex, padPerformScale, padPerformOctave, padPerformRootNote);
     }
 
     private void showPadPerformPage() {
@@ -6193,7 +6221,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         nativeSequenceSetLauncherContext(false, 0);
         nativeMidiSetSixteenLevelTuneMode(false);
         nativeMidiSetPadPerformContext(
-                true, selectedPad, padPerformScale, padPerformOctave);
+                true, selectedPad, padPerformScale, padPerformOctave, padPerformRootNote);
         currentPage = "PAD_PERFORM";
         navigationController.navigate(MpcUiState.Mode.PAD_PERFORM);
         navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
@@ -6203,10 +6231,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         LinearLayout page = page();
         LinearLayout header = row();
-        header.addView(sectionLabelView("PAD PERFORM • " + PAD_PERFORM_SCALE_LABELS[padPerformScale],
+        header.addView(sectionLabelView("PAD PERFORM • " + PAD_PERFORM_SCALE_LABELS[padPerformScale]
+                        + " • ROOT " + PAD_PERFORM_ROOT_LABELS[padPerformRootNote],
                 new LinearLayout.LayoutParams(0, dp(34), 1)));
         header.addView(actionButton("SCALE", v -> cyclePadPerformScale()),
                 new LinearLayout.LayoutParams(dp(64), dp(34)));
+        header.addView(actionButton("ROOT−", v -> adjustPadPerformRoot(-1)),
+                new LinearLayout.LayoutParams(dp(52), dp(34)));
+        header.addView(actionButton("ROOT " + PAD_PERFORM_ROOT_LABELS[padPerformRootNote],
+                v -> showPadPerformRootChooser()),
+                new LinearLayout.LayoutParams(dp(78), dp(34)));
+        header.addView(actionButton("ROOT+", v -> adjustPadPerformRoot(1)),
+                new LinearLayout.LayoutParams(dp(52), dp(34)));
         header.addView(actionButton("OCT−", v -> adjustPadPerformOctave(-1)),
                 new LinearLayout.LayoutParams(dp(52), dp(34)));
         header.addView(sectionLabelView(
@@ -6235,11 +6271,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final int semitones = padPerformSemitoneOffset(noteIndex);
                 final int note = 60 + semitones;
                 final int tuningOffsetMilliSemitones = semitones * 1000;
-                Button performBtn = actionButton("N" + note, v -> {
+                Button performBtn = actionButton(padPerformMidiNoteLabel(note), v -> {
                     boolean recorded = nativeAudioTriggerPadWithTuningOffset(
                             selectedPad, 100, tuningOffsetMilliSemitones);
                     setBottomStatus("PAD PERFORM: " + (recorded ? "REC " : "LIVE ")
-                            + "N" + note + " · pad " + (selectedPad + 1)
+                            + padPerformMidiNoteLabel(note) + " · pad " + (selectedPad + 1)
+                            + " · ROOT " + PAD_PERFORM_ROOT_LABELS[padPerformRootNote]
                             + " · " + (semitones > 0 ? "+" : "") + semitones + " st");
                 });
                 performBtn.setMinWidth(dp(64));
@@ -12130,7 +12167,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private void showMenuPage() {
         if (NATIVE_LIBRARY_LOADED) {
             nativeMidiSetPadPerformContext(
-                    false, selectedPad, padPerformScale, padPerformOctave);
+                    false, selectedPad, padPerformScale, padPerformOctave, padPerformRootNote);
         }
         shortcutConfigVisible = false;
         Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
