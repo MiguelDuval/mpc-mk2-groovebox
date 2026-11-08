@@ -25,10 +25,16 @@ int main(){
   assert(semitoneOffset(4, 3, 0) == 9);
   assert(semitoneOffset(1, 4, 0) == 3);
   assert(semitoneOffset(0, 1, -2) == -24);
-  assert(semitoneOffset(15, 1, 2) == 48);
+
+  assert(isValidRootNoteIndex(0) && isValidRootNoteIndex(11));
+  assert(!isValidRootNoteIndex(-1) && !isValidRootNoteIndex(12));
+  assert(semitoneOffset(0, 1, 0, 2) == 2);
+  assert(semitoneOffset(1, 1, 0, 2) == 4);
+  assert(semitoneOffset(0, 0, 0, 11) == 11);
+  assert(semitoneOffset(15, 1, 2, 11) == 48);  assert(semitoneOffset(15, 1, 2) == 48);
 
   MpcStudioMk2SemanticAdapter padPerform;
-  padPerform.setPadPerformContext(true, 5, 1, 1);
+  padPerform.setPadPerformContext(true, 5, 1, 1, 0);
   const auto padPerformRoot = padPerform.handlePad(pad(0));
   assert(!padPerformRoot.consumed && padPerformRoot.tuningMode);
   assert(padPerformRoot.targetPadIndex == 5
@@ -36,7 +42,7 @@ int main(){
   const auto padPerformSecond = padPerform.handlePad(pad(1));
   assert(padPerformSecond.tuningMode && padPerformSecond.targetPadIndex == 5);
   assert(padPerformSecond.tuningOffsetMilliSemitones == 14000);
-  padPerform.setPadPerformContext(false, 5, 1, 1);
+  padPerform.setPadPerformContext(false, 5, 1, 1, 0);
   const auto padPerformExit = padPerform.handleControl(btn(52));
   typeOf(padPerformExit, SemanticActionType::NavigateMain);
   const auto padPerformRelease = padPerform.handlePad(padOff(1));
@@ -47,13 +53,13 @@ int main(){
   assert(!afterPadPerform.tuningMode && afterPadPerform.targetPadIndex == 2);
 
   // Invalid UI-provided contexts fail closed and restore ordinary pad routing.
-  padPerform.setPadPerformContext(true, 5, 99, 0);
+  padPerform.setPadPerformContext(true, 5, 99, 0, 0);
   const auto invalidScale = padPerform.handlePad(pad(0));
   assert(!invalidScale.tuningMode && invalidScale.targetPadIndex == 0);
-  padPerform.setPadPerformContext(true, 16, 1, 0);
+  padPerform.setPadPerformContext(true, 16, 1, 0, 0);
   const auto invalidSource = padPerform.handlePad(pad(1));
   assert(!invalidSource.tuningMode && invalidSource.targetPadIndex == 1);
-  padPerform.setPadPerformContext(true, 5, 1, 3);
+  padPerform.setPadPerformContext(true, 5, 1, 3, 0);
   const auto invalidOctave = padPerform.handlePad(pad(2));
   assert(!invalidOctave.tuningMode && invalidOctave.targetPadIndex == 2);
 
@@ -61,10 +67,10 @@ int main(){
   // mode before a newly selected 16 Levels Tune mode is applied.
   MpcStudioMk2SemanticAdapter modeTransition;
   static_cast<void>(modeTransition.handlePad(pad(4)));
-  modeTransition.setPadPerformContext(true, 5, 1, 0);
+  modeTransition.setPadPerformContext(true, 5, 1, 0, 0);
   const auto mappedDuringPerform = modeTransition.handlePad(pad(0));
   assert(mappedDuringPerform.tuningMode && mappedDuringPerform.targetPadIndex == 5);
-  modeTransition.setPadPerformContext(false, 5, 1, 0);
+  modeTransition.setPadPerformContext(false, 5, 1, 0, 0);
   modeTransition.setSixteenLevelTuneMode(true);
   const auto levelToggle = modeTransition.handleControl(btn(40));
   typeOf(levelToggle, SemanticActionType::SixteenLevelState);
@@ -73,6 +79,23 @@ int main(){
   assert(tuneOriginalAfterExit.tuningMode
           && tuneOriginalAfterExit.targetPadIndex == 4
           && tuneOriginalAfterExit.tuningOffsetMilliSemitones == 0);
+
+
+  MpcStudioMk2SemanticAdapter rootNote;
+  rootNote.setPadPerformContext(true, 5, 1, 0, 2);
+  const auto rootD = rootNote.handlePad(pad(0));
+  assert(rootD.tuningMode && rootD.targetPadIndex == 5
+          && rootD.tuningOffsetMilliSemitones == 2000);
+  const auto rootE = rootNote.handlePad(pad(1));
+  assert(rootE.tuningOffsetMilliSemitones == 4000);
+  rootNote.setPadPerformContext(true, 5, 1, 0, 7);
+  const auto rootDRelease = rootNote.handlePad(padOff(0));
+  assert(rootDRelease.tuningOffsetMilliSemitones == 2000);
+  const auto rootG = rootNote.handlePad(pad(0));
+  assert(rootG.tuningOffsetMilliSemitones == 7000);
+  rootNote.setPadPerformContext(true, 5, 1, 0, 12);
+  const auto invalidRoot = rootNote.handlePad(pad(1));
+  assert(!invalidRoot.tuningMode && invalidRoot.targetPadIndex == 1);
 
   MpcStudioMk2SemanticAdapter a;
   static_cast<void>(a.handleControl(btn(114))); auto r=a.handlePad(pad(1)); typeOf(r.action,SemanticActionType::NavigateGrid); assert(r.consumed);

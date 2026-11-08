@@ -377,31 +377,35 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetSixteenLevelTuneM
 extern "C" JNIEXPORT void JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiSetPadPerformContext(
         JNIEnv* /* env */, jclass /* clazz */,
-        jboolean enabled, jint sourcePadIndex, jint scaleIndex, jint octaveShift)
+        jboolean enabled, jint sourcePadIndex, jint scaleIndex, jint octaveShift,
+        jint rootNoteIndex)
 {
     semanticAdapter.setPadPerformContext(
             enabled == JNI_TRUE,
             static_cast<std::int32_t>(sourcePadIndex),
             static_cast<std::int32_t>(scaleIndex),
-            static_cast<std::int32_t>(octaveShift));
+            static_cast<std::int32_t>(octaveShift),
+            static_cast<std::int32_t>(rootNoteIndex));
 }
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeMidiGetPadPerformSemitoneOffset(
         JNIEnv* /* env */, jclass /* clazz */,
-        jint padIndex, jint scaleIndex, jint octaveShift)
+        jint padIndex, jint scaleIndex, jint octaveShift, jint rootNoteIndex)
 {
     if (padIndex < 0 || padIndex >= 16
             || !mpc::studio::pad_perform::isValidScaleIndex(scaleIndex)
             || octaveShift < mpc::studio::pad_perform::kMinimumOctaveShift
-            || octaveShift > mpc::studio::pad_perform::kMaximumOctaveShift) {
+            || octaveShift > mpc::studio::pad_perform::kMaximumOctaveShift
+            || !mpc::studio::pad_perform::isValidRootNoteIndex(rootNoteIndex)) {
         return 0;
     }
 
     return static_cast<jint>(mpc::studio::pad_perform::semitoneOffset(
             static_cast<std::uint8_t>(padIndex),
             static_cast<std::int32_t>(scaleIndex),
-            static_cast<std::int32_t>(octaveShift)));
+            static_cast<std::int32_t>(octaveShift),
+            static_cast<std::int32_t>(rootNoteIndex)));
 }
 
 template <std::size_t Size>

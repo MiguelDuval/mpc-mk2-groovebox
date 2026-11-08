@@ -25,13 +25,15 @@ void MpcStudioMk2SemanticAdapter::setPadPerformContext(
         bool enabled,
         std::int32_t sourcePadIndex,
         std::int32_t scaleIndex,
-        std::int32_t octaveShift) noexcept {
+        std::int32_t octaveShift,
+        std::int32_t rootNoteIndex) noexcept {
     if (!enabled
             || sourcePadIndex < 0
             || sourcePadIndex >= static_cast<std::int32_t>(padPresses_.size())
             || !pad_perform::isValidScaleIndex(scaleIndex)
             || octaveShift < pad_perform::kMinimumOctaveShift
-            || octaveShift > pad_perform::kMaximumOctaveShift) {
+            || octaveShift > pad_perform::kMaximumOctaveShift
+            || !pad_perform::isValidRootNoteIndex(rootNoteIndex)) {
         padPerformConfig_.store(0u, std::memory_order_release);
         sixteenLevelTuneMode_.store(false, std::memory_order_release);
         return;
@@ -44,7 +46,8 @@ void MpcStudioMk2SemanticAdapter::setPadPerformContext(
     const auto packed = 1u
             | (static_cast<std::uint32_t>(sourcePadIndex) << 1u)
             | (static_cast<std::uint32_t>(scaleIndex) << 5u)
-            | (encodedOctave << 8u);
+            | (encodedOctave << 8u)
+            | (static_cast<std::uint32_t>(rootNoteIndex) << 11u);
     padPerformConfig_.store(packed, std::memory_order_release);
 }
 
@@ -274,13 +277,15 @@ PadRoutingResult MpcStudioMk2SemanticAdapter::handlePad(const InputEvent& e) noe
         const auto octaveShift = static_cast<std::int32_t>(
                 (padPerformConfig >> 8u) & 0x07u)
                 + pad_perform::kMinimumOctaveShift;
+        const auto rootNoteIndex = static_cast<std::int32_t>(
+                (padPerformConfig >> 11u) & 0x0Fu);
         r.targetPadIndex = sourcePad;
         r.tuningMode = true;
         r.velocity = static_cast<std::uint8_t>(
                 fullLevel_ ? 127u : halfLevel_ ? 64u : 100u);
         r.tuningOffsetMilliSemitones =
                 pad_perform::semitoneOffset(
-                        e.padIndex, scaleIndex, octaveShift) * 1000;
+                        e.padIndex, scaleIndex, octaveShift, rootNoteIndex) * 1000;
         return rememberPress(r);
     }
 

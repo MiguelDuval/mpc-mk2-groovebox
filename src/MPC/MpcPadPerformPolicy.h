@@ -9,6 +9,7 @@ namespace mpc::studio::pad_perform {
 inline constexpr std::int32_t kMinimumOctaveShift = -2;
 inline constexpr std::int32_t kMaximumOctaveShift = 2;
 inline constexpr std::int32_t kMaximumPitchOffsetSemitones = 48;
+inline constexpr std::int32_t kRootNoteCount = 12;
 
 enum class Scale : std::uint8_t {
     Chromatic = 0,
@@ -24,12 +25,19 @@ enum class Scale : std::uint8_t {
             && index <= static_cast<std::int32_t>(Scale::MinorPentatonic);
 }
 
+
+[[nodiscard]] inline constexpr bool isValidRootNoteIndex(
+        std::int32_t index) noexcept {
+    return index >= 0 && index < kRootNoteCount;
+}
+
 // Pad order follows the 4x4 physical/touchscreen grid from Pad 1 to Pad 16.
 // Diatonic and pentatonic modes continue upward through successive octaves.
 [[nodiscard]] inline constexpr std::int32_t semitoneOffset(
         std::uint8_t padIndex,
         std::int32_t scaleIndex,
-        std::int32_t octaveShift) noexcept {
+        std::int32_t octaveShift,
+        std::int32_t rootNoteIndex = 0) noexcept {
     constexpr std::int32_t chromatic[] = {
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
     constexpr std::int32_t major[] = {
@@ -70,9 +78,10 @@ enum class Scale : std::uint8_t {
     const auto index = static_cast<std::size_t>(padIndex % 16u);
     const auto octave = std::clamp(
             octaveShift, kMinimumOctaveShift, kMaximumOctaveShift);
+    const auto root = isValidRootNoteIndex(rootNoteIndex) ? rootNoteIndex : 0;
     const auto relative = degrees[index % degreeCount]
             + static_cast<std::int32_t>(index / degreeCount) * 12
-            + octave * 12;
+            + octave * 12 + root;
     return std::clamp(
             relative,
             -kMaximumPitchOffsetSemitones,

@@ -43,7 +43,8 @@ public:
             bool enabled,
             std::int32_t sourcePadIndex,
             std::int32_t scaleIndex,
-            std::int32_t octaveShift) noexcept;
+            std::int32_t octaveShift,
+            std::int32_t rootNoteIndex) noexcept;
     [[nodiscard]] std::uint8_t padTargetForPhysicalPad(
             std::uint8_t physicalPadIndex) const noexcept;
     [[nodiscard]] std::optional<PadRoutingResult> heldRepeatPad() const noexcept;
