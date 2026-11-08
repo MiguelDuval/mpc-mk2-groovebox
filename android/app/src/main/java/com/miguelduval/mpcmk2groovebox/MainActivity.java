@@ -273,6 +273,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private LinearLayout listEditEventList;
     private LinearLayout listEditInspector;
     private TextView listEditPatternLabel;
+    private Button listEditUndoButton;
+    private Button listEditRedoButton;
     private int listEditPatternIndex = 0;
     private int listEditSelectedEvent = -1;
     private int listEditLastSequenceIndex = -1;
@@ -5607,12 +5609,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
         LinearLayout historyActions = row();
-        addListEditAction(historyActions, "UNDO", 1.0f, v -> applyListEditHistory(false));
-        addListEditAction(historyActions, "REDO", 1.0f, v -> applyListEditHistory(true));
+        listEditUndoButton = actionButton("UNDO", v -> applyListEditHistory(false));
+        listEditUndoButton.setTextSize(9);
+        listEditUndoButton.setTypeface(Typeface.DEFAULT_BOLD);
+        listEditRedoButton = actionButton("REDO", v -> applyListEditHistory(true));
+        listEditRedoButton.setTextSize(9);
+        listEditRedoButton.setTypeface(Typeface.DEFAULT_BOLD);
+        addListEditButton(historyActions, listEditUndoButton, 1.0f);
+        addListEditButton(historyActions, listEditRedoButton, 1.0f);
+        addListEditAction(historyActions, "TRNS −", 1.0f, v -> transposeSelectedListEditPattern(-1));
+        addListEditAction(historyActions, "TRNS +", 1.0f, v -> transposeSelectedListEditPattern(1));
         addListEditAction(historyActions, "NUDGE −", 1.0f, v -> adjustSelectedListEditNudge(-10));
         addListEditAction(historyActions, "NUDGE +", 1.0f, v -> adjustSelectedListEditNudge(10));
-        addListEditAction(historyActions, "PITCH −", 1.0f, v -> adjustSelectedListEditPitch(-1000));
-        addListEditAction(historyActions, "PITCH +", 1.0f, v -> adjustSelectedListEditPitch(1000));
         page.addView(historyActions, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
@@ -5631,7 +5639,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void addListEditAction(LinearLayout parent, String title, float weight,
             View.OnClickListener listener) {
-        Button button = actionButton(title, listener);
+        addListEditButton(parent, actionButton(title, listener), weight);
+    }
+
+    private void addListEditButton(LinearLayout parent, Button button, float weight) {
         button.setTextSize(9);
         button.setTypeface(Typeface.DEFAULT_BOLD);
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0,
@@ -5722,6 +5733,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
             }
         }
+        if (listEditUndoButton != null) listEditUndoButton.setEnabled(nativeSequenceCanUndo());
+        if (listEditRedoButton != null) listEditRedoButton.setEnabled(nativeSequenceCanRedo());
         refreshListEditInspector(count);
     }
 
@@ -6006,6 +6019,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String result = nativePatternSetEventTuning(
                 listEditPatternIndex, listEditSelectedEvent, next);
         setBottomStatus(result);
+        refreshListEditPage();
+    }
+
+    private void transposeSelectedListEditPattern(int semitones) {
+        final String result = nativePatternTranspose(listEditPatternIndex, semitones);
+        setBottomStatus(result);
+        if (listEditSucceeded(result) && listEditSelectedEvent >= 0) {
+            listEditSelectedEvent = nativePatternFindEvent(
+                    listEditPatternIndex,
+                    nativePatternGetEventTick(listEditPatternIndex, listEditSelectedEvent),
+                    nativePatternGetEventNote(listEditPatternIndex, listEditSelectedEvent) + semitones);
+        }
         refreshListEditPage();
     }
 
