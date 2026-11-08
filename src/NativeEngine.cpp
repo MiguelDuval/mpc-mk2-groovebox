@@ -4522,6 +4522,21 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventPad(
 }
 
 JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternFindEvent(
+        JNIEnv* /* env */, jobject /* thiz */, jint patternIndex, jint tick, jint note)
+{
+    const auto* pattern = resolveEditPattern(patternIndex);
+    if (pattern == nullptr || tick < 0 || note < 0 || note > 127) return -1;
+    for (std::size_t i = 0; i < pattern->notes.size(); ++i) {
+        const auto& event = pattern->notes[i];
+        if (event.tick == tick && event.note == static_cast<std::uint8_t>(note)) {
+            return static_cast<jint>(i);
+        }
+    }
+    return -1;
+}
+
+JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternGetEventCount(
         JNIEnv* /* env */, jobject /* thiz */, jint patternIndex)
 {
