@@ -318,6 +318,22 @@ int main() {
     assert(!error.empty());
     assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
 
+    // A complete v3 payload can fail only during final semantic validation.
+    // The direct decoder must still leave the previously-open Project byte-identical.
+    std::string invalidPlacementReference = serialized;
+    const std::string validPlacementRecord =
+            "PLACEMENT \"clip-a\" \"pattern-shared-01\" 0 480 0";
+    const auto placementRecord = invalidPlacementReference.find(validPlacementRecord);
+    assert(placementRecord != std::string::npos);
+    invalidPlacementReference.replace(
+            placementRecord,
+            validPlacementRecord.size(),
+            "PLACEMENT \"clip-a\" \"missing-pattern\" 0 480 0");
+    error.clear();
+    assert(!persistence::deserializeProject(invalidPlacementReference, loaded, &error));
+    assert(error.find("Pattern placement references a missing Pattern") != std::string::npos);
+    assert(persistence::serializeProject(loaded) == loadedSerializedBeforeFailure);
+
     // Unsupported format versions must obey the same all-or-nothing contract.
     error.clear();
     const auto loadedIdBeforeFailure = loaded.id;
