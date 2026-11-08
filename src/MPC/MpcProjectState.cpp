@@ -256,7 +256,9 @@ bool MpcProjectState::selectSequence(std::size_t sequenceIndex) noexcept {
         return false;
     }
 
+    const bool sequenceChanged = sequenceIndex != activeSequenceIndex_;
     activeSequenceIndex_ = sequenceIndex;
+    if (sequenceChanged) activePatternIndex_ = 0;
     activeTrackIndex_ = activeSequence().tracks.empty()
             ? 0
             : std::min(activeTrackIndex_, activeSequence().tracks.size() - 1);
@@ -272,8 +274,8 @@ bool MpcProjectState::selectTrack(std::size_t trackIndex) noexcept {
         return false;
     }
 
+    if (trackIndex != activeTrackIndex_) activePatternIndex_ = 0;
     activeTrackIndex_ = trackIndex;
-    activePatternIndex_ = 0;
     const auto& track = activeSequence().tracks[trackIndex];
     if (track.kind == domain::TrackKind::Drum) {
         const auto index = activeProgramIndexForTrack(trackIndex);
@@ -426,6 +428,7 @@ bool MpcProjectState::addSequence(std::string name) {
     project_.sequences.push_back(std::move(sequence));
     activeSequenceIndex_ = project_.sequences.size() - 1;
     activeTrackIndex_ = 0;
+    activePatternIndex_ = 0;
     if (!activeSequence().tracks.empty()) {
         selectTrack(activeTrackIndex_);
     }

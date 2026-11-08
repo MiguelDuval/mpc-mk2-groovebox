@@ -5733,8 +5733,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
             }
         }
-        if (listEditUndoButton != null) listEditUndoButton.setEnabled(nativeSequenceCanUndo());
-        if (listEditRedoButton != null) listEditRedoButton.setEnabled(nativeSequenceCanRedo());
+        final boolean historyEditable = !nativeSequenceIsPlaying();
+        if (listEditUndoButton != null) listEditUndoButton.setEnabled(historyEditable && nativeSequenceCanUndo());
+        if (listEditRedoButton != null) listEditRedoButton.setEnabled(historyEditable && nativeSequenceCanRedo());
         refreshListEditInspector(count);
     }
 

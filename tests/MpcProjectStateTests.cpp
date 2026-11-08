@@ -25,6 +25,13 @@ int main() {
     assert(state.activePattern()->id == "pattern-02");
     assert(!state.selectPattern(2));
     assert(state.selectTrack(0));
+    assert(state.activePatternIndex() == 1);
+    auto secondTrack = state.activeSequence().tracks.front();
+    secondTrack.id = "pattern-selection-test-track-02";
+    state.activeSequence().tracks.push_back(secondTrack);
+    assert(state.selectTrack(1));
+    assert(state.activePatternIndex() == 0);
+    assert(state.selectTrack(0));
     assert(state.activePatternIndex() == 0);
     assert(state.selectPattern(1));
 

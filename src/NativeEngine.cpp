@@ -4787,6 +4787,14 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternSetEventTick(
     }
 
     const auto previousTick = pattern->notes[eventIndex].tick;
+    const auto noteNumber = pattern->notes[static_cast<std::size_t>(eventIndex)].note;
+    for (std::size_t index = 0; index < pattern->notes.size(); ++index) {
+        if (index != static_cast<std::size_t>(eventIndex)
+                && pattern->notes[index].tick == tick
+                && pattern->notes[index].note == noteNumber) {
+            return toJString(env, "Event tick failed: same-pitch event already exists at this tick");
+        }
+    }
     auto before = pattern->notes;
     auto after = before;
     after[eventIndex].tick = static_cast<std::int32_t>(tick);
