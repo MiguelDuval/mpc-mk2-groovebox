@@ -27,8 +27,7 @@ on:
 
 concurrency:
   group: android-build-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}-${{ (github.event.inputs.validation_mode == 'full' || contains(github.event.pull_request.labels.*.name, 'full-validation') || contains(github.event.pull_request.title, '[full-validation]') || contains(github.event.head_commit.message, '[full-validation]')) && 'full' || 'fast' }}
-  # Cancel obsolete fast builds; preserve a deliberately requested full milestone run.
-  # Never cancel an active Android Build; preserve exact-SHA acceptance evidence.
+  # Preserve every exact-SHA run; do not cancel active or queued Android Builds.
   cancel-in-progress: false
 
 permissions:
