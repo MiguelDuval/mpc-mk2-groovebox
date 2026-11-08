@@ -26,9 +26,11 @@ int main() {
     assert(!state.selectPattern(2));
     assert(state.selectTrack(0));
     assert(state.activePatternIndex() == 1);
+    assert(state.activeSequence().tracks.size() == 1);
     auto secondTrack = state.activeSequence().tracks.front();
     secondTrack.id = "pattern-selection-test-track-02";
     state.activeSequence().tracks.push_back(secondTrack);
+    assert(state.activeSequence().tracks.size() == 2);
     assert(state.selectTrack(1));
     assert(state.activePatternIndex() == 0);
     assert(state.selectTrack(0));
@@ -68,7 +70,7 @@ int main() {
     assert(sequence.loopEnabled);
     assert(sequence.loopStartTicks == 0);
     assert(sequence.loopEndTicks == sequence.lengthTicks);
-    assert(sequence.tracks.size() == 1);
+    assert(sequence.tracks.size() == 2);
     assert(sequence.tracks[0].kind == mpc::domain::TrackKind::Drum);
     assert(sequence.tracks[0].patterns.size() == 1);
     assert(sequence.tracks[0].placements.size() == 1);
