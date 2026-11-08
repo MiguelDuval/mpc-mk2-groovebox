@@ -14,7 +14,8 @@ enum class PadNoteEventInsertResult : std::uint8_t {
     InvalidTick,
     InvalidVelocity,
     InvalidDuration,
-    SamePitchCollision
+    SamePitchCollision,
+    InvalidPad
 };
 
 [[nodiscard]] inline PadNoteEventInsertResult appendPadNoteEvent(
@@ -54,6 +55,27 @@ enum class PadNoteEventInsertResult : std::uint8_t {
                 return lhs.tick < rhs.tick;
             });
     return PadNoteEventInsertResult::Added;
+}
+
+[[nodiscard]] inline PadNoteEventInsertResult appendPadNoteEvent(
+        std::vector<domain::MidiNoteEvent>& notes,
+        std::int32_t patternLengthTicks,
+        const domain::DrumProgram& program,
+        std::size_t padIndex,
+        std::int32_t tick,
+        std::int32_t velocity,
+        std::int32_t durationTicks) {
+    if (program.type != domain::ProgramType::Drum
+            || padIndex >= domain::kMaxProgramPads) {
+        return PadNoteEventInsertResult::InvalidPad;
+    }
+    return appendPadNoteEvent(
+            notes,
+            patternLengthTicks,
+            program.pad(padIndex).midiNote,
+            tick,
+            velocity,
+            durationTicks);
 }
 
 } // namespace mpc::sequencer::list_edit

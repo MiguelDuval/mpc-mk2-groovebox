@@ -4724,7 +4724,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
     auto after = before;
     const auto mappedMidiNote = program->pad(static_cast<std::size_t>(padIndex)).midiNote;
     const auto inserted = mpc::sequencer::list_edit::appendPadNoteEvent(
-            after, pattern->lengthTicks, mappedMidiNote, tick, velocity, duration);
+            after,
+            pattern->lengthTicks,
+            *program,
+            static_cast<std::size_t>(padIndex),
+            tick,
+            velocity,
+            duration);
     switch (inserted) {
         case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPattern:
             return toJString(env, "Event add failed: invalid Pattern length");
@@ -4736,6 +4742,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativePatternAddEvent(
             return toJString(env, "Event add failed: duration out of range");
         case mpc::sequencer::list_edit::PadNoteEventInsertResult::SamePitchCollision:
             return toJString(env, "Event add failed: same-pitch collision");
+        case mpc::sequencer::list_edit::PadNoteEventInsertResult::InvalidPad:
+            return toJString(env, "Event add failed: invalid Drum Program Pad mapping");
         case mpc::sequencer::list_edit::PadNoteEventInsertResult::Added:
             break;
     }

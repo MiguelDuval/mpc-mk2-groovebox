@@ -28,6 +28,30 @@ int main() {
     assert(notes[2].tick == 240);
     assert(notes[2].tuningOffsetMilliSemitones == 15000);
 
+    // The Drum Program owns the non-sequential Pad → MIDI-note map.
+    mpc::domain::DrumProgram program;
+    program.type = mpc::domain::ProgramType::Drum;
+    program.pad(5).midiNote = 53;
+    const auto beforeMappedInsert = notes.size();
+    assert(appendPadNoteEvent(
+            notes, 3840, program, 5, 360, 99, 240)
+            == PadNoteEventInsertResult::Added);
+    assert(notes.size() == beforeMappedInsert + 1);
+    const auto mappedEvent = std::find_if(
+            notes.begin(), notes.end(),
+            [](const MidiNoteEvent& event) {
+                return event.tick == 360 && event.note == 53;
+            });
+    assert(mappedEvent != notes.end());
+    assert(mappedEvent->velocity == 99);
+    assert(appendPadNoteEvent(
+            notes, 3840, program, 16, 480, 90, 120)
+            == PadNoteEventInsertResult::InvalidPad);
+    program.type = mpc::domain::ProgramType::Plugin;
+    assert(appendPadNoteEvent(
+            notes, 3840, program, 5, 480, 90, 120)
+            == PadNoteEventInsertResult::InvalidPad);
+
     const auto beforeCollision = notes;
     assert(appendPadNoteEvent(notes, 3840, 38, 120, 90, 240)
             == PadNoteEventInsertResult::SamePitchCollision);
