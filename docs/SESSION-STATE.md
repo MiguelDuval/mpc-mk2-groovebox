@@ -1,3 +1,39 @@
+# LIVE PRODUCT UPDATE — 2026-11-08 — PCM project persistence v4
+
+**Canonical branch HEAD:** `4d472b330e847a318e6945667cbfc634400da17d`  
+**PR #133:** OPEN / DRAFT → `feature/mpc-one-ui-fidelity`; clean title, no `full-validation` label.  
+**Main:** untouched. **Physical MPC Studio MkII:** NOT RUN.
+
+## Delivered implementation
+
+- Project format v4 stores only unique SampleIds referenced by Pad/Layer as binary little-endian float32 PCM blocks with sample rate, channels, frames, block size and CRC32. Versions v1-v3 remain readable without embedded PCM.
+- Project SampleRefs own shared immutable PCM buffers; Copy Pad, multiple Programs and PadEditSnapshot/Undo references use the same asset by SampleId.
+- WAV import, Crop, Chop-source registration and Recording Assign attach PCM to the central Project registry.
+- Project Open parses and validates the full candidate (including PCM dimensions/checksums) before replacing live state. Active Program projection rebuilds Pad/Layer runtime slots with output stopped safely during slot changes.
+- Project status reports unique assigned assets, embedded PCM asset count, PCM bytes, missing PCM count and AUDIO_READY. V1-v3 projects with missing PCM remain readable but must reimport assigned WAVs before a complete v4 Save.
+- Save rejects missing PCM and preflights aggregate embedded PCM against the 128 MiB cap before building the output buffer. It never silently writes a v4 project that omits assigned audio.
+
+Commits on this pass:
+- `0e5e4ed2a40a189fbb64a65c750b378aca8dd23e` — PCM v4 ownership, persistence, native/Open integration and tests.
+- `1b2e926d115557fba820b76bdfad4d0ea547c27d` — table-driven CRC32.
+- `5c1300cd3092f512f19ca8c93f6d7c88522a3119` — portable raw-byte writes.
+- `465b6762f97d70293c0dfe4d0a43fe94bcedc5cb` — Project audio-readiness summary.
+- `4d472b330e847a318e6945667cbfc634400da17d` — aggregate PCM size preflight.
+
+## Validation state — do not overclaim
+
+- Fast Android Build run `42499238514` is still assembling on older SHA `0e5e4ed2a40a189fbb64a65c750b378aca8dd23e`; it is not evidence for current HEAD.
+- Fast run `42499462758` for prior SHA `465b6762f97d70293c0dfe4d0a43fe94bcedc5cb` is queued. Current HEAD `4d472b330e847a318e6945667cbfc634400da17d` still needs an exact-SHA build.
+- A temporary full-validation label attempt was cancelled while queued before the job started. No native/JVM/emulator result was produced; this is not a product failure.
+- PCM persistence tests are updated for v4 round-trip, shared SampleId references, v1-v3 compatibility, checksum corruption, and rejection of missing PCM. They have not yet been executed on the new code.
+- Do not call P1 Save/Open acceptance complete until an exact-current-head build and deliberate full validation pass. Physical controller acceptance remains separate and NOT RUN.
+
+## Next product gate
+
+Run the fast APK lane on the exact current HEAD, then one deliberate full-validation pass for the high-risk persistence change. Inspect the native project persistence test and exact run artifacts. Continue connecting the WAV → Pad trigger → audible output → MIDI record/edit/play → Save/Open path; do not claim the complete hardware-led P1 scenario until the controller is physically exercised.
+
+---
+
 # ACTIVE PROCESS OVERRIDE — 2026-11-07
 
 The project now operates under [FAST-DELIVERY-MODE.md](FAST-DELIVERY-MODE.md). This policy overrides historical instructions below that require full emulator CI after every slice, stop all work for unrelated failing tests, or continue multiple stacked development branches.

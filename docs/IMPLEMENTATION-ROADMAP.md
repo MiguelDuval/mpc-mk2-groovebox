@@ -71,6 +71,18 @@ Defer and document small visual issues, secondary control gaps, non-critical UI 
 
 # Implementation Roadmap
 
+# CURRENT PRODUCT UPDATE — 2026-11-08
+
+**Live working line:** `checkpoint/mpc-ui-reference-and-product-20261030` — current head `4d472b330e847a318e6945667cbfc634400da17d`. **PR #133:** OPEN / DRAFT. **main:** untouched.
+
+### P1 persistence gap — implementation delivered, acceptance pending
+
+The central Project SampleRef registry now owns shared immutable PCM buffers. Project v4 persists unique assigned PCM assets as binary float32 blocks with explicit format metadata and CRC32; v1-v3 remain readable. WAV import, Crop, Chop, recording assignment, Copy Pad and edit-history snapshots retain asset identity/shared ownership. Native Open validates the entire candidate before replacing the live project, restores the active Program PCM runtime projection and reports real missing/embedded PCM counts plus audio readiness. Save refuses missing assigned PCM and preflights the aggregate 128 MiB asset limit.
+
+**Not yet accepted:** new persistence tests have not yet run on this code. The current tip needs its own exact-SHA APK build and one deliberate full-validation run. Physical MPC Studio MkII validation remains NOT RUN. Do not mark the full P1 scenario complete yet.
+
+
+
 > **Live checkpoint status — 2026-10-31:** the former pending validation note below is superseded. Android Build #3608 passed on exact SHA dea4297a54caf60daae874adcab9b5c09480f1bc (run 41226252891); Android Build #3609 passed on exact checkpoint SHA 727f8c3cd931171161e3fb5bc6a99c711cce9949 (run 41226976655). Both completed all 53 substantive steps, including emulator smoke and evidence upload. The exact-run APK/evidence artifacts were inspected; see [the consolidated configuration catalog](MPC-GROOVEBOX-CONFIGURATION-CATALOG.md) and [SESSION-STATE.md](SESSION-STATE.md). PR #133 remains OPEN / DRAFT; main is unchanged; physical MPC Studio MkII acceptance remains NOT RUN.
 
 
