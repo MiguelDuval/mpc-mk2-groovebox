@@ -352,10 +352,13 @@ int main() {
             "MPCMK2_PROJECT 3");
     const auto assignedPcmSection = legacyAssignedV3.find("PCM_ASSETS 1\\n");
     assert(assignedPcmSection != std::string::npos);
-    const auto assignedPcmHeaderEnd = legacyAssignedV3.find('\\n', assignedPcmSection);
+    const auto assignedPcmRecord = legacyAssignedV3.find(
+            "PCM_ASSET 101 ", assignedPcmSection);
+    assert(assignedPcmRecord != std::string::npos);
+    const auto assignedPcmHeaderEnd = legacyAssignedV3.find('\\n', assignedPcmRecord);
     assert(assignedPcmHeaderEnd != std::string::npos);
     std::istringstream pcmHeaderFields(legacyAssignedV3.substr(
-            assignedPcmSection, assignedPcmHeaderEnd - assignedPcmSection));
+            assignedPcmRecord, assignedPcmHeaderEnd - assignedPcmRecord));
     std::string pcmTag;
     std::uint32_t pcmSampleId = 0;
     std::uint32_t pcmRate = 0;
@@ -365,7 +368,7 @@ int main() {
     std::uint32_t pcmChecksum = 0;
     pcmHeaderFields >> pcmTag >> pcmSampleId >> pcmRate >> pcmChannels
             >> pcmFrames >> pcmBytes >> pcmChecksum;
-    assert(pcmTag == "PCM_ASSETS");
+    assert(pcmTag == "PCM_ASSET" && pcmSampleId == 101);
     const auto pcmPayloadStart = assignedPcmHeaderEnd + 1;
     const auto pcmPayloadEnd = pcmPayloadStart
             + static_cast<std::size_t>(pcmBytes) + 1;
