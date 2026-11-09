@@ -100,7 +100,9 @@ public:
                     || event.velocity > 127
                     || event.pressed > 1
                     || (event.midiNoteOverride != kNoMidiNoteOverride
-                            && event.midiNoteOverride > 127)) {
+                            && event.midiNoteOverride > 127)
+                    || (event.recordKey != kNoSequenceRecordKey
+                            && event.recordKey >= kSequenceRecordKeyCount)) {
                 continue;
             }
 
@@ -113,6 +115,9 @@ public:
 
             const auto trackIndex = static_cast<std::size_t>(event.trackIndex);
             const auto padIndex = static_cast<std::size_t>(event.padIndex);
+            const auto recordKey = static_cast<std::size_t>(
+                    event.recordKey == kNoSequenceRecordKey
+                            ? event.padIndex : event.recordKey);
             const auto* trackProgram = state.findDrumProgram(track.programId);
             if (trackProgram == nullptr
                     || trackProgram->type != domain::ProgramType::Drum) {
@@ -120,16 +125,17 @@ public:
             }
 
             if (event.pressed != 0u) {
-                if (!held_[trackIndex][padIndex]) {
-                    held_[trackIndex][padIndex] = true;
-                    startTicks_[trackIndex][padIndex] = event.tick;
-                    startVelocities_[trackIndex][padIndex] =
+                if (!held_[trackIndex][recordKey]) {
+                    held_[trackIndex][recordKey] = true;
+                    startTicks_[trackIndex][recordKey] = event.tick;
+                    startPadIndices_[trackIndex][recordKey] = event.padIndex;
+                    startVelocities_[trackIndex][recordKey] =
                             event.velocity == 0
                             ? static_cast<std::uint8_t>(1)
                             : event.velocity;
                     // Snapshot the mapping at note-on so later track selection or
                     // program edits cannot redirect this held note at note-off.
-                    startNotes_[trackIndex][padIndex] =
+                    startNotes_[trackIndex][recordKey] =
                             event.midiNoteOverride == kNoMidiNoteOverride
                                     ? trackProgram->pad(padIndex).midiNote
                                     : event.midiNoteOverride;
@@ -137,12 +143,13 @@ public:
                 continue;
             }
 
-            if (!held_[trackIndex][padIndex]) {
+            if (!held_[trackIndex][recordKey]
+                    || startPadIndices_[trackIndex][recordKey] != event.padIndex) {
                 continue;
             }
 
-            const auto startTick = startTicks_[trackIndex][padIndex];
-            held_[trackIndex][padIndex] = false;
+            const auto startTick = startTicks_[trackIndex][recordKey];
+            held_[trackIndex][recordKey] = false;
 
             auto& pattern = track.patterns.front();
             const auto length = std::max<std::int32_t>(1, pattern.lengthTicks);
@@ -176,8 +183,8 @@ public:
             domain::MidiNoteEvent note;
             note.tick = static_cast<std::int32_t>(normalizedStart);
             note.durationTicks = static_cast<std::int32_t>(duration);
-            note.note = startNotes_[trackIndex][padIndex];
-            note.velocity = startVelocities_[trackIndex][padIndex];
+            note.note = startNotes_[trackIndex][recordKey];
+            note.velocity = startVelocities_[trackIndex][recordKey];
             note.probability = 127;
             note.ratchet = 1;
 
@@ -240,16 +247,16 @@ public:
                 normalizedEnd += loopLength;
             }
 
-            for (std::size_t padIndex = 0;
-                 padIndex < domain::kMaxProgramPads;
-                 ++padIndex) {
-                if (!held_[trackIndex][padIndex]) {
+            for (std::size_t recordKey = 0;
+                 recordKey < kSequenceRecordKeyCount;
+                 ++recordKey) {
+                if (!held_[trackIndex][recordKey]) {
                     continue;
                 }
 
                 const auto startTick =
-                        startTicks_[trackIndex][padIndex];
-                held_[trackIndex][padIndex] = false;
+                        startTicks_[trackIndex][recordKey];
+                held_[trackIndex][recordKey] = false;
 
                 auto normalizedStart = startTick % loopLength;
                 if (normalizedStart < 0) {
@@ -273,8 +280,8 @@ public:
                 domain::MidiNoteEvent note;
                 note.tick = static_cast<std::int32_t>(normalizedStart);
                 note.durationTicks = static_cast<std::int32_t>(duration);
-                note.note = startNotes_[trackIndex][padIndex];
-                note.velocity = startVelocities_[trackIndex][padIndex];
+                note.note = startNotes_[trackIndex][recordKey];
+                note.velocity = startVelocities_[trackIndex][recordKey];
                 note.probability = 127;
                 note.ratchet = 1;
 
@@ -375,14 +382,16 @@ private:
     std::uint64_t recordingProjectGeneration_ = 0;
     std::string recordingSequenceId_;
     std::size_t recordingSequenceIndex_ = 0;
-    std::array<std::array<bool, domain::kMaxProgramPads>,
+    std::array<std::array<bool, kSequenceRecordKeyCount>,
                domain::kMaxSequenceTracks> held_{};
-    std::array<std::array<std::int64_t, domain::kMaxProgramPads>,
+    std::array<std::array<std::int64_t, kSequenceRecordKeyCount>,
                domain::kMaxSequenceTracks> startTicks_{};
-    std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
+    std::array<std::array<std::uint8_t, kSequenceRecordKeyCount>,
                domain::kMaxSequenceTracks> startVelocities_{};
-    std::array<std::array<std::uint8_t, domain::kMaxProgramPads>,
+    std::array<std::array<std::uint8_t, kSequenceRecordKeyCount>,
                domain::kMaxSequenceTracks> startNotes_{};
+    std::array<std::array<std::uint8_t, kSequenceRecordKeyCount>,
+               domain::kMaxSequenceTracks> startPadIndices_{};
     std::array<bool, domain::kMaxSequenceTracks> replaceCleared_{};
     PatternRecordMode mode_ = PatternRecordMode::Overdub;
     bool active_ = false;

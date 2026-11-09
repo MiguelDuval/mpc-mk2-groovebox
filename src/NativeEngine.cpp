@@ -1078,7 +1078,7 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
 extern "C" JNIEXPORT void JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTuning(
         JNIEnv* /* env */, jobject /* thiz */, jint pad, jint velocity,
-        jint tuningMilliSemitones)
+        jint tuningMilliSemitones, jint recordKey)
 {
     if (pad < 0 || pad >= 16 || velocity <= 0 || velocity > 127) {
         return;
@@ -1104,6 +1104,10 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
         // Preserve the performed MIDI pitch instead of collapsing every
         // Pad Perform mapping back to the source Drum Program Pad note.
         auto midiNoteOverride = mpc::sequencer::kNoMidiNoteOverride;
+        const auto recordKeyValue = recordKey >= 0
+                        && recordKey < static_cast<jint>(mpc::sequencer::kSequenceRecordKeyCount)
+                ? static_cast<std::uint8_t>(recordKey)
+                : mpc::sequencer::kNoSequenceRecordKey;
         const auto* trackProgram =
                 projectState.findDrumProgram(tracks[trackIndex].programId);
         if (trackProgram != nullptr) {
@@ -1129,7 +1133,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
                         padIndex,
                         velocityValue,
                         1u,
-                        midiNoteOverride});
+                        midiNoteOverride,
+                        recordKeyValue});
         core.sequenceRecordQueue().tryEnqueue(
                 mpc::sequencer::SequenceRecordEvent{
                         tick,
@@ -1137,7 +1142,8 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
                         padIndex,
                         0u,
                         0u,
-                        midiNoteOverride});
+                        midiNoteOverride,
+                        recordKeyValue});
     }
 }
 
