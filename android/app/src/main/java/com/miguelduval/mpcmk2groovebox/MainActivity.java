@@ -19263,6 +19263,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.SIXTEEN_LEVEL_STATE:
                 hardwareSixteenLevelActive = value0 != 0;
+                if (!hardwareSixteenLevelActive) clearLevels16Aftertouch();
                 if (value0 != 0 && value1 >= 0 && value1 < 16) {
                     selectedPad = value1;
                     navigationController.setSelectedPad(value1);
@@ -19301,10 +19302,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.PAD_TRIGGER:
                 if ("PAD_PERFORM".equals(currentPage)) {
                     playPadPerformKey(value0, value1);
-                } else if (hardwareSixteenLevelActive
-                        && levels16Type != MpcLevels16Policy.Type.VELOCITY) {
-                    final int physicalPad = MpcLevels16Policy.padIndexForVelocity(value1);
-                    playLevels16Pad(physicalPad, value0);
+                } else if (hardwareSixteenLevelActive) {
+                    if (!levels16Active) {
+                        clearLevels16Aftertouch();
+                        nativeAudioTriggerPad(value0, 100);
+                    } else if (levels16Type == MpcLevels16Policy.Type.VELOCITY) {
+                        nativeAudioTriggerPad(value0, value1);
+                    } else {
+                        final int physicalPad =
+                                MpcLevels16Policy.padIndexForVelocity(value1);
+                        playLevels16Pad(physicalPad, value0);
+                    }
                 } else {
                     nativeAudioTriggerPad(value0, value1);
                 }
@@ -19312,13 +19320,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.PAD_AFTERTOUCH: {
                 final boolean performanceMode =
                         "PAD_PERFORM".equals(currentPage);
-                final int targetPad = MpcPadPerformPolicy.aftertouchTargetPad(
-                        performanceMode,
-                        padPerformUseAftertouch,
-                        selectedPad,
-                        value0);
+                final boolean levelsFilterMode =
+                        levels16Active
+                                && levels16Type == MpcLevels16Policy.Type.FILTER
+                                && ("LEVELS_16".equals(currentPage)
+                                    || hardwareSixteenLevelActive);
+                final int targetPad = levelsFilterMode
+                        ? MpcLevels16Policy.aftertouchTargetPad(
+                                true, selectedPad, value0)
+                        : MpcPadPerformPolicy.aftertouchTargetPad(
+                                performanceMode,
+                                padPerformUseAftertouch,
+                                selectedPad,
+                                value0);
                 if (targetPad < 0) {
-                    clearPadPerformAftertouch();
+                    if (performanceMode) clearPadPerformAftertouch();
                     return;
                 }
                 if (performanceMode
@@ -19327,9 +19343,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     nativeAudioSetPadAftertouch(
                             padPerformAftertouchTargetPad, 0);
                 }
+                if (levelsFilterMode
+                        && levels16AftertouchTargetPad >= 0
+                        && levels16AftertouchTargetPad != targetPad) {
+                    clearLevels16Aftertouch();
+                }
                 nativeAudioSetPadAftertouch(targetPad,
                         Math.max(0, Math.min(127, value1)));
                 padPerformAftertouchTargetPad = performanceMode
+                        && value1 > 0 ? targetPad : -1;
+                levels16AftertouchTargetPad = levelsFilterMode
                         && value1 > 0 ? targetPad : -1;
                 return;
             }

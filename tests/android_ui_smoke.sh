@@ -2221,8 +2221,11 @@ echo "Running MPC 16 Levels policy preflight..."
 LEVELS_16_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLevels16Policy.java"
 require_source_contains "$LEVELS_16_POLICY_SOURCE" 'velocityForPadIndex'
 require_source_contains "$LEVELS_16_POLICY_SOURCE" 'tuneSemitonesForPadIndex'
+require_source_contains "$LEVELS_16_POLICY_SOURCE" 'aftertouchTargetPad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'playLevels16Pad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioGetPadMidiNote'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'levelsFilterMode'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'if (!levels16Active)'
 require_source_contains "$0" 'MpcLevels16PolicyTest'
 echo "16 Levels Velocity/Tune/Filter source contract present."
 echo "Running MPC Pad Perform policy preflight..."

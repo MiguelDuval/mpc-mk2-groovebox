@@ -76,7 +76,7 @@ public:
             startTicks_.fill({});
             startVelocities_.fill({});
             startNotes_.fill({});
-        startPadIndices_.fill({});
+            startPadIndices_.fill({});
             replaceCleared_.fill(false);
             SequenceRecordEvent discarded{};
             for (std::size_t count = 0;

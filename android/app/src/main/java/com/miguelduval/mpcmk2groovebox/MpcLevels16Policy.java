@@ -41,6 +41,13 @@ final class MpcLevels16Policy {
         return clamp(physicalPadIndex, 0, 15) - 8;
     }
 
+    static int aftertouchTargetPad(
+            boolean filterModeActive,
+            int sourcePad,
+            int physicalPad) {
+        return clamp(filterModeActive ? sourcePad : physicalPad, 0, 15);
+    }
+
     static int padIndexForVelocity(int velocity) {
         return clamp(Math.round((velocity - 7) / 8.0f), 0, 15);
     }

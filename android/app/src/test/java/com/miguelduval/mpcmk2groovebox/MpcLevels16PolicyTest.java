@@ -33,6 +33,12 @@ public final class MpcLevels16PolicyTest {
     }
 
     @Test
+    public void filterAftertouchTargetsTheOriginalPadInsteadOfPhysicalPadIndex() {
+        assertEquals(3, MpcLevels16Policy.aftertouchTargetPad(true, 3, 14));
+        assertEquals(14, MpcLevels16Policy.aftertouchTargetPad(false, 3, 14));
+    }
+
+    @Test
     public void onlyTypesWithRealTransientNativePathsAreEnabled() {
         assertTrue(MpcLevels16Policy.isSupported(MpcLevels16Policy.Type.VELOCITY));
         assertTrue(MpcLevels16Policy.isSupported(MpcLevels16Policy.Type.TUNE));
