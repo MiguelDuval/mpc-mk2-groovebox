@@ -412,6 +412,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int padPerformRootNote;
     private int padPerformOctave;
     private int padPerformSelectedKey;
+    private boolean padPerformUseAftertouch = true;
+    private int padPerformAftertouchTargetPad = -1;
     private final int[] padPerformCustomNoteMap =
             MpcPadPerformPolicy.defaultCustomNoteMap(48);
     private static final int HARDWARE_FOCUS_SEQUENCE_START = 17;
@@ -483,6 +485,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
     private static native void nativeAudioTriggerPadWithTuning(int pad, int velocity, int tuningMilliSemitones);
+    private static native void nativeAudioSetPadAftertouch(int pad, int pressure);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
@@ -1656,6 +1659,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void navigateToMode(MpcUiState.Mode mode) {
+        if ("PAD_PERFORM".equals(currentPage)
+                && mode != MpcUiState.Mode.PAD_PERFORM) {
+            clearPadPerformAftertouch();
+        }
         shortcutConfigVisible = false;
         switch (mode) {
             case MAIN:
@@ -3295,6 +3302,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMainPage() {
+        if ("PAD_PERFORM".equals(currentPage)) clearPadPerformAftertouch();
         /*
          * Main is a persistent workspace, not a disposable page. Preserve
          * semantic selection/focus when the shell returns to Main, but never
@@ -5892,6 +5900,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         new AlertDialog.Builder(this)
                 .setTitle("SELECT SOURCE PAD")
                 .setSingleChoiceItems(choices, selectedPad, (dialog, which) -> {
+                    clearPadPerformAftertouch();
                     selectedPad = which;
                     dialog.dismiss();
                     setBottomStatus("16 LEVELS • SOURCE PAD " + (selectedPad + 1));
@@ -5937,6 +5946,13 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         showPadPerformPage();
     }
 
+    private void clearPadPerformAftertouch() {
+        if (padPerformAftertouchTargetPad >= 0) {
+            nativeAudioSetPadAftertouch(padPerformAftertouchTargetPad, 0);
+            padPerformAftertouchTargetPad = -1;
+        }
+    }
+
     private void showPadPerformSourcePadChooser() {
         final String[] choices = new String[16];
         for (int i = 0; i < choices.length; i++) {
@@ -5955,6 +5971,14 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void playPadPerformKey(int physicalPad) {
+        playPadPerformKey(physicalPad, 100);
+    }
+
+    private void playPadPerformKey(int physicalPad, int velocity) {
+        if (physicalPad < 0 || physicalPad >= 16
+                || velocity <= 0 || velocity > 127) {
+            return;
+        }
         final int[] notes = MpcPadPerformPolicy.notesForPad(
                 padPerformMode,
                 physicalPad,
@@ -5985,7 +6009,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         for (int note : notes) {
             nativeAudioTriggerPadWithTuning(
                     selectedPad,
-                    100,
+                    velocity,
                     MpcPadPerformPolicy.tuningMilliSemitonesForNote(note));
         }
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
@@ -6102,6 +6126,25 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         octaveRow.addView(octaveUp, new LinearLayout.LayoutParams(0, dp(36), 1));
         controls.addView(octaveRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        final android.widget.CheckBox aftertouchToggle =
+                new android.widget.CheckBox(this);
+        aftertouchToggle.setText("Use Aftertouch");
+        aftertouchToggle.setTextSize(10);
+        aftertouchToggle.setTextColor(TEXT);
+        aftertouchToggle.setChecked(padPerformUseAftertouch);
+        aftertouchToggle.setContentDescription(
+                "MPC Pad Perform Use Aftertouch "
+                        + (padPerformUseAftertouch ? "enabled" : "disabled"));
+        aftertouchToggle.setOnCheckedChangeListener((button, checked) -> {
+            padPerformUseAftertouch = checked;
+            if (!checked) clearPadPerformAftertouch();
+            aftertouchToggle.setContentDescription(
+                    "MPC Pad Perform Use Aftertouch "
+                            + (checked ? "enabled" : "disabled"));
+        });
+        controls.addView(aftertouchToggle, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         if (padPerformMode == MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS) {
             Button chordType = actionButton(
@@ -12121,6 +12164,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showMenuPage() {
+        if ("PAD_PERFORM".equals(currentPage)) clearPadPerformAftertouch();
         shortcutConfigVisible = false;
         Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
         clearStepEditPadLeds();
@@ -19073,8 +19117,36 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(value0 != 0 ? "TRACK MUTE MODE" : "TRACK MUTE MODE OFF");
                 return;
             case MpcStudioMk2SemanticActions.PAD_TRIGGER:
-                nativeAudioTriggerPad(value0, value1);
+                if ("PAD_PERFORM".equals(currentPage)) {
+                    playPadPerformKey(value0, value1);
+                } else {
+                    nativeAudioTriggerPad(value0, value1);
+                }
                 return;
+            case MpcStudioMk2SemanticActions.PAD_AFTERTOUCH: {
+                final boolean performanceMode =
+                        "PAD_PERFORM".equals(currentPage);
+                final int targetPad = MpcPadPerformPolicy.aftertouchTargetPad(
+                        performanceMode,
+                        padPerformUseAftertouch,
+                        selectedPad,
+                        value0);
+                if (targetPad < 0) {
+                    clearPadPerformAftertouch();
+                    return;
+                }
+                if (performanceMode
+                        && padPerformAftertouchTargetPad >= 0
+                        && padPerformAftertouchTargetPad != targetPad) {
+                    nativeAudioSetPadAftertouch(
+                            padPerformAftertouchTargetPad, 0);
+                }
+                nativeAudioSetPadAftertouch(targetPad,
+                        Math.max(0, Math.min(127, value1)));
+                padPerformAftertouchTargetPad = performanceMode
+                        && value1 > 0 ? targetPad : -1;
+                return;
+            }
             case MpcStudioMk2SemanticActions.PAD_MUTE_TARGET:
                 setBottomStatus(nativeSequenceTogglePadMute(value0));
                 return;
@@ -20012,6 +20084,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     @Override
     protected void onDestroy() {
+        clearPadPerformAftertouch();
         destroyed = true;
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {

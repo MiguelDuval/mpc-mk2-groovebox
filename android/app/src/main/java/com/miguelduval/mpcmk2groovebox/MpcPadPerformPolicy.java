@@ -172,6 +172,15 @@ final class MpcPadPerformPolicy {
         return result;
     }
 
+    static int aftertouchTargetPad(
+            boolean padPerformActive,
+            boolean useAftertouch,
+            int sourcePad,
+            int physicalPad) {
+        if (padPerformActive && !useAftertouch) return -1;
+        return clamp(padPerformActive ? sourcePad : physicalPad, 0, 15);
+    }
+
     static int tuningMilliSemitonesForNote(int midiNote) {
         return (clampMidi(midiNote) - 60) * 1000;
     }

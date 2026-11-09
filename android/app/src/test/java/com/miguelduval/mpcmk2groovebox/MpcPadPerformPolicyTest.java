@@ -95,6 +95,16 @@ public final class MpcPadPerformPolicyTest {
     }
 
     @Test
+    public void aftertouchTargetsSourcePadOnlyWhenEnabledInPadPerform() {
+        assertEquals(5, MpcPadPerformPolicy.aftertouchTargetPad(
+                true, true, 5, 12));
+        assertEquals(-1, MpcPadPerformPolicy.aftertouchTargetPad(
+                true, false, 5, 12));
+        assertEquals(12, MpcPadPerformPolicy.aftertouchTargetPad(
+                false, true, 5, 12));
+    }
+
+    @Test
     public void transientTuningAndMpcOctaveLabelsAreCorrect() {
         assertEquals(-12000, MpcPadPerformPolicy.tuningMilliSemitonesForNote(48));
         assertEquals(0, MpcPadPerformPolicy.tuningMilliSemitonesForNote(60));

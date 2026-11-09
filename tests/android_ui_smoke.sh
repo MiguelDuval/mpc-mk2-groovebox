@@ -2225,7 +2225,14 @@ require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'tuningMilliSemitonesForNot
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MpcPadPerformPolicy.notesForPad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioTriggerPadWithTuning'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Pad Perform physical Pad'
-echo "Pad Perform mode/mapping/native-trigger source contract present."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'playPadPerformKey(value0, value1)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'case MpcStudioMk2SemanticActions.PAD_AFTERTOUCH:'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioSetPadAftertouch'
+require_source_contains "src/NativeEngine.cpp" 'nativeAudioSetPadAftertouch'
+require_source_contains "src/MPC/Sequencer/MpcSequenceRecordQueue.h" 'midiNoteOverride'
+require_source_contains "src/MPC/Sequencer/MpcSequenceRecorder.h" 'event.midiNoteOverride'
+require_source_contains "tests/MpcSequenceRecorderTests.cpp" 'testTunedPadPerformEventsRecordTheirMidiPitchOverride'
+echo "Pad Perform controller, aftertouch and mapped-note recording source contract present."
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'
