@@ -19311,6 +19311,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.PAD_TRIGGER:
                 if ("PAD_PERFORM".equals(currentPage)) {
                     playPadPerformKey(value0, value1);
+                } else if ("LEVELS_16".equals(currentPage)) {
+                    if (!levels16Active) {
+                        clearLevels16Aftertouch();
+                        nativeAudioTriggerPad(value0, 100);
+                    } else {
+                        // On the 16 Levels screen the physical pad index itself
+                        // selects the parameter step; do not depend on the separate
+                        // hardware 16 LEVEL toggle being active.
+                        playLevels16Pad(value0, value0);
+                    }
                 } else if (hardwareSixteenLevelActive) {
                     if (!levels16Active) {
                         clearLevels16Aftertouch();
