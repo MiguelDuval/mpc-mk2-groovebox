@@ -5892,6 +5892,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final int velocity =
                         MpcLevels16Policy.velocityForPadIndex(physicalPadIndex);
                 nativeAudioTriggerPad(sourcePadIndex, velocity);
+                Log.i(TAG, "LEVELS16_TRIGGER type=VELOCITY physicalPad="
+                        + physicalPadIndex + " sourcePad=" + sourcePadIndex
+                        + " velocity=" + velocity);
                 setBottomStatus("16 LEVELS • VELOCITY " + velocity
                         + " • PAD " + (physicalPadIndex + 1));
                 return;
@@ -5911,6 +5914,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         nativeAudioGetPadTuning(sourcePadIndex));
                 nativeAudioTriggerPadWithTuning(
                         sourcePadIndex, 100, tuning, physicalPadIndex * 4);
+                Log.i(TAG, "LEVELS16_TRIGGER type=TUNE physicalPad="
+                        + physicalPadIndex + " sourcePad=" + sourcePadIndex
+                        + " note=" + targetNote + " tuningMilli=" + tuning);
                 setBottomStatus("16 LEVELS • TUNE " + String.format(
                         Locale.ROOT, "%+d st", semitones)
                         + " • PAD " + (physicalPadIndex + 1));
@@ -5926,6 +5932,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 nativeAudioSetPadAftertouch(sourcePadIndex, pressure);
                 levels16AftertouchTargetPad = sourcePadIndex;
                 nativeAudioTriggerPad(sourcePadIndex, 100);
+                Log.i(TAG, "LEVELS16_TRIGGER type=FILTER physicalPad="
+                        + physicalPadIndex + " sourcePad=" + sourcePadIndex
+                        + " pressure=" + pressure);
                 setBottomStatus("16 LEVELS • FILTER "
                         + pressure + " • PAD " + (physicalPadIndex + 1));
                 return;
@@ -6014,9 +6023,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final String valueLabel =
                         levels16Type == MpcLevels16Policy.Type.TUNE
                                 ? String.format(Locale.ROOT, "%+d st", semitones)
-                                : String.format(Locale.ROOT, "%03d",
-                                        levels16Type == MpcLevels16Policy.Type.FILTER
-                                                ? velocity : velocity);
+                                : String.format(Locale.ROOT, "%03d", velocity);
                 Button levelButton = actionButton(valueLabel,
                         v -> playLevels16Pad(physicalPadIndex, selectedPad));
                 levelButton.setTextSize(13);
@@ -6027,12 +6034,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         Locale.ROOT,
                         "16 Levels physical Pad %02d • %s • source Pad %02d",
                         physicalPadIndex + 1, valueLabel, selectedPad + 1));
-                GridLayout.LayoutParams cell = new GridLayout.LayoutParams();
-                cell.width = 0;
-                cell.height = 0;
-                cell.columnSpec = GridLayout.spec(columnIndex, 1f);
-                cell.rowSpec = GridLayout.spec(rowIndex, 1f);
-                cell.setMargins(dp(3), dp(3), dp(3), dp(3));
                 levelRow.addView(levelButton, new LinearLayout.LayoutParams(
                         0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             }
@@ -6044,6 +6045,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
         refreshMpcFunctionBar();
+        scheduleProjectPersistenceViewHierarchyCapture("LEVELS_16");
     }
 
     private void showLevels16SourcePadChooser() {
@@ -6181,6 +6183,12 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     recordKey);
         }
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
+        Log.i(TAG, "PAD_PERFORM_TRIGGER mode=" + padPerformMode.name()
+                + " physicalPad=" + physicalPad
+                + " sourcePad=" + selectedPad
+                + " notes=" + Arrays.toString(notes)
+                + " velocity=" + velocity
+                + " firstRecordKey=" + (physicalPad * 4));
         setBottomStatus("PAD PERFORM • SOURCE PAD " + (selectedPad + 1)
                 + " • " + label + (notes.length > 1
                         ? " • " + notes.length + "-NOTE CHORD" : ""));
@@ -6462,6 +6470,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         updateModeRailSelection();
         notifyMpcWorkspaceAccessibilityChanged();
         refreshMpcFunctionBar();
+        scheduleProjectPersistenceViewHierarchyCapture("PAD_PERFORM");
     }
 
     private void showSampleEditPanel(LinearLayout page) {
