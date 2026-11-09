@@ -2217,6 +2217,11 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at em
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE В± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
+echo "Running SAMP-007 playback-idle evidence preflight..."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'content.invalidate();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'SAMPLE_CURSOR_STOPPED: reason=grace-exhausted'
+require_source_contains "$0" 'wait_for_new_project_marker "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted"'
+require_source_contains "$0" 'SAMPLE_CURSOR_STOPPED_MARKER_BEFORE='
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'
@@ -14974,12 +14979,15 @@ if (( samp_cursor_first < SAMP_CURSOR_EXPECTED_START || samp_cursor_first >= SAM
 fi
 echo "SAMP-007 region trim and native playback cursor passed: $samp_cursor_first -> $samp_cursor_last inside $SAMP_CURSOR_EXPECTED_START..$SAMP_CURSOR_EXPECTED_END."
 
-# Allow the one-shot preview to finish; the cursor must return to idle but the
-# selected region boundaries must remain unchanged. Baseline the marker before
-# waiting so the final XML must come from the actual transition back to idle.
+# Wait for the native updater's actual playback-idle transition rather than
+# guessing its duration with a fixed sleep. The app-owned SAMPLE tree must then
+# be freshly published from that transition and must show no PLAYHEAD text.
+SAMPLE_CURSOR_STOPPED_MARKER_BEFORE="$(project_marker_count "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted")"
 snapshot_project_view_tree_marker_baselines
-sleep 11
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture a fresh stopped playback state"; exit 1; fi
+if ! wait_for_new_project_marker "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted" "$SAMPLE_CURSOR_STOPPED_MARKER_BEFORE" 20; then
+  echo "ERROR: native Sample Edit cursor updater did not report playback idle after the in-region preview"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 20; then echo "ERROR: could not capture a fresh stopped playback state after the native idle marker"; exit 1; fi
 SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_STOPPED_XML" "$SAMP_CURSOR_LAST_UPTIME" "stopped playback")" || exit 1
 samp_cursor_stopped_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || { echo "ERROR: stopped region state is unavailable"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_stopped_state"
