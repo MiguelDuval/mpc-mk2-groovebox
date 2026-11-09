@@ -2218,7 +2218,10 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placem
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE В± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
 echo "Running SAMP-007 playback-idle evidence preflight..."
-require_source_contains "$MAIN_ACTIVITY_SOURCE" 'content.invalidate();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.getViewTreeObserver()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.requestLayout();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.postInvalidateOnAnimation();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page='
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'SAMPLE_CURSOR_STOPPED: reason=grace-exhausted'
 require_source_contains "$0" 'wait_for_new_project_marker "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted"'
 require_source_contains "$0" 'SAMPLE_CURSOR_STOPPED_MARKER_BEFORE='
