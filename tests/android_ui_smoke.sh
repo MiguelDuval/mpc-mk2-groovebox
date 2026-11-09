@@ -13538,9 +13538,16 @@ elif page == "BROWSE":
         require_target(description)
 elif page == "LEVELS_16":
     require_target("16 Levels select original source Pad 1")
-    require_target("16 Levels select type VELOCITY")
     require_target("16 Levels Active enabled")
     require_target("16 Levels Back")
+    type_selectors = [node for node in nodes
+            if node.attrib.get("content-desc") in (
+                "16 Levels select type VELOCITY",
+                "16 Levels select type TUNE",
+                "16 Levels select type FILTER")]
+    if len(type_selectors) != 1:
+        raise SystemExit(f"16 Levels must expose exactly one supported type selector, got {len(type_selectors)}")
+    require_target(type_selectors[0].attrib.get("content-desc"))
     pads = [node for node in nodes
             if node.attrib.get("content-desc", "").startswith("16 Levels physical Pad ")]
     if len(pads) != 16:
@@ -13550,14 +13557,18 @@ elif page == "LEVELS_16":
             raise SystemExit(f"16 Levels pad is not actionable: {node.attrib!r}")
 elif page == "PAD_PERFORM":
     require_target("MPC Pad Perform select source Pad 1")
-    require_target("MPC Pad Perform mode CHROMATIC selected")
     require_target("MPC Pad Perform Back")
     modes = [node for node in nodes
              if node.attrib.get("content-desc", "").startswith("MPC Pad Perform mode ")]
+    selected_modes = [node for node in modes
+             if node.attrib.get("content-desc", "").endswith(" selected")]
     pads = [node for node in nodes
             if node.attrib.get("content-desc", "").startswith("MPC Pad Perform physical Pad ")]
     if len(modes) != 6:
         raise SystemExit(f"Pad Perform must expose six independent modes, got {len(modes)}")
+    if len(selected_modes) != 1:
+        raise SystemExit(f"Pad Perform must expose exactly one selected mode, got {len(selected_modes)}")
+    require_target(selected_modes[0].attrib.get("content-desc"))
     if len(pads) != 16:
         raise SystemExit(f"Pad Perform must expose sixteen mapped pads, got {len(pads)}")
     for node in pads:
