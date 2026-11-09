@@ -403,6 +403,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private int selectedPad = 0;
     private int selectedLayer = 0;
+    private MpcPadPerformPolicy.Mode padPerformMode = MpcPadPerformPolicy.Mode.CHROMATIC;
+    private MpcPadPerformPolicy.Scale padPerformScale = MpcPadPerformPolicy.Scale.MAJOR;
+    private MpcPadPerformPolicy.ChordQuality padPerformChordQuality =
+            MpcPadPerformPolicy.ChordQuality.MAJOR;
+    private MpcPadPerformPolicy.Progression padPerformProgression =
+            MpcPadPerformPolicy.Progression.I_V_VI_IV;
+    private int padPerformRootNote;
+    private int padPerformOctave;
+    private int padPerformSelectedKey;
+    private final int[] padPerformCustomNoteMap =
+            MpcPadPerformPolicy.defaultCustomNoteMap(48);
     private static final int HARDWARE_FOCUS_SEQUENCE_START = 17;
     private static final int HARDWARE_FOCUS_SEQUENCE_END = 18;
     private static final int HARDWARE_FOCUS_SEQUENCE_BPM = 19;
@@ -2400,6 +2411,24 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         showSequenceGridPage();
                     }
                 });
+                break;
+            }
+
+            case PAD_PERFORM: {
+                final boolean drumTrack = padPerformTrackAvailable();
+                addFunction("SOURCE −", drumTrack && selectedPad > 0, v -> {
+                    selectedPad = Math.max(0, selectedPad - 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    showPadPerformPage();
+                });
+                addFunction("SOURCE +", drumTrack && selectedPad < 15, v -> {
+                    selectedPad = Math.min(15, selectedPad + 1);
+                    navigationController.setSelectedPad(selectedPad);
+                    showPadPerformPage();
+                });
+                addFunction("KEY −", drumTrack, v -> adjustPadPerformRoot(-1));
+                addFunction("KEY +", drumTrack, v -> adjustPadPerformRoot(1));
+                addFunction("OCTAVE +", drumTrack, v -> adjustPadPerformOctave(1));
                 break;
             }
 
@@ -5876,6 +5905,95 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     // Pad Perform — note/chord/progression mapping
     // ------------------------------------------------------------------
 
+    private boolean padPerformTrackAvailable() {
+        if (!startupComplete || navigationController == null) return false;
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        return MpcTrackProgramPolicy.supportsProgramSelect(
+                nativeSequenceGetTrackType(track));
+    }
+
+    private void adjustPadPerformOctave(int delta) {
+        padPerformOctave = Math.max(-3, Math.min(5, padPerformOctave + delta));
+        showPadPerformPage();
+    }
+
+    private void adjustPadPerformRoot(int delta) {
+        padPerformRootNote = Math.floorMod(padPerformRootNote + delta, 12);
+        showPadPerformPage();
+    }
+
+    private void adjustPadPerformCustomNote(int delta) {
+        final int key = Math.max(0, Math.min(15, padPerformSelectedKey));
+        padPerformCustomNoteMap[key] = Math.max(0, Math.min(127,
+                padPerformCustomNoteMap[key] + delta));
+        showPadPerformPage();
+    }
+
+    private void resetPadPerformCustomMap() {
+        final int base = Math.max(0, Math.min(127,
+                48 + (padPerformOctave * 12) + padPerformRootNote));
+        final int[] defaults = MpcPadPerformPolicy.defaultCustomNoteMap(base);
+        System.arraycopy(defaults, 0, padPerformCustomNoteMap, 0, 16);
+        showPadPerformPage();
+    }
+
+    private void showPadPerformSourcePadChooser() {
+        final String[] choices = new String[16];
+        for (int i = 0; i < choices.length; i++) {
+            choices[i] = String.format(Locale.ROOT, "PAD %02d", i + 1);
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("PAD PERFORM • SOURCE SAMPLE")
+                .setSingleChoiceItems(choices, selectedPad, (dialog, which) -> {
+                    selectedPad = which;
+                    navigationController.setSelectedPad(which);
+                    dialog.dismiss();
+                    showPadPerformPage();
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void playPadPerformKey(int physicalPad) {
+        final int[] notes = MpcPadPerformPolicy.notesForPad(
+                padPerformMode,
+                physicalPad,
+                padPerformRootNote,
+                padPerformOctave,
+                padPerformScale,
+                padPerformChordQuality,
+                padPerformProgression,
+                padPerformCustomNoteMap);
+        if (!padPerformTrackAvailable()) {
+            setBottomStatus("PAD PERFORM • SELECT A DRUM TRACK");
+            return;
+        }
+        if (notes.length == 0) {
+            setBottomStatus("PAD PERFORM • NO NOTE MAPPING");
+            return;
+        }
+        final String audioStart = nativeAudioStart();
+        if (audioStart == null
+                || audioStart.toLowerCase(Locale.ROOT).contains("failed")) {
+            setBottomStatus(audioStart == null
+                    ? "PAD PERFORM • AUDIO OUTPUT UNAVAILABLE" : audioStart);
+            return;
+        }
+
+        // Every note/chord tone uses the selected Drum Pad sample with an
+        // ephemeral native pitch override. No persistent pad tuning is written.
+        for (int note : notes) {
+            nativeAudioTriggerPadWithTuning(
+                    selectedPad,
+                    100,
+                    MpcPadPerformPolicy.tuningMilliSemitonesForNote(note));
+        }
+        final String label = MpcPadPerformPolicy.noteName(notes[0]);
+        setBottomStatus("PAD PERFORM • SOURCE PAD " + (selectedPad + 1)
+                + " • " + label + (notes.length > 1
+                        ? " • " + notes.length + "-NOTE CHORD" : ""));
+    }
+
     private void showPadPerformPage() {
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
@@ -5884,54 +6002,252 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.PAD_PERFORM);
         navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        navigationController.setSelectedPad(selectedPad);
         pageTitle.setText("PAD PERFORM");
         content.removeAllViews();
 
-        LinearLayout page = page();
-        LinearLayout header = row();
-        header.addView(sectionLabelView("MODE: CHROMATIC  •  12-TET",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
-        header.addView(actionButton("BACK", v -> navigateBackFromShell()),
-                new LinearLayout.LayoutParams(dp(62), dp(34)));
+        final boolean drumTrack = padPerformTrackAvailable();
+        final LinearLayout page = page();
+        page.setContentDescription("MPC Pad Perform workspace");
+        page.setPadding(dp(8), dp(6), dp(8), dp(4));
+
+        final LinearLayout header = row();
+        Button sourcePad = actionButton(
+                String.format(Locale.ROOT, "SOURCE PAD %02d", selectedPad + 1),
+                v -> showPadPerformSourcePadChooser());
+        sourcePad.setContentDescription(
+                "MPC Pad Perform select source Pad " + (selectedPad + 1));
+        header.addView(sourcePad, new LinearLayout.LayoutParams(dp(132), dp(36)));
+        final String modeSummary = padPerformMode.label()
+                + " • " + MpcPadPerformPolicy.rootName(padPerformRootNote)
+                + " " + padPerformScale.label()
+                + " • OCT " + padPerformOctave;
+        TextView title = sectionLabelView(
+                modeSummary,
+                new LinearLayout.LayoutParams(0, dp(36), 1));
+        title.setContentDescription("MPC Pad Perform settings " + modeSummary);
+        header.addView(title);
+        Button back = actionButton("BACK", v -> navigateBackFromShell());
+        back.setContentDescription("MPC Pad Perform Back");
+        header.addView(back, new LinearLayout.LayoutParams(dp(62), dp(36)));
         page.addView(header);
 
-        LinearLayout performGrid = new LinearLayout(this);
-        performGrid.setOrientation(LinearLayout.VERTICAL);
-        performGrid.setPadding(dp(10), dp(8), dp(10), dp(8));
-        page.addView(performGrid,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        final LinearLayout body = row();
+        final LinearLayout controls = column();
+        controls.setPadding(dp(4), dp(4), dp(8), dp(2));
+        final GridLayout modeGrid = new GridLayout(this);
+        modeGrid.setColumnCount(2);
+        modeGrid.setRowCount(3);
+        final MpcPadPerformPolicy.Mode[] modes = MpcPadPerformPolicy.Mode.values();
+        for (int i = 0; i < modes.length; i++) {
+            final MpcPadPerformPolicy.Mode mode = modes[i];
+            Button modeButton = actionButton(mode.label(), v -> {
+                padPerformMode = mode;
+                showPadPerformPage();
+            });
+            modeButton.setTextSize(9);
+            modeButton.setSelected(mode == padPerformMode);
+            modeButton.setTextColor(mode == padPerformMode ? TEXT : MUTED);
+            modeButton.setBackground(strokeBackground(
+                    mode == padPerformMode ? Color.rgb(82, 91, 117) : SURFACE_2,
+                    mode == padPerformMode ? ACCENT : LINE,
+                    5));
+            modeButton.setContentDescription(
+                    "MPC Pad Perform mode " + mode.label()
+                            + (mode == padPerformMode ? " selected" : ""));
+            GridLayout.LayoutParams modeParams = new GridLayout.LayoutParams();
+            modeParams.width = 0;
+            modeParams.height = dp(36);
+            modeParams.columnSpec = GridLayout.spec(i % 2, 1f);
+            modeParams.rowSpec = GridLayout.spec(i / 2, 1f);
+            modeParams.setMargins(dp(2), dp(2), dp(2), dp(2));
+            modeGrid.addView(modeButton, modeParams);
+        }
+        controls.addView(modeGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(116)));
 
-        // Build 4x4 grid of perform pads (chromatic mapping from source pad note)
-        // Real note/pitch mapping: each pad triggers with a transient tuning
-        // override via nativeAudioTriggerPadWithTuning. This changes actual
-        // pitch output for this trigger only; the pad's persistent tuning in
-        // project state is never modified by Pad Perform.
-        int baseNote = 60; // Middle C as base
-        for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
-            LinearLayout levelRow = row();
-            for (int colIdx = 0; colIdx < 4; colIdx++) {
-                int noteIndex = rowIdx * 4 + colIdx;
-                int note = baseNote + noteIndex;
-                int tuningMilliSemitones = Math.round((note - 60) * 1000);
-                Button performBtn = actionButton("N" + note, v -> {
-                    nativeAudioTriggerPadWithTuning(selectedPad, 100, tuningMilliSemitones);
-                    setBottomStatus("PAD PERFORM: pad " + (selectedPad + 1)
-                            + " note " + note + " (" + (note - 60) + " semitones)");
+        TextView scaleLabel = sectionLabel("SCALE & OCTAVE");
+        scaleLabel.setPadding(dp(4), dp(5), dp(4), 0);
+        controls.addView(scaleLabel, compactHeight());
+        final LinearLayout keyScaleRow = row();
+        Button rootButton = actionButton(
+                "KEY " + MpcPadPerformPolicy.rootName(padPerformRootNote),
+                v -> adjustPadPerformRoot(1));
+        rootButton.setContentDescription("MPC Pad Perform root note "
+                + MpcPadPerformPolicy.rootName(padPerformRootNote) + "; tap to advance");
+        keyScaleRow.addView(rootButton, new LinearLayout.LayoutParams(0, dp(36), 1));
+        Button scaleButton = actionButton(
+                padPerformScale.label(),
+                v -> {
+                    MpcPadPerformPolicy.Scale[] scales =
+                            MpcPadPerformPolicy.Scale.values();
+                    padPerformScale = scales[(padPerformScale.ordinal() + 1) % scales.length];
+                    showPadPerformPage();
                 });
-                performBtn.setMinWidth(dp(64));
-                performBtn.setMinHeight(dp(64));
-                levelRow.addView(performBtn, new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-            }
-            performGrid.addView(levelRow,
-                    new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT));
+        scaleButton.setContentDescription("MPC Pad Perform scale " + padPerformScale.label()
+                + "; tap to change");
+        keyScaleRow.addView(scaleButton, new LinearLayout.LayoutParams(0, dp(36), 1));
+        controls.addView(keyScaleRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        final LinearLayout octaveRow = row();
+        Button octaveDown = actionButton("OCT −", v -> adjustPadPerformOctave(-1));
+        octaveDown.setContentDescription("MPC Pad Perform octave down");
+        octaveRow.addView(octaveDown, new LinearLayout.LayoutParams(0, dp(36), 1));
+        TextView octaveValue = label("OCT " + padPerformOctave, 10, ACCENT);
+        octaveValue.setGravity(Gravity.CENTER);
+        octaveRow.addView(octaveValue, new LinearLayout.LayoutParams(0, dp(36), 1));
+        Button octaveUp = actionButton("OCT +", v -> adjustPadPerformOctave(1));
+        octaveUp.setContentDescription("MPC Pad Perform octave up");
+        octaveRow.addView(octaveUp, new LinearLayout.LayoutParams(0, dp(36), 1));
+        controls.addView(octaveRow, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+
+        if (padPerformMode == MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS
+                || padPerformMode == MpcPadPerformPolicy.Mode.PROGRESSIONS) {
+            Button chordType = actionButton(
+                    "CHORD " + padPerformChordQuality.label(),
+                    v -> {
+                        MpcPadPerformPolicy.ChordQuality[] values =
+                                MpcPadPerformPolicy.ChordQuality.values();
+                        padPerformChordQuality =
+                                values[(padPerformChordQuality.ordinal() + 1) % values.length];
+                        showPadPerformPage();
+                    });
+            chordType.setContentDescription("MPC Pad Perform chord quality "
+                    + padPerformChordQuality.label());
+            controls.addView(chordType, compactHeight());
         }
 
+        if (padPerformMode == MpcPadPerformPolicy.Mode.PROGRESSIONS) {
+            Button progression = actionButton(
+                    "PROG " + padPerformProgression.label(),
+                    v -> {
+                        MpcPadPerformPolicy.Progression[] values =
+                                MpcPadPerformPolicy.Progression.values();
+                        padPerformProgression =
+                                values[(padPerformProgression.ordinal() + 1) % values.length];
+                        showPadPerformPage();
+                    });
+            progression.setContentDescription("MPC Pad Perform progression "
+                    + padPerformProgression.label());
+            controls.addView(progression, compactHeight());
+        }
+
+        if (padPerformMode == MpcPadPerformPolicy.Mode.CUSTOM) {
+            TextView customMapHeader = sectionLabel(
+                    "CUSTOM PAD " + String.format(Locale.ROOT, "%02d",
+                            padPerformSelectedKey + 1));
+            controls.addView(customMapHeader, compactHeight());
+            final LinearLayout editRow = row();
+            Button noteDown = actionButton("NOTE −", v -> adjustPadPerformCustomNote(-1));
+            noteDown.setContentDescription("MPC Pad Perform custom note down");
+            editRow.addView(noteDown, new LinearLayout.LayoutParams(0, dp(36), 1));
+            Button noteUp = actionButton("NOTE +", v -> adjustPadPerformCustomNote(1));
+            noteUp.setContentDescription("MPC Pad Perform custom note up");
+            editRow.addView(noteUp, new LinearLayout.LayoutParams(0, dp(36), 1));
+            controls.addView(editRow, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+            Button resetMap = actionButton("RESET MAP", v -> resetPadPerformCustomMap());
+            resetMap.setContentDescription("MPC Pad Perform reset custom note map");
+            controls.addView(resetMap, compactHeight());
+            TextView editHint = label("Long-press a pad to select its mapping.",
+                    9, MUTED);
+            editHint.setPadding(dp(4), dp(2), dp(4), dp(2));
+            controls.addView(editHint, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+        } else {
+            TextView mappingHint = label(
+                    padPerformMode == MpcPadPerformPolicy.Mode.CHORDS
+                            ? "Scale degrees • triad voicings"
+                            : padPerformMode == MpcPadPerformPolicy.Mode.PROGRESSIONS
+                                    ? "Tap a chord slot • rows change inversion"
+                                    : "16 physical pads • low to high",
+                    9, MUTED);
+            mappingHint.setPadding(dp(4), dp(4), dp(4), 0);
+            controls.addView(mappingHint, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+        }
+
+        TextView trackState = label(
+                drumTrack ? "DRUM TRACK READY" : "DRUM TRACK REQUIRED",
+                9, drumTrack ? ACCENT : DANGER);
+        trackState.setTypeface(Typeface.DEFAULT_BOLD);
+        trackState.setContentDescription(
+                "MPC Pad Perform track status "
+                        + (drumTrack ? "DRUM TRACK READY" : "DRUM TRACK REQUIRED"));
+        trackState.setPadding(dp(4), dp(4), dp(4), 0);
+        controls.addView(trackState, compactHeight());
+
+        body.addView(controls, new LinearLayout.LayoutParams(dp(190),
+                ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final GridLayout padGrid = new GridLayout(this);
+        padGrid.setColumnCount(4);
+        padGrid.setRowCount(4);
+        padGrid.setContentDescription("MPC Pad Perform 4 by 4 note map");
+        for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+            for (int columnIndex = 0; columnIndex < 4; columnIndex++) {
+                final int physicalPad = (3 - rowIndex) * 4 + columnIndex;
+                final int[] notes = MpcPadPerformPolicy.notesForPad(
+                        padPerformMode,
+                        physicalPad,
+                        padPerformRootNote,
+                        padPerformOctave,
+                        padPerformScale,
+                        padPerformChordQuality,
+                        padPerformProgression,
+                        padPerformCustomNoteMap);
+                final String label = MpcPadPerformPolicy.padLabel(
+                        padPerformMode,
+                        notes,
+                        padPerformScale,
+                        padPerformChordQuality);
+                Button performButton = actionButton(label, v -> playPadPerformKey(physicalPad));
+                performButton.setTextSize(12);
+                performButton.setTypeface(Typeface.DEFAULT_BOLD);
+                performButton.setMinHeight(0);
+                performButton.setMinimumHeight(0);
+                performButton.setEnabled(drumTrack);
+                performButton.setAlpha(drumTrack ? 1.0f : 0.42f);
+                performButton.setBackground(strokeBackground(
+                        physicalPad == padPerformSelectedKey && padPerformMode
+                                == MpcPadPerformPolicy.Mode.CUSTOM
+                                ? Color.rgb(72, 57, 76)
+                                : (physicalPad % 4 == 0 ? Color.rgb(38, 42, 52) : SURFACE_2),
+                        physicalPad == padPerformSelectedKey && padPerformMode
+                                == MpcPadPerformPolicy.Mode.CUSTOM
+                                ? ACCENT_2 : LINE,
+                        5));
+                final String notesDescription = java.util.Arrays.toString(notes);
+                performButton.setContentDescription(String.format(
+                        Locale.ROOT,
+                        "MPC Pad Perform physical Pad %02d • %s • notes %s",
+                        physicalPad + 1, label.replace('\n', ' '), notesDescription));
+                performButton.setOnLongClickListener(v -> {
+                    if (padPerformMode != MpcPadPerformPolicy.Mode.CUSTOM) return false;
+                    padPerformSelectedKey = physicalPad;
+                    showPadPerformPage();
+                    return true;
+                });
+                GridLayout.LayoutParams padParams = new GridLayout.LayoutParams();
+                padParams.width = 0;
+                padParams.height = 0;
+                padParams.columnSpec = GridLayout.spec(columnIndex, 1f);
+                padParams.rowSpec = GridLayout.spec(rowIndex, 1f);
+                padParams.setMargins(dp(3), dp(3), dp(3), dp(3));
+                padGrid.addView(performButton, padParams);
+            }
+        }
+        body.addView(padGrid, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        page.addView(body, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         content.addView(page);
+
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+        refreshMpcFunctionBar();
     }
 
     private void showSampleEditPanel(LinearLayout page) {

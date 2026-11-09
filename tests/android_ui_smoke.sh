@@ -2217,6 +2217,15 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at em
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE В± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
+echo "Running MPC Pad Perform policy preflight..."
+PAD_PERFORM_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadPerformPolicy.java"
+require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'CHROMATIC_CHORDS'
+require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'notesForPad'
+require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'tuningMilliSemitonesForNote'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MpcPadPerformPolicy.notesForPad'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioTriggerPadWithTuning'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Pad Perform physical Pad'
+echo "Pad Perform mode/mapping/native-trigger source contract present."
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'

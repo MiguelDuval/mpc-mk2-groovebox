@@ -36,6 +36,10 @@ public final class MpcModeRegistryTest {
         assertFalse(MpcModeRegistry.menuEntry(8).available);
         assertEquals(MpcUiState.Mode.CHANNEL_MIXER, MpcModeRegistry.menuEntry(8).mode);
         assertTrue(MpcModeRegistry.menuEntry(9).available);
+        assertTrue(MpcModeRegistry.menuEntry(10).available);
+        assertEquals(MpcUiState.Mode.LEVELS_16, MpcModeRegistry.menuEntry(10).mode);
+        assertTrue(MpcModeRegistry.menuEntry(11).available);
+        assertEquals(MpcUiState.Mode.PAD_PERFORM, MpcModeRegistry.menuEntry(11).mode);
         assertTrue(MpcModeRegistry.menuEntry(13).available);
         assertEquals(MpcUiState.Mode.ARRANGE, MpcModeRegistry.menuEntry(13).mode);
     }
