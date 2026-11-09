@@ -375,6 +375,7 @@ Manual anchors: S-01 Preferences pp.61–65, XY p.38, S-06 for metronome. Firmwa
 | SYS-010 | XY/XYFX performance | XY movement changes supported live FX/macro parameters. | RESERVED. | Require real automation/FX setter and performance-state test. |
 | SYS-011 | Automation lane/record/edit | Record or edit automation against genuine parameters and playback state. | GAP / RESERVED: automation backend not established. | Verify parameter capture, playback and save/load before marking functional. |
 | SYS-012 | Change user preferences persistently | A setting that promises persistence survives restart and affects the named subsystem. | Audio subset exists; broader preference taxonomy is partial. | For each preference, assert actual consumer and persistence; omit decorative options. |
+| SYS-013 | Pad Perform notes/chords/progressions/custom | A selected source Drum Pad is triggered at the mapped MIDI pitch; chord modes trigger all mapped tones; key/scale/octave/custom map alter only transient pitch, never persistent Pad tuning. | **Implemented software path:** six mapping modes, four scale maps, four chromatic chord qualities, four chord progressions with inversions, 16-slot Custom map, native transient-tuning trigger. Exact-SHA emulator touch/playback acceptance and physical MkII verification remain pending. | Unit-test all mappings and ranges; on device switch each mode, tap multiple physical pads, verify audio pitch/chords and confirm Pad Tuning remains unchanged. |
 
 ## 19. MPC Studio MkII hardware actions and feedback
 

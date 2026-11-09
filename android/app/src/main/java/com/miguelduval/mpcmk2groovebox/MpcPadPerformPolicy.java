@@ -120,9 +120,9 @@ final class MpcPadPerformPolicy {
             }
             case PROGRESSIONS: {
                 final int degree = safeProgression.degrees[pad % 4];
-                final int root = clampMidi(base
-                        + scaleNoteAtDegree(safeScale, degree));
-                final int[] tones = scaleTriad(root, safeScale, degree);
+                // Build the diatonic triad from the original key centre.
+                // scaleTriad applies the degree offset once for root/third/fifth.
+                final int[] tones = scaleTriad(base, safeScale, degree);
                 return invert(tones, pad / 4);
             }
             case CUSTOM:

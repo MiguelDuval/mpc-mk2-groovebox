@@ -20,7 +20,7 @@ public final class MpcPadPerformPolicyTest {
         assertArrayEquals(new int[]{50}, map(MpcPadPerformPolicy.Mode.NOTES, 1));
         assertArrayEquals(new int[]{59}, map(MpcPadPerformPolicy.Mode.NOTES, 6));
         assertArrayEquals(new int[]{60}, map(MpcPadPerformPolicy.Mode.NOTES, 7));
-        assertArrayEquals(new int[]{63}, map(
+        assertArrayEquals(new int[]{51}, map(
                 MpcPadPerformPolicy.Mode.NOTES, 2,
                 MpcPadPerformPolicy.Scale.MINOR));
     }
@@ -51,6 +51,29 @@ public final class MpcPadPerformPolicyTest {
         assertArrayEquals(new int[]{57, 60, 64}, mapProgression(2));
         assertArrayEquals(new int[]{53, 57, 60}, mapProgression(3));
         assertArrayEquals(new int[]{52, 55, 60}, mapProgression(4));
+    }
+
+    @Test
+    public void rootKeyAndOctaveTransposeTheEntirePadMap() {
+        assertArrayEquals(new int[]{67}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC, 0, 7, 1,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{70}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC, 3, 7, 1,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+    }
+
+    @Test
+    public void progressionVariantUsesDiatonicChordFromSelectedScale() {
+        assertArrayEquals(new int[]{50, 53, 57}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.PROGRESSIONS, 0, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.II_V_I_VI, null));
     }
 
     @Test

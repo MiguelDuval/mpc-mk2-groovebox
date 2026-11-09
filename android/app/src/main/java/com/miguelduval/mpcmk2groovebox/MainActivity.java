@@ -6103,8 +6103,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         controls.addView(octaveRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
-        if (padPerformMode == MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS
-                || padPerformMode == MpcPadPerformPolicy.Mode.PROGRESSIONS) {
+        if (padPerformMode == MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS) {
             Button chordType = actionButton(
                     "CHORD " + padPerformChordQuality.label(),
                     v -> {
