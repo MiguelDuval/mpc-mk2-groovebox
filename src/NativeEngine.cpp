@@ -1101,6 +1101,20 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
             && trackIndex < tracks.size()
             && tracks[trackIndex].recordArmed
             && tracks[trackIndex].kind == mpc::domain::TrackKind::Drum) {
+        // Preserve the performed MIDI pitch instead of collapsing every
+        // Pad Perform mapping back to the source Drum Program Pad note.
+        auto midiNoteOverride = mpc::sequencer::kNoMidiNoteOverride;
+        const auto* trackProgram =
+                projectState.findDrumProgram(tracks[trackIndex].programId);
+        if (trackProgram != nullptr) {
+            const auto sourceNote =
+                    static_cast<int>(trackProgram->pad(padIndex).midiNote);
+            const auto semitoneOffset = static_cast<int>(std::lround(
+                    static_cast<double>(tuningMilliSemitones) / 1000.0));
+            midiNoteOverride = static_cast<std::uint8_t>(
+                    std::clamp(sourceNote + semitoneOffset, 0, 127));
+        }
+
         const auto tick = core.sequenceTransportClock().positionAtTimestamp(
                 monotonicNanos());
         core.sequenceRecordQueue().tryEnqueue(
@@ -1109,15 +1123,29 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
                         static_cast<std::uint8_t>(trackIndex),
                         padIndex,
                         velocityValue,
-                        1u});
+                        1u,
+                        midiNoteOverride});
         core.sequenceRecordQueue().tryEnqueue(
                 mpc::sequencer::SequenceRecordEvent{
                         tick,
                         static_cast<std::uint8_t>(trackIndex),
                         padIndex,
                         0u,
-                        0u});
+                        0u,
+                        midiNoteOverride});
     }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadAftertouch(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad, jint pressure)
+{
+    if (pad < 0 || pad >= 16 || pressure < 0 || pressure > 127) {
+        return;
+    }
+    mpc::MpcCore::instance().audio().setPadAftertouch(
+            static_cast<std::uint8_t>(pad),
+            static_cast<std::uint8_t>(pressure));
 }
 
 

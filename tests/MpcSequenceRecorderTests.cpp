@@ -36,6 +36,51 @@ void testReplaceAndQuantize() {
     assert(note.velocity == 100);
 }
 
+void testTunedPadPerformEventsRecordTheirMidiPitchOverride() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+    sequence.quantizeGridTicks = 60;
+    const auto sourcePadNote = state.activeDrumProgram().pad(0).midiNote;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // Pad Perform plays source Pad 01 at MIDI C3 (48), not the configured
+    // Drum Program note. The Sequence event must retain the performed pitch.
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1, 48}));
+    assert(queue.tryEnqueue({120, 0, 0, 0, 0, 48}));
+    assert(recorder.drain(state, queue) == 1);
+
+    const auto& notes = track.patterns.front().notes;
+    assert(notes.size() == 1);
+    assert(notes.front().note == 48);
+    assert(notes.front().note != sourcePadNote);
+    assert(notes.front().tick == 120);
+    assert(notes.front().durationTicks == 60);
+}
+
+void testRejectsOutOfRangeMidiNoteOverride() {
+    mpc::MpcProjectState state;
+    auto& track = state.activeSequence().tracks[0];
+    track.recordArmed = true;
+    state.activeSequence().timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1, 128}));
+    assert(queue.tryEnqueue({180, 0, 0, 0, 0, 128}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+}
+
 void testOverdubPreservesExistingNotes() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -380,6 +425,8 @@ void testProjectReplacementAbortsEvenWhenPersistentIdsMatch() {
 
 int main() {
     testReplaceAndQuantize();
+    testTunedPadPerformEventsRecordTheirMidiPitchOverride();
+    testRejectsOutOfRangeMidiNoteOverride();
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();

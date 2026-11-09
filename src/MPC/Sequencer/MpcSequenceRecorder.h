@@ -98,7 +98,9 @@ public:
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads
                     || event.velocity > 127
-                    || event.pressed > 1) {
+                    || event.pressed > 1
+                    || (event.midiNoteOverride != kNoMidiNoteOverride
+                            && event.midiNoteOverride > 127)) {
                 continue;
             }
 
@@ -128,7 +130,9 @@ public:
                     // Snapshot the mapping at note-on so later track selection or
                     // program edits cannot redirect this held note at note-off.
                     startNotes_[trackIndex][padIndex] =
-                            trackProgram->pad(padIndex).midiNote;
+                            event.midiNoteOverride == kNoMidiNoteOverride
+                                    ? trackProgram->pad(padIndex).midiNote
+                                    : event.midiNoteOverride;
                 }
                 continue;
             }
