@@ -487,7 +487,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeAudioSetPadSampleName(
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
-    private static native void nativeAudioTriggerPadWithTuning(int pad, int velocity, int tuningMilliSemitones);
+    private static native void nativeAudioTriggerPadWithTuning(int pad, int velocity, int tuningMilliSemitones, int recordKey);
     private static native void nativeAudioSetPadAftertouch(int pad, int pressure);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
@@ -5909,7 +5909,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 final int tuning = MpcPadPerformPolicy.tuningMilliSemitonesForNote(
                         targetNote, sourceNote,
                         nativeAudioGetPadTuning(sourcePadIndex));
-                nativeAudioTriggerPadWithTuning(sourcePadIndex, 100, tuning);
+                nativeAudioTriggerPadWithTuning(
+                        sourcePadIndex, 100, tuning, physicalPadIndex * 4);
                 setBottomStatus("16 LEVELS • TUNE " + String.format(
                         Locale.ROOT, "%+d st", semitones)
                         + " • PAD " + (physicalPadIndex + 1));
@@ -6167,12 +6168,17 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             setBottomStatus("PAD PERFORM • SOURCE PAD MIDI NOTE UNAVAILABLE");
             return;
         }
-        for (int note : notes) {
+        for (int noteIndex = 0; noteIndex < notes.length; noteIndex++) {
+            final int note = notes[noteIndex];
+            // Four independent voice keys are reserved for each physical Pad.
+            // This lets the recorder preserve polyphonic chords from one source Pad.
+            final int recordKey = (physicalPad * 4) + noteIndex;
             nativeAudioTriggerPadWithTuning(
                     selectedPad,
                     velocity,
                     MpcPadPerformPolicy.tuningMilliSemitonesForNote(
-                            note, sourceMidiNote, sourcePadTuning));
+                            note, sourceMidiNote, sourcePadTuning),
+                    recordKey);
         }
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
         setBottomStatus("PAD PERFORM • SOURCE PAD " + (selectedPad + 1)

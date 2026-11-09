@@ -65,6 +65,64 @@ void testTunedPadPerformEventsRecordTheirMidiPitchOverride() {
     assert(notes.front().durationTicks == 60);
 }
 
+void testChordToneRecordKeysPreserveEveryMappedNote() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+    sequence.quantizeGridTicks = 60;
+    state.activeDrumProgram().pad(0).midiNote = 36;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // One physical Pad performs a C-major triad through the same source sample.
+    // Each tone owns a different recorder key so simultaneous note-offs cannot
+    // collapse the chord into a single held_[track][sourcePad] entry.
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1, 48, 12}));
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1, 52, 13}));
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1, 55, 14}));
+    assert(queue.tryEnqueue({120, 0, 0, 0, 0, 48, 12}));
+    assert(queue.tryEnqueue({120, 0, 0, 0, 0, 52, 13}));
+    assert(queue.tryEnqueue({120, 0, 0, 0, 0, 55, 14}));
+    assert(recorder.drain(state, queue) == 3);
+
+    const auto& notes = track.patterns.front().notes;
+    assert(notes.size() == 3);
+    assert(notes[0].note == 48);
+    assert(notes[1].note == 52);
+    assert(notes[2].note == 55);
+    assert(notes[0].tick == notes[1].tick);
+    assert(notes[1].tick == notes[2].tick);
+    assert(notes[0].durationTicks == 60);
+    assert(notes[1].durationTicks == 60);
+    assert(notes[2].durationTicks == 60);
+}
+
+void testRejectsOutOfRangeSequenceRecordKey() {
+    mpc::MpcProjectState state;
+    auto& track = state.activeSequence().tracks[0];
+    track.recordArmed = true;
+    state.activeSequence().timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({
+            120, 0, 0, 100, 1, 48,
+            static_cast<std::uint8_t>(mpc::sequencer::kSequenceRecordKeyCount)}));
+    assert(queue.tryEnqueue({
+            180, 0, 0, 0, 0, 48,
+            static_cast<std::uint8_t>(mpc::sequencer::kSequenceRecordKeyCount)}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+}
+
 void testRejectsOutOfRangeMidiNoteOverride() {
     mpc::MpcProjectState state;
     auto& track = state.activeSequence().tracks[0];
@@ -427,6 +485,8 @@ void testProjectReplacementAbortsEvenWhenPersistentIdsMatch() {
 int main() {
     testReplaceAndQuantize();
     testTunedPadPerformEventsRecordTheirMidiPitchOverride();
+    testChordToneRecordKeysPreserveEveryMappedNote();
+    testRejectsOutOfRangeSequenceRecordKey();
     testRejectsOutOfRangeMidiNoteOverride();
     testOverdubPreservesExistingNotes();
     testFinishClosesHeldNote();

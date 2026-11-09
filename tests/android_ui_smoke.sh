@@ -2240,7 +2240,11 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioSetPadAftertouch'
 require_source_contains "src/NativeEngine.cpp" 'nativeAudioSetPadAftertouch'
 require_source_contains "src/MPC/Sequencer/MpcSequenceRecordQueue.h" 'midiNoteOverride'
 require_source_contains "src/MPC/Sequencer/MpcSequenceRecorder.h" 'event.midiNoteOverride'
+require_source_contains "src/MPC/Sequencer/MpcSequenceRecordQueue.h" 'kSequenceRecordKeyCount = 64'
+require_source_contains "src/MPC/Sequencer/MpcSequenceRecorder.h" 'event.recordKey'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'final int recordKey = (physicalPad * 4) + noteIndex'
 require_source_contains "tests/MpcSequenceRecorderTests.cpp" 'testTunedPadPerformEventsRecordTheirMidiPitchOverride'
+require_source_contains "tests/MpcSequenceRecorderTests.cpp" 'testChordToneRecordKeysPreserveEveryMappedNote'
 echo "Pad Perform controller, aftertouch and mapped-note recording source contract present."
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
