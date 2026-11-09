@@ -1109,8 +1109,13 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
         if (trackProgram != nullptr) {
             const auto sourceNote =
                     static_cast<int>(trackProgram->pad(padIndex).midiNote);
+            const auto persistentTuneMilli = static_cast<int>(std::lround(
+                    static_cast<double>(core.audio().padTuningSemitones(padIndex))
+                    * 1000.0));
             const auto semitoneOffset = static_cast<int>(std::lround(
-                    static_cast<double>(tuningMilliSemitones) / 1000.0));
+                    static_cast<double>(
+                            tuningMilliSemitones - persistentTuneMilli)
+                    / 1000.0));
             midiNoteOverride = static_cast<std::uint8_t>(
                     std::clamp(sourceNote + semitoneOffset, 0, 127));
         }
