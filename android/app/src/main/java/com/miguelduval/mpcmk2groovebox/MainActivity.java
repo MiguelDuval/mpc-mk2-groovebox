@@ -414,6 +414,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int padPerformSelectedKey;
     private boolean padPerformUseAftertouch = true;
     private int padPerformAftertouchTargetPad = -1;
+    private MpcLevels16Policy.Type levels16Type = MpcLevels16Policy.Type.VELOCITY;
+    private boolean levels16Active = true;
+    private int levels16AftertouchTargetPad = -1;
     private final int[] padPerformCustomNoteMap =
             MpcPadPerformPolicy.defaultCustomNoteMap(48);
     private static final int HARDWARE_FOCUS_SEQUENCE_START = 17;
@@ -1663,6 +1666,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if ("PAD_PERFORM".equals(currentPage)
                 && mode != MpcUiState.Mode.PAD_PERFORM) {
             clearPadPerformAftertouch();
+        }
+        if ("LEVELS_16".equals(currentPage)
+                && mode != MpcUiState.Mode.LEVELS_16) {
+            clearLevels16Aftertouch();
         }
         shortcutConfigVisible = false;
         switch (mode) {
@@ -3304,6 +3311,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMainPage() {
         if ("PAD_PERFORM".equals(currentPage)) clearPadPerformAftertouch();
+        if ("LEVELS_16".equals(currentPage)) clearLevels16Aftertouch();
         /*
          * Main is a persistent workspace, not a disposable page. Preserve
          * semantic selection/focus when the shell returns to Main, but never
@@ -5829,7 +5837,108 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     // 16 Levels — velocity layering for a source pad
     // ------------------------------------------------------------------
 
+    private void clearLevels16Aftertouch() {
+        if (levels16AftertouchTargetPad >= 0) {
+            nativeAudioSetPadAftertouch(levels16AftertouchTargetPad, 0);
+            levels16AftertouchTargetPad = -1;
+        }
+    }
+
+    private void showLevels16TypeChooser() {
+        final MpcLevels16Policy.Type[] types = MpcLevels16Policy.Type.values();
+        final String[] labels = new String[types.length];
+        for (int i = 0; i < types.length; i++) {
+            labels[i] = types[i].label()
+                    + (MpcLevels16Policy.isSupported(types[i])
+                            ? "" : " • RESERVED");
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("16 LEVELS • TYPE")
+                .setItems(labels, (dialog, which) -> {
+                    final MpcLevels16Policy.Type selected = types[which];
+                    if (!MpcLevels16Policy.isSupported(selected)) {
+                        setBottomStatus("16 LEVELS • "
+                                + selected.label() + " RESERVED • backend unavailable");
+                        return;
+                    }
+                    if (levels16Type != selected) clearLevels16Aftertouch();
+                    levels16Type = selected;
+                    showLevels16Page();
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void playLevels16Pad(int physicalPadIndex, int sourcePadIndex) {
+        if (physicalPadIndex < 0 || physicalPadIndex >= 16
+                || sourcePadIndex < 0 || sourcePadIndex >= 16) {
+            return;
+        }
+        if (sourcePadIndex != selectedPad) {
+            clearLevels16Aftertouch();
+            selectedPad = sourcePadIndex;
+            navigationController.setSelectedPad(sourcePadIndex);
+        }
+        if (!levels16Active) {
+            clearLevels16Aftertouch();
+            nativeAudioTriggerPad(sourcePadIndex, 100);
+            setBottomStatus("16 LEVELS OFF • SOURCE PAD " + (sourcePadIndex + 1));
+            return;
+        }
+
+        switch (levels16Type) {
+            case VELOCITY: {
+                clearLevels16Aftertouch();
+                final int velocity =
+                        MpcLevels16Policy.velocityForPadIndex(physicalPadIndex);
+                nativeAudioTriggerPad(sourcePadIndex, velocity);
+                setBottomStatus("16 LEVELS • VELOCITY " + velocity
+                        + " • PAD " + (physicalPadIndex + 1));
+                return;
+            }
+            case TUNE: {
+                clearLevels16Aftertouch();
+                final int sourceNote = nativeAudioGetPadMidiNote(sourcePadIndex);
+                if (sourceNote < 0 || sourceNote > 127) {
+                    setBottomStatus("16 LEVELS • SOURCE PAD MIDI NOTE UNAVAILABLE");
+                    return;
+                }
+                final int semitones =
+                        MpcLevels16Policy.tuneSemitonesForPadIndex(physicalPadIndex);
+                final int targetNote = Math.max(0, Math.min(127, sourceNote + semitones));
+                final int tuning = MpcPadPerformPolicy.tuningMilliSemitonesForNote(
+                        targetNote, sourceNote,
+                        nativeAudioGetPadTuning(sourcePadIndex));
+                nativeAudioTriggerPadWithTuning(sourcePadIndex, 100, tuning);
+                setBottomStatus("16 LEVELS • TUNE " + String.format(
+                        Locale.ROOT, "%+d st", semitones)
+                        + " • PAD " + (physicalPadIndex + 1));
+                return;
+            }
+            case FILTER: {
+                final int pressure =
+                        MpcLevels16Policy.velocityForPadIndex(physicalPadIndex);
+                if (levels16AftertouchTargetPad >= 0
+                        && levels16AftertouchTargetPad != sourcePadIndex) {
+                    clearLevels16Aftertouch();
+                }
+                nativeAudioSetPadAftertouch(sourcePadIndex, pressure);
+                levels16AftertouchTargetPad = sourcePadIndex;
+                nativeAudioTriggerPad(sourcePadIndex, 100);
+                setBottomStatus("16 LEVELS • FILTER "
+                        + pressure + " • PAD " + (physicalPadIndex + 1));
+                return;
+            }
+            default:
+                setBottomStatus("16 LEVELS • TYPE RESERVED");
+        }
+    }
+
     private void showLevels16Page() {
+        if (levels16AftertouchTargetPad >= 0
+                && levels16AftertouchTargetPad != selectedPad) {
+            clearLevels16Aftertouch();
+        }
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);
@@ -5837,60 +5946,103 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         navigationController.navigate(MpcUiState.Mode.LEVELS_16);
         navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
         navigationController.setDataDialFocus(MpcUiState.DataDialFocus.PAD);
+        navigationController.setSelectedPad(selectedPad);
         pageTitle.setText("16 LEVELS");
         content.removeAllViews();
 
-        LinearLayout page = page();
-        LinearLayout header = row();
+        final LinearLayout page = page();
+        page.setContentDescription("MPC 16 Levels workspace");
+        final LinearLayout header = row();
         Button sourcePadButton = actionButton(
-                String.format(Locale.ROOT, "PAD %02d", selectedPad + 1),
+                String.format(Locale.ROOT,
+                        levels16Type == MpcLevels16Policy.Type.TUNE
+                                ? "ORIGINAL PAD %02d" : "PAD %02d",
+                        selectedPad + 1),
                 v -> showLevels16SourcePadChooser());
         sourcePadButton.setContentDescription(
-                "16 Levels select source Pad " + (selectedPad + 1));
+                "16 Levels select original source Pad " + (selectedPad + 1));
         header.addView(sourcePadButton,
-                new LinearLayout.LayoutParams(dp(82), dp(34)));
-        header.addView(sectionLabelView("TYPE: VELOCITY  •  7–127",
-                new LinearLayout.LayoutParams(0, dp(34), 1)));
-        header.addView(actionButton("BACK", v -> navigateBackFromShell()),
-                new LinearLayout.LayoutParams(dp(62), dp(34)));
+                new LinearLayout.LayoutParams(dp(126), dp(36)));
+
+        final String typeSummary = "TYPE: " + levels16Type.label()
+                + (levels16Type == MpcLevels16Policy.Type.VELOCITY
+                        ? " • 7–127"
+                        : levels16Type == MpcLevels16Policy.Type.TUNE
+                                ? " • −8…+7 ST"
+                                : " • FILTER DEPTH");
+        Button typeButton = actionButton(typeSummary, v -> showLevels16TypeChooser());
+        typeButton.setContentDescription("16 Levels select type " + levels16Type.label());
+        header.addView(typeButton, new LinearLayout.LayoutParams(0, dp(36), 1));
+
+        final android.widget.CheckBox activeToggle =
+                new android.widget.CheckBox(this);
+        activeToggle.setText("ACTIVE");
+        activeToggle.setTextSize(9);
+        activeToggle.setTextColor(TEXT);
+        activeToggle.setChecked(levels16Active);
+        activeToggle.setContentDescription(
+                "16 Levels Active " + (levels16Active ? "enabled" : "disabled"));
+        activeToggle.setOnCheckedChangeListener((button, checked) -> {
+            levels16Active = checked;
+            if (!checked) clearLevels16Aftertouch();
+            activeToggle.setContentDescription(
+                    "16 Levels Active " + (checked ? "enabled" : "disabled"));
+        });
+        header.addView(activeToggle, new LinearLayout.LayoutParams(dp(76), dp(36)));
+        Button back = actionButton("BACK", v -> navigateBackFromShell());
+        back.setContentDescription("16 Levels Back");
+        header.addView(back, new LinearLayout.LayoutParams(dp(56), dp(36)));
         page.addView(header);
 
-        LinearLayout levelsGrid = new LinearLayout(this);
+        final LinearLayout levelsGrid = new LinearLayout(this);
         levelsGrid.setOrientation(LinearLayout.VERTICAL);
-        levelsGrid.setPadding(dp(10), dp(8), dp(10), dp(8));
-        page.addView(levelsGrid,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        levelsGrid.setPadding(dp(10), dp(6), dp(10), dp(4));
+        page.addView(levelsGrid, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
 
-        // Physical MPC Pad 1 is bottom-left. Values rise left-to-right,
-        // bottom-to-top, matching the reference 16 Level matrix.
-        for (int rowIdx = 0; rowIdx < 4; rowIdx++) {
-            LinearLayout levelRow = row();
-            for (int colIdx = 0; colIdx < 4; colIdx++) {
-                final int physicalPadIndex = (3 - rowIdx) * 4 + colIdx;
-                final int velocity = 7 + physicalPadIndex * 8;
-                Button levelBtn = actionButton(Integer.toString(velocity), v -> {
-                    nativeAudioTriggerPad(selectedPad, velocity);
-                    setBottomStatus("16 LEVELS: source Pad " + (selectedPad + 1)
-                            + " • velocity " + velocity);
-                });
-                levelBtn.setContentDescription(String.format(
+        // Physical Pad 1 is bottom-left. The displayed parameter increases
+        // left-to-right and bottom-to-top, matching the MPC 3.9 16 Level map.
+        for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
+            final LinearLayout levelRow = row();
+            for (int columnIndex = 0; columnIndex < 4; columnIndex++) {
+                final int physicalPadIndex = (3 - rowIndex) * 4 + columnIndex;
+                final int velocity =
+                        MpcLevels16Policy.velocityForPadIndex(physicalPadIndex);
+                final int semitones =
+                        MpcLevels16Policy.tuneSemitonesForPadIndex(physicalPadIndex);
+                final String valueLabel =
+                        levels16Type == MpcLevels16Policy.Type.TUNE
+                                ? String.format(Locale.ROOT, "%+d st", semitones)
+                                : String.format(Locale.ROOT, "%03d",
+                                        levels16Type == MpcLevels16Policy.Type.FILTER
+                                                ? velocity : velocity);
+                Button levelButton = actionButton(valueLabel,
+                        v -> playLevels16Pad(physicalPadIndex, selectedPad));
+                levelButton.setTextSize(13);
+                levelButton.setTypeface(Typeface.DEFAULT_BOLD);
+                levelButton.setEnabled(levels16Active);
+                levelButton.setAlpha(levels16Active ? 1.0f : 0.45f);
+                levelButton.setContentDescription(String.format(
                         Locale.ROOT,
-                        "16 Levels physical Pad %d fixed velocity %d source Pad %d",
-                        physicalPadIndex + 1, velocity, selectedPad + 1));
-                levelBtn.setMinWidth(dp(64));
-                levelBtn.setMinHeight(dp(64));
-                levelRow.addView(levelBtn, new LinearLayout.LayoutParams(
-                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+                        "16 Levels physical Pad %02d • %s • source Pad %02d",
+                        physicalPadIndex + 1, valueLabel, selectedPad + 1));
+                GridLayout.LayoutParams cell = new GridLayout.LayoutParams();
+                cell.width = 0;
+                cell.height = 0;
+                cell.columnSpec = GridLayout.spec(columnIndex, 1f);
+                cell.rowSpec = GridLayout.spec(rowIndex, 1f);
+                cell.setMargins(dp(3), dp(3), dp(3), dp(3));
+                levelRow.addView(levelButton, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
             }
-            levelsGrid.addView(levelRow,
-                    new LinearLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.WRAP_CONTENT));
+            levelsGrid.addView(levelRow, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         }
 
         content.addView(page);
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+        refreshMpcFunctionBar();
     }
 
     private void showLevels16SourcePadChooser() {
@@ -5902,6 +6054,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 .setTitle("SELECT SOURCE PAD")
                 .setSingleChoiceItems(choices, selectedPad, (dialog, which) -> {
                     clearPadPerformAftertouch();
+                    clearLevels16Aftertouch();
                     selectedPad = which;
                     dialog.dismiss();
                     setBottomStatus("16 LEVELS • SOURCE PAD " + (selectedPad + 1));
@@ -12178,6 +12331,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
     private void showMenuPage() {
         if ("PAD_PERFORM".equals(currentPage)) clearPadPerformAftertouch();
+        if ("LEVELS_16".equals(currentPage)) clearLevels16Aftertouch();
         shortcutConfigVisible = false;
         Log.i(TAG, "MPC_MENU_RENDER_BEGIN");
         clearStepEditPadLeds();
@@ -19103,6 +19257,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.SIXTEEN_LEVEL_STATE:
                 hardwareSixteenLevelActive = value0 != 0;
+                if (value0 != 0 && value1 >= 0 && value1 < 16) {
+                    selectedPad = value1;
+                    navigationController.setSelectedPad(value1);
+                }
+                if ("LEVELS_16".equals(currentPage)) {
+                    levels16Active = hardwareSixteenLevelActive;
+                    if (!levels16Active) clearLevels16Aftertouch();
+                    showLevels16Page();
+                }
                 if (hardwareSixteenLevelActive) {
                     hardwareFullLevelActive = false;
                     hardwareHalfLevelActive = false;
@@ -19132,6 +19295,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             case MpcStudioMk2SemanticActions.PAD_TRIGGER:
                 if ("PAD_PERFORM".equals(currentPage)) {
                     playPadPerformKey(value0, value1);
+                } else if (hardwareSixteenLevelActive
+                        && levels16Type != MpcLevels16Policy.Type.VELOCITY) {
+                    final int physicalPad = MpcLevels16Policy.padIndexForVelocity(value1);
+                    playLevels16Pad(physicalPad, value0);
                 } else {
                     nativeAudioTriggerPad(value0, value1);
                 }
@@ -20098,6 +20265,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     @Override
     protected void onDestroy() {
         clearPadPerformAftertouch();
+        clearLevels16Aftertouch();
         destroyed = true;
         stopBrowserPreview();
         if (recordingWaveformUpdater != null) {

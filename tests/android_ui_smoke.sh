@@ -2217,6 +2217,14 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at em
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE В± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
+echo "Running MPC 16 Levels policy preflight..."
+LEVELS_16_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcLevels16Policy.java"
+require_source_contains "$LEVELS_16_POLICY_SOURCE" 'velocityForPadIndex'
+require_source_contains "$LEVELS_16_POLICY_SOURCE" 'tuneSemitonesForPadIndex'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'playLevels16Pad'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioGetPadMidiNote'
+require_source_contains "$0" 'MpcLevels16PolicyTest'
+echo "16 Levels Velocity/Tune/Filter source contract present."
 echo "Running MPC Pad Perform policy preflight..."
 PAD_PERFORM_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadPerformPolicy.java"
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'CHROMATIC_CHORDS'
