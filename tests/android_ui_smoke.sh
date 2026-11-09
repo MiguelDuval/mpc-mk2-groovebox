@@ -2226,6 +2226,7 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MpcPadPerformPolicy.notesForPad
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioTriggerPadWithTuning'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Pad Perform physical Pad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'playPadPerformKey(value0, value1)'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'padPerformAftertouchTargetPad != selectedPad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'case MpcStudioMk2SemanticActions.PAD_AFTERTOUCH:'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioSetPadAftertouch'
 require_source_contains "src/NativeEngine.cpp" 'nativeAudioSetPadAftertouch'

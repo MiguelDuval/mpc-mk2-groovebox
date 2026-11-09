@@ -5961,6 +5961,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         new AlertDialog.Builder(this)
                 .setTitle("PAD PERFORM • SOURCE SAMPLE")
                 .setSingleChoiceItems(choices, selectedPad, (dialog, which) -> {
+                    clearPadPerformAftertouch();
                     selectedPad = which;
                     navigationController.setSelectedPad(which);
                     dialog.dismiss();
@@ -6019,6 +6020,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private void showPadPerformPage() {
+        if (padPerformAftertouchTargetPad >= 0
+                && padPerformAftertouchTargetPad != selectedPad) {
+            clearPadPerformAftertouch();
+        }
         clearStepEditPadLeds();
         nativeSequenceSetStepEditContext(false, 0);
         nativeSequenceSetLauncherContext(false, 0);

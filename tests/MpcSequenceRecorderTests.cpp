@@ -43,6 +43,7 @@ void testTunedPadPerformEventsRecordTheirMidiPitchOverride() {
     track.recordArmed = true;
     sequence.timingCorrectEnabled = false;
     sequence.quantizeGridTicks = 60;
+    state.activeDrumProgram().pad(0).midiNote = 36;
     const auto sourcePadNote = state.activeDrumProgram().pad(0).midiNote;
 
     mpc::sequencer::SequenceRecordQueue queue;
