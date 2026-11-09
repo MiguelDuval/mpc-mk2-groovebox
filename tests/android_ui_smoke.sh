@@ -2229,6 +2229,11 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'if (!levels16Active)'
 require_source_contains "$0" 'MpcLevels16PolicyTest'
 echo "16 Levels Velocity/Tune/Filter source contract present."
 echo "Running MPC Pad Perform policy preflight..."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'scheduleProjectPersistenceViewHierarchyCapture("LEVELS_16")'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'scheduleProjectPersistenceViewHierarchyCapture("PAD_PERFORM")'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PAD_PERFORM_TRIGGER mode='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'LEVELS16_TRIGGER type=TUNE'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'LEVELS16_TRIGGER type=FILTER'
 PAD_PERFORM_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcPadPerformPolicy.java"
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'CHROMATIC_CHORDS'
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'notesForPad'
@@ -2339,6 +2344,10 @@ capture_ui_screenshot() {
   case "$filename" in
     mpc-groovebox-startup.png|\
     mpc-groovebox-main-ready.png|\
+    mpc-groovebox-16levels-velocity.png|\
+    mpc-groovebox-16levels-tune.png|\
+    mpc-groovebox-16levels-filter.png|\
+    mpc-groovebox-pad-perform-chords.png|\
     mpc-groovebox-step-touch-before.png|\
     mpc-groovebox-step-touch-after-add.png|\
     mpc-groovebox-step-touch-velocity-changed.png|\
@@ -13440,6 +13449,8 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
   PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
   PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+  PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+  PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
   PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
   PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
   PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
@@ -13464,6 +13475,8 @@ capture_project_persistence_view_tree() {
     SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SAMPLE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE"; before="$PROJECT_SAMPLE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    LEVELS_16) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16"; before="$PROJECT_LEVELS_16_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    PAD_PERFORM) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM"; before="$PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
   if ! wait_for_new_project_marker "$marker" "$before" "$timeout_seconds"; then
@@ -13523,6 +13536,33 @@ elif page == "BROWSE":
         "MPC Browser filter ALL",
     ):
         require_target(description)
+elif page == "LEVELS_16":
+    require_target("16 Levels select original source Pad 1")
+    require_target("16 Levels select type VELOCITY")
+    require_target("16 Levels Active enabled")
+    require_target("16 Levels Back")
+    pads = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith("16 Levels physical Pad ")]
+    if len(pads) != 16:
+        raise SystemExit(f"16 Levels must expose exactly 16 real performance pads, got {len(pads)}")
+    for node in pads:
+        if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+            raise SystemExit(f"16 Levels pad is not actionable: {node.attrib!r}")
+elif page == "PAD_PERFORM":
+    require_target("MPC Pad Perform select source Pad 1")
+    require_target("MPC Pad Perform mode CHROMATIC selected")
+    require_target("MPC Pad Perform Back")
+    modes = [node for node in nodes
+             if node.attrib.get("content-desc", "").startswith("MPC Pad Perform mode ")]
+    pads = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith("MPC Pad Perform physical Pad ")]
+    if len(modes) != 6:
+        raise SystemExit(f"Pad Perform must expose six independent modes, got {len(modes)}")
+    if len(pads) != 16:
+        raise SystemExit(f"Pad Perform must expose sixteen mapped pads, got {len(pads)}")
+    for node in pads:
+        if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
+            raise SystemExit(f"Pad Perform pad is not actionable: {node.attrib!r}")
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
 PY_PROJECT_APP_VIEW_TREE
   then
@@ -13538,6 +13578,8 @@ PY_PROJECT_APP_VIEW_TREE
     SHORTCUTS) PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")" ;;
     SEQ) PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")" ;;
     SAMPLE) PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")" ;;
+    LEVELS_16) PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")" ;;
+    PAD_PERFORM) PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")" ;;
   esac
   return 0
 }
@@ -13659,18 +13701,23 @@ tap_mpc_menu_tile() {
   local row="$1" col="$2" description page render_before shell_before
   case "$row:$col" in
     3:3) description="MPC Menu PROJECT"; page="PROJECT" ;;
+    2:2) description="MPC Menu 16 LEVELS"; page="LEVELS_16" ;;
+    2:3) description="MPC Menu PAD PERFORM"; page="PAD_PERFORM" ;;
     0:0) description="MPC Menu MAIN"; page="MAIN" ;;
     *) echo "ERROR: unsupported Menu target row=$row col=$col"; return 2 ;;
   esac
   snapshot_project_view_tree_marker_baselines
   render_before="$PROJECT_PROJECT_RENDER_MARKER_BEFORE"
   shell_before="$PROJECT_MAIN_SHELL_MARKER_BEFORE"
+  if [[ "$page" == "LEVELS_16" || "$page" == "PAD_PERFORM" ]]; then
+    shell_before="$(project_marker_count "MPC_SHELL_STATE_END mode=$page")"
+  fi
   echo "Real measured Menu tile tap target=$description"
   if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"; then return 1; fi
   if [[ "$page" == "PROJECT" ]]; then
     if ! wait_for_new_project_marker "MPC_PROJECT_RENDER_COMPLETE summary=" "$render_before" 45; then return 1; fi
   else
-    if ! wait_for_new_project_marker "MPC_SHELL_STATE_END mode=MAIN" "$shell_before" 45; then return 1; fi
+    if ! wait_for_new_project_marker "MPC_SHELL_STATE_END mode=$page" "$shell_before" 45; then return 1; fi
   fi
   capture_project_persistence_view_tree "$page" "/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 }
@@ -13846,6 +13893,96 @@ fi
 if ! capture_ui_screenshot "$PROJECT_MENU_PNG" 10; then
   echo "ERROR: could not capture rendered MPC Menu screenshot"; exit 1
 fi
+# Exercise both performance screens through real Menu touches and the app-owned
+# measured hierarchy. This occurs before persistence mutations so it cannot
+# contaminate the later native Project Save/Open acceptance.
+if ! tap_mpc_menu_tile 2 2; then
+  echo "ERROR: measured Menu 16 LEVELS touch failed"; exit 1
+fi
+LEVELS16_VELOCITY_XML="/tmp/mpc-groovebox-16levels-velocity-uiautomator.xml"
+if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$LEVELS16_VELOCITY_XML"; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-16levels-velocity.png" 10; then exit 1; fi
+
+LEVELS16_DIALOG_XML="/tmp/mpc-groovebox-16levels-type-dialog-uiautomator.xml"
+LEVELS16_DIALOG_REMOTE="/sdcard/mpc-groovebox-16levels-type-dialog-uiautomator.xml"
+PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+if ! tap_visible_description_early "$LEVELS16_VELOCITY_XML" "16 Levels select type VELOCITY"; then
+  echo "ERROR: 16 Levels Type selector was not actionable"; exit 1
+fi
+if ! dump_device_ui "$LEVELS16_DIALOG_REMOTE" "$LEVELS16_DIALOG_XML"; then
+  echo "ERROR: 16 Levels Type dialog hierarchy failed"; exit 1
+fi
+if ! tap_ui_text "$LEVELS16_DIALOG_XML" "TUNE"; then
+  echo "ERROR: 16 Levels Type dialog did not expose real TUNE option"; exit 1
+fi
+LEVELS16_TUNE_XML="/tmp/mpc-groovebox-16levels-tune-uiautomator.xml"
+if ! capture_project_persistence_view_tree "LEVELS_16" "$LEVELS16_TUNE_XML"; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-16levels-tune.png" 10; then exit 1; fi
+levels16_tune_target="$(python3 - "$LEVELS16_TUNE_XML" <<'PY_LEVELS16_TUNE_TARGET'
+import sys, xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+matches = [n.attrib.get("content-desc", "")
+           for n in nodes if n.attrib.get("content-desc", "").startswith("16 Levels physical Pad 09 •")]
+if len(matches) != 1: raise SystemExit(f"expected one Pad 09 Tune target, got {len(matches)}")
+print(matches[0])
+PY_LEVELS16_TUNE_TARGET
+)" || { echo "ERROR: could not derive Pad 09 Tune target"; exit 1; }
+levels16_tune_before="$(project_marker_count "LEVELS16_TRIGGER type=TUNE physicalPad=8 sourcePad=0")"
+if ! tap_visible_description_early "$LEVELS16_TUNE_XML" "$levels16_tune_target"; then exit 1; fi
+if ! wait_for_new_project_marker "LEVELS16_TRIGGER type=TUNE physicalPad=8 sourcePad=0" "$levels16_tune_before" 10; then
+  echo "ERROR: Pad 09 Tune touch did not reach native trigger"; exit 1
+fi
+
+PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+if ! tap_visible_description_early "$LEVELS16_TUNE_XML" "16 Levels select type TUNE"; then exit 1; fi
+if ! dump_device_ui "$LEVELS16_DIALOG_REMOTE" "$LEVELS16_DIALOG_XML"; then exit 1; fi
+if ! tap_ui_text "$LEVELS16_DIALOG_XML" "FILTER"; then
+  echo "ERROR: 16 Levels Type dialog did not expose FILTER"; exit 1
+fi
+LEVELS16_FILTER_XML="/tmp/mpc-groovebox-16levels-filter-uiautomator.xml"
+if ! capture_project_persistence_view_tree "LEVELS_16" "$LEVELS16_FILTER_XML"; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-16levels-filter.png" 10; then exit 1; fi
+levels16_filter_target="$(python3 - "$LEVELS16_FILTER_XML" <<'PY_LEVELS16_FILTER_TARGET'
+import sys, xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+matches = [n.attrib.get("content-desc", "")
+           for n in nodes if n.attrib.get("content-desc", "").startswith("16 Levels physical Pad 16 •")]
+if len(matches) != 1: raise SystemExit(f"expected one Pad 16 Filter target, got {len(matches)}")
+print(matches[0])
+PY_LEVELS16_FILTER_TARGET
+)" || { echo "ERROR: could not derive Pad 16 Filter target"; exit 1; }
+levels16_filter_before="$(project_marker_count "LEVELS16_TRIGGER type=FILTER physicalPad=15 sourcePad=0")"
+if ! tap_visible_description_early "$LEVELS16_FILTER_XML" "$levels16_filter_target"; then exit 1; fi
+if ! wait_for_new_project_marker "LEVELS16_TRIGGER type=FILTER physicalPad=15 sourcePad=0" "$levels16_filter_before" 10; then
+  echo "ERROR: Pad 16 Filter touch did not reach native trigger"; exit 1
+fi
+
+if ! tap_project_toolbar_menu; then echo "ERROR: Menu exit from 16 Levels failed"; exit 1; fi
+if ! tap_mpc_menu_tile 2 3; then echo "ERROR: measured Menu PAD PERFORM touch failed"; exit 1; fi
+PAD_PERFORM_CHROMATIC_XML="/tmp/mpc-groovebox-pad-perform-chromatic-uiautomator.xml"
+if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$PAD_PERFORM_CHROMATIC_XML"; then exit 1; fi
+PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
+if ! tap_visible_description_early "$PAD_PERFORM_CHROMATIC_XML" "MPC Pad Perform mode CHORDS"; then
+  echo "ERROR: Pad Perform CHORDS selector was not actionable"; exit 1
+fi
+PAD_PERFORM_CHORDS_XML="/tmp/mpc-groovebox-pad-perform-chords-uiautomator.xml"
+if ! capture_project_persistence_view_tree "PAD_PERFORM" "$PAD_PERFORM_CHORDS_XML"; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-pad-perform-chords.png" 10; then exit 1; fi
+pad_perform_chord_target="$(python3 - "$PAD_PERFORM_CHORDS_XML" <<'PY_PAD_PERFORM_CHORD_TARGET'
+import sys, xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+matches = [n.attrib.get("content-desc", "")
+           for n in nodes if n.attrib.get("content-desc", "").startswith("MPC Pad Perform physical Pad 01 •")]
+if len(matches) != 1: raise SystemExit(f"expected one Pad Perform Pad 01 target, got {len(matches)}")
+print(matches[0])
+PY_PAD_PERFORM_CHORD_TARGET
+)" || { echo "ERROR: could not derive Pad Perform Pad 01 target"; exit 1; }
+pad_perform_chord_before="$(project_marker_count "PAD_PERFORM_TRIGGER mode=CHORDS physicalPad=0 sourcePad=0 notes=[48, 52, 55]")"
+if ! tap_visible_description_early "$PAD_PERFORM_CHORDS_XML" "$pad_perform_chord_target"; then exit 1; fi
+if ! wait_for_new_project_marker "PAD_PERFORM_TRIGGER mode=CHORDS physicalPad=0 sourcePad=0 notes=[48, 52, 55]" "$pad_perform_chord_before" 10; then
+  echo "ERROR: Pad Perform chord touch did not trigger all three native notes"; exit 1
+fi
+if ! tap_project_toolbar_menu; then echo "ERROR: Menu exit from Pad Perform failed"; exit 1; fi
 if ! tap_mpc_menu_tile 3 3; then echo "ERROR: measured Menu PROJECT touch failed"; exit 1; fi
 if ! assert_latest_project_summary "TRACKS=1" "PLACEMENTS=1"; then exit 1; fi
 # tap_mpc_menu_tile already captures and validates a fresh PROJECT hierarchy,
