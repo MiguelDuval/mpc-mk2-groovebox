@@ -11895,6 +11895,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return true;
             }
         });
+        // Some state-only transitions (notably Sample Edit playback returning
+        // to idle) can update child accessibility text without invalidating
+        // the persistent shell root. Explicitly request the next real decor
+        // traversal so the one-shot app-owned smoke snapshot is published.
+        content.invalidate();
     }
 
     private void captureProjectPersistenceViewHierarchyForSmoke(String expectedPage) {
