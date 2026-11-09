@@ -11880,7 +11880,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!projectPersistenceSmokeMode || destroyed || content == null
                 || expectedPage == null
                 || (!expectedPage.equals(currentPage) && !shortcutPage)) return;
-        final ViewTreeObserver observer = content.getViewTreeObserver();
+        final Window window = getWindow();
+        final View decor = window == null ? null : window.getDecorView();
+        if (decor == null) {
+            Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
+                    + " reason=decor-root-unavailable");
+            return;
+        }
+        // Observe the window root, not only the workspace child. State-only
+        // accessibility updates (notably SAMPLE playback returning to idle)
+        // do not always schedule a traversal for the child invalidation alone.
+        // A decor layout request guarantees a fresh measured traversal; the
+        // hierarchy is still published only from the next real pre-draw.
+        final ViewTreeObserver observer = decor.getViewTreeObserver();
         if (!observer.isAlive()) {
             Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
                     + " reason=ViewTreeObserver-unavailable");
@@ -11889,12 +11901,19 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
-                final ViewTreeObserver currentObserver = content.getViewTreeObserver();
-                if (currentObserver.isAlive()) currentObserver.removeOnPreDrawListener(this);
+                if (observer.isAlive()) observer.removeOnPreDrawListener(this);
+                Log.i(TAG, "PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page=" + expectedPage);
                 captureProjectPersistenceViewHierarchyForSmoke(expectedPage);
                 return true;
             }
         });
+        content.requestLayout();
+        content.invalidate();
+        decor.requestLayout();
+        decor.invalidate();
+        decor.postInvalidateOnAnimation();
+        Log.i(TAG, "PROJECT_SMOKE_VIEW_TREE_REQUESTED page=" + expectedPage
+                + " root=decor");
     }
 
     private void captureProjectPersistenceViewHierarchyForSmoke(String expectedPage) {

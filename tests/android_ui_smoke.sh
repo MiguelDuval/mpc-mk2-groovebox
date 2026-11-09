@@ -2217,6 +2217,14 @@ require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement place Pattern at em
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'Arrangement move Pattern placement at tick'
 require_source_contains "$0" 'Pattern placement real-touch PLACE → MOVE В± GRID'
 require_source_contains "$0" 'UI_ARRANGE_PLACEMENT_STATE: action=(TARGET|SPLIT|DELETE|PLACE|MOVE|DUPLICATE|UNDO|REDO)'
+echo "Running SAMP-007 playback-idle evidence preflight..."
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.getViewTreeObserver()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.requestLayout();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.postInvalidateOnAnimation();'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'SAMPLE_CURSOR_STOPPED: reason=grace-exhausted'
+require_source_contains "$0" 'wait_for_new_project_marker "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted"'
+require_source_contains "$0" 'SAMPLE_CURSOR_STOPPED_MARKER_BEFORE='
 echo "Running MPC Browser Options preflight..."
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'continueUiAuditAfterBrowserOptionsLayout()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'OnPreDrawListener'
@@ -2261,7 +2269,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
   fi
 done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
-    'open_project_document()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
+    'open_project_document()' 'open_project_document() already captured and validated the fresh MAIN tree' 'reuse_current_project_view_tree "MAIN" "$PROJECT_EXT_V1_XML"' 'if (( samp_cursor_seen == 1 && samp_cursor_progressed == 1 )); then' 'SAMP-007 has fresh in-region and advancing native cursor evidence; stopping redundant polling.' 'PROJECT_CURRENT_APP_XML="$target_xml"' 'project_view_tree_generated_at()' 'wait_for_new_project_view_tree()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
@@ -13387,6 +13395,9 @@ PROJECT_MENU_TREE_MARKER_BEFORE=0 PROJECT_MAIN_TREE_MARKER_BEFORE=0 PROJECT_PROJ
 PROJECT_BROWSER_TREE_MARKER_BEFORE=0
 PROJECT_SEQUENCE_TREE_MARKER_BEFORE=0 PROJECT_MENU_RENDER_MARKER_BEFORE=0 PROJECT_MENU_CLICK_MARKER_BEFORE=0
 PROJECT_PROJECT_RENDER_MARKER_BEFORE=0 PROJECT_MAIN_SHELL_MARKER_BEFORE=0
+PROJECT_MENU_TREE_UPTIME_BEFORE=0 PROJECT_MAIN_TREE_UPTIME_BEFORE=0 PROJECT_PROJECT_TREE_UPTIME_BEFORE=0
+PROJECT_BROWSER_TREE_UPTIME_BEFORE=0 PROJECT_SEQUENCE_TREE_UPTIME_BEFORE=0
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE=0 PROJECT_SAMPLE_TREE_UPTIME_BEFORE=0
 
 project_marker_count() {
   local marker="$1" timeout_seconds="${2:-5}" logs
@@ -13401,6 +13412,34 @@ project_marker_count() {
   grep -F -c -- "$marker" <<<"$logs" || true
 }
 
+project_view_tree_generated_at() {
+  local page="$1" remote xml
+  case "$page" in
+    MENU) remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
+    MAIN|BROWSE|PROJECT|SHORTCUTS|SEQ|SAMPLE) remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    *) echo 0; return 0 ;;
+  esac
+  # Use the app-owned tree's monotonic device-uptime timestamp rather than
+  # counting repeated Logcat markers in a bounded ring-buffer window.
+  # Logcat marker counts can decrease when older records leave that window.
+  xml="$(adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" 2>/dev/null || true)"
+  python3 -c '
+import sys
+import xml.etree.ElementTree as ET
+page = sys.argv[1]
+try:
+    root = ET.fromstring(sys.stdin.read())
+    if root.tag != "hierarchy" or root.attrib.get("source") != "android-view-tree" or root.attrib.get("page") != page:
+        raise ValueError("wrong View-tree page or source")
+    generated = int(root.attrib.get("generated-at-uptime-ms", ""))
+    if generated <= 0:
+        raise ValueError("invalid View-tree generation timestamp")
+except (ET.ParseError, TypeError, ValueError):
+    generated = 0
+print(generated)
+' "$page" <<<"$xml"
+}
+
 snapshot_project_view_tree_marker_baselines() {
   PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
   PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
@@ -13413,28 +13452,55 @@ snapshot_project_view_tree_marker_baselines() {
   PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
   PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
   PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+  PROJECT_MENU_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MENU)"
+  PROJECT_MAIN_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MAIN)"
+  PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)"
+  PROJECT_PROJECT_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PROJECT)"
+  PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
+  PROJECT_SEQUENCE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SEQ)"
+  PROJECT_SAMPLE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SAMPLE)"
 }
 
 snapshot_browser_view_tree_marker_baseline() {
   PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)"
+}
+
+wait_for_new_project_view_tree() {
+  local page="$1" before="$2" timeout_seconds="${3:-20}"
+  local deadline=$((SECONDS + timeout_seconds)) generated remaining
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    generated="$(project_view_tree_generated_at "$page")"
+    if [[ "$generated" =~ ^[0-9]+$ ]] && (( generated > before )); then
+      echo "Observed fresh app-owned Android View tree: page=$page generated-at-uptime-ms=$generated"
+      return 0
+    fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+  done
+  generated="$(project_view_tree_generated_at "$page")"
+  if [[ "$generated" =~ ^[0-9]+$ ]] && (( generated > before )); then
+    echo "Observed fresh app-owned Android View tree on final bounded read: page=$page generated-at-uptime-ms=$generated"
+    return 0
+  fi
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for fresh app-owned View tree page=$page (baseline=$before current=$generated)"
+  return 1
 }
 
 capture_project_persistence_view_tree() {
-  # Project Open may publish its fresh MAIN View tree ~13s after DocumentsUI
-  # settles on a loaded emulator. Keep provenance/freshness checks intact;
-  # the marker waiter also performs a final bounded read at the deadline.
-  local page="$1" target_xml="$2" timeout_seconds="${3:-20}" marker before remote
+  # Compare the app-owned XML's monotonic device-uptime timestamp. Repeated
+  # Logcat marker counts are not monotonic when the bounded ring buffer rolls.
+  local page="$1" target_xml="$2" timeout_seconds="${3:-20}" before_uptime remote
   case "$page" in
-    MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
-    MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    BROWSE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE"; before="$PROJECT_BROWSER_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SEQ) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ"; before="$PROJECT_SEQUENCE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
-    SAMPLE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE"; before="$PROJECT_SAMPLE_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    MENU) before_uptime="$PROJECT_MENU_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
+    MAIN) before_uptime="$PROJECT_MAIN_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    BROWSE) before_uptime="$PROJECT_BROWSER_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    PROJECT) before_uptime="$PROJECT_PROJECT_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SHORTCUTS) before_uptime="$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SEQ) before_uptime="$PROJECT_SEQUENCE_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    SAMPLE) before_uptime="$PROJECT_SAMPLE_TREE_UPTIME_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     *) echo "ERROR: unsupported app View-tree page for Project acceptance: $page"; return 2 ;;
   esac
-  if ! wait_for_new_project_marker "$marker" "$before" "$timeout_seconds"; then
+  if ! wait_for_new_project_view_tree "$page" "$before_uptime" "$timeout_seconds"; then
     echo "ERROR: no fresh Android View-tree snapshot for app page $page"; return 1
   fi
   if ! adb_bounded 5 shell run-as "$PACKAGE" cat "$remote" > "$target_xml"; then
@@ -13497,15 +13563,30 @@ PY_PROJECT_APP_VIEW_TREE
     echo "ERROR: app View tree for $page is malformed, stale or lacks required enabled controls"; return 1
   fi
   PROJECT_CURRENT_APP_XML="$target_xml"
-  # Refresh baseline so subsequent captures require fresh snapshots
+  # Refresh both diagnostic marker and monotonic XML baselines so the next
+  # capture must publish a strictly newer app-owned View tree.
   case "$page" in
-    MENU) PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")" ;;
-    MAIN) PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")" ;;
-    BROWSE) PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")" ;;
-    PROJECT) PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")" ;;
-    SHORTCUTS) PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")" ;;
-    SEQ) PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")" ;;
-    SAMPLE) PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")" ;;
+    MENU)
+      PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+      PROJECT_MENU_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MENU)" ;;
+    MAIN)
+      PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+      PROJECT_MAIN_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MAIN)" ;;
+    BROWSE)
+      PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+      PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)" ;;
+    PROJECT)
+      PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+      PROJECT_PROJECT_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PROJECT)" ;;
+    SHORTCUTS)
+      PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
+      PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)" ;;
+    SEQ)
+      PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+      PROJECT_SEQUENCE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SEQ)" ;;
+    SAMPLE)
+      PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+      PROJECT_SAMPLE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SAMPLE)" ;;
   esac
   return 0
 }
@@ -13574,6 +13655,9 @@ PY_REUSE_PROJECT_VIEW_TREE
   if ! cmp -s -- "$PROJECT_CURRENT_APP_XML" "$target_xml"; then
     echo "ERROR: preserved $expected_page View tree differs from validated snapshot"; return 1
   fi
+  # The current-tree pointer must follow the exact validated snapshot now
+  # preserved at target_xml; later callers may consume that evidence path.
+  PROJECT_CURRENT_APP_XML="$target_xml"
   echo "Reused exact validated $expected_page View tree without requesting a duplicate redraw."
 }
 
@@ -14494,7 +14578,10 @@ fi
 if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
-if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML" 30; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
+# open_project_document() already captured and validated the fresh MAIN tree for a successful load.
+# Preserve that exact app-owned snapshot for the v1 evidence path instead of
+# requiring a second redraw while the app remains on the unchanged Main page.
+if ! reuse_current_project_view_tree "MAIN" "$PROJECT_EXT_V1_XML"; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
 echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
 
 # SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
@@ -14877,6 +14964,14 @@ for attempt in {1..10}; do
       if (( samp_cursor_frame > samp_cursor_last )); then samp_cursor_last=$samp_cursor_frame; fi
     fi
   fi
+  # The native cursor is proven only after two independently fresh app-owned
+  # snapshots show an in-region position and a strictly larger frame index.
+  # Stop polling immediately at that point: the next accessibility bucket is
+  # not required and may not be published before a short sample finishes.
+  if (( samp_cursor_seen == 1 && samp_cursor_progressed == 1 )); then
+    echo "SAMP-007 has fresh in-region and advancing native cursor evidence; stopping redundant polling."
+    break
+  fi
 done
 if [[ "$samp_cursor_seen" != "1" || "$samp_cursor_progressed" != "1" ]]; then
   echo "ERROR: native cursor was not observed and progressing inside the edited region"
@@ -14887,12 +14982,15 @@ if (( samp_cursor_first < SAMP_CURSOR_EXPECTED_START || samp_cursor_first >= SAM
 fi
 echo "SAMP-007 region trim and native playback cursor passed: $samp_cursor_first -> $samp_cursor_last inside $SAMP_CURSOR_EXPECTED_START..$SAMP_CURSOR_EXPECTED_END."
 
-# Allow the one-shot preview to finish; the cursor must return to idle but the
-# selected region boundaries must remain unchanged. Baseline the marker before
-# waiting so the final XML must come from the actual transition back to idle.
+# Wait for the native updater's actual playback-idle transition rather than
+# guessing its duration with a fixed sleep. The app-owned SAMPLE tree must then
+# be freshly published from that transition and must show no PLAYHEAD text.
+SAMPLE_CURSOR_STOPPED_MARKER_BEFORE="$(project_marker_count "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted")"
 snapshot_project_view_tree_marker_baselines
-sleep 11
-if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 10; then echo "ERROR: could not capture a fresh stopped playback state"; exit 1; fi
+if ! wait_for_new_project_marker "SAMPLE_CURSOR_STOPPED: reason=grace-exhausted" "$SAMPLE_CURSOR_STOPPED_MARKER_BEFORE" 20; then
+  echo "ERROR: native Sample Edit cursor updater did not report playback idle after the in-region preview"; exit 1
+fi
+if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CURSOR_STOPPED_XML" 20; then echo "ERROR: could not capture a fresh stopped playback state after the native idle marker"; exit 1; fi
 SAMP_CURSOR_LAST_UPTIME="$(assert_samp_cursor_snapshot_fresh "$SAMP_CURSOR_STOPPED_XML" "$SAMP_CURSOR_LAST_UPTIME" "stopped playback")" || exit 1
 samp_cursor_stopped_state="$(read_samp_cursor_region_state "$SAMP_CURSOR_STOPPED_XML")" || { echo "ERROR: stopped region state is unavailable"; exit 1; }
 read -r samp_cursor_start samp_cursor_end samp_cursor_total samp_cursor_frame <<< "$samp_cursor_stopped_state"
@@ -15258,7 +15356,7 @@ PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
   echo "ERROR: Menu does not expose the real Edit Shortcuts Function Bar action"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: Shortcut editor did not publish a fresh real Android View tree"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15278,13 +15376,14 @@ fi
 # schedules the app-owned View-tree capture immediately, so waiting for the
 # preference-write marker before recording this baseline would miss that tree.
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "GRID"; then
   echo "ERROR: could not select GRID from the real Shortcut slot-1 popup"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_grid_write_before" 20; then
   echo "ERROR: choosing GRID did not synchronously persist the exact five-slot mode order"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: slot-1 selection did not publish updated live editor state"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15296,13 +15395,14 @@ fi
 
 shortcut_order_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" 5)"
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcut 1 move down"; then
   echo "ERROR: slot-1 move-down target is not a live enabled control"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" "$shortcut_order_write_before" 20; then
   echo "ERROR: moving slot 1 down did not persist the exact reordered Shortcut Rail"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: reordered Shortcut editor View tree was not rendered"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15327,7 +15427,7 @@ PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
 if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "MPC Menu Edit Shortcuts"; then
   echo "ERROR: Menu does not expose Edit Shortcuts after process restart"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: factory reset Shortcut editor did not render"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
@@ -15335,13 +15435,14 @@ if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFI
 fi
 shortcut_defaults_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
 PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcuts Reset Defaults"; then
   echo "ERROR: Shortcut editor does not expose an enabled Reset Defaults action"; exit 1
 fi
 if ! wait_for_new_project_marker "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" "$shortcut_defaults_before" 20; then
   echo "ERROR: Reset Defaults did not synchronously persist factory Shortcut order"; exit 1
 fi
-if ! wait_for_new_project_marker "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE" 20; then
+if ! wait_for_new_project_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE" 20; then
   echo "ERROR: Reset Defaults did not rebuild the live Shortcut editor"; exit 1
 fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
