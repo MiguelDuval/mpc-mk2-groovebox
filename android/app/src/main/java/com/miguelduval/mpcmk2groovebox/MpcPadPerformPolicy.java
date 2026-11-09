@@ -181,8 +181,16 @@ final class MpcPadPerformPolicy {
         return clamp(padPerformActive ? sourcePad : physicalPad, 0, 15);
     }
 
-    static int tuningMilliSemitonesForNote(int midiNote) {
-        return (clampMidi(midiNote) - 60) * 1000;
+    static int tuningMilliSemitonesForNote(
+            int targetMidiNote,
+            int sourceMidiNote,
+            float sourcePadTuningSemitones) {
+        final float persistentTuning =
+                Float.isFinite(sourcePadTuningSemitones)
+                        ? sourcePadTuningSemitones : 0.0f;
+        final float transposition =
+                clampMidi(targetMidiNote) - clampMidi(sourceMidiNote);
+        return Math.round((transposition + persistentTuning) * 1000.0f);
     }
 
     static String rootName(int pitchClass) {

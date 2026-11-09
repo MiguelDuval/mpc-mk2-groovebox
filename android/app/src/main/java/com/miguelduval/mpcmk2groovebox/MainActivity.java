@@ -488,6 +488,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native void nativeAudioSetPadAftertouch(int pad, int pressure);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
+    private static native int nativeAudioGetPadMidiNote(int pad);
     private static native String nativeAudioSetPadLevel(int pad, float level);
     private static native float nativeAudioGetPadLevel(int pad);
     private static native String nativeAudioSetPadPan(int pad, float pan);
@@ -6007,11 +6008,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
         // Every note/chord tone uses the selected Drum Pad sample with an
         // ephemeral native pitch override. No persistent pad tuning is written.
+        final int sourceMidiNote = nativeAudioGetPadMidiNote(selectedPad);
+        final float sourcePadTuning = nativeAudioGetPadTuning(selectedPad);
+        if (sourceMidiNote < 0 || sourceMidiNote > 127) {
+            setBottomStatus("PAD PERFORM • SOURCE PAD MIDI NOTE UNAVAILABLE");
+            return;
+        }
         for (int note : notes) {
             nativeAudioTriggerPadWithTuning(
                     selectedPad,
                     velocity,
-                    MpcPadPerformPolicy.tuningMilliSemitonesForNote(note));
+                    MpcPadPerformPolicy.tuningMilliSemitonesForNote(
+                            note, sourceMidiNote, sourcePadTuning));
         }
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
         setBottomStatus("PAD PERFORM • SOURCE PAD " + (selectedPad + 1)

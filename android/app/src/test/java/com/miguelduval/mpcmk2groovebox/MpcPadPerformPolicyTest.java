@@ -106,8 +106,14 @@ public final class MpcPadPerformPolicyTest {
 
     @Test
     public void transientTuningAndMpcOctaveLabelsAreCorrect() {
-        assertEquals(-12000, MpcPadPerformPolicy.tuningMilliSemitonesForNote(48));
-        assertEquals(0, MpcPadPerformPolicy.tuningMilliSemitonesForNote(60));
+        assertEquals(-12000,
+                MpcPadPerformPolicy.tuningMilliSemitonesForNote(48, 60, 0.0f));
+        assertEquals(0,
+                MpcPadPerformPolicy.tuningMilliSemitonesForNote(60, 60, 0.0f));
+        assertEquals(12000,
+                MpcPadPerformPolicy.tuningMilliSemitonesForNote(48, 36, 0.0f));
+        assertEquals(14500,
+                MpcPadPerformPolicy.tuningMilliSemitonesForNote(48, 36, 2.5f));
         assertEquals("C0", MpcPadPerformPolicy.noteName(48));
         assertEquals("C1", MpcPadPerformPolicy.noteName(60));
         assertEquals("C#", MpcPadPerformPolicy.rootName(13));

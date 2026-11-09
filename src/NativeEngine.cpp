@@ -1136,6 +1136,18 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
     }
 }
 
+extern "C" JNIEXPORT jint JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadMidiNote(
+        JNIEnv* /* env */, jobject /* thiz */, jint pad)
+{
+    if (pad < 0 || pad >= 16) return -1;
+    return static_cast<jint>(
+            mpc::MpcCore::instance().projectState()
+                    .activeDrumProgram()
+                    .pad(static_cast<std::size_t>(pad))
+                    .midiNote);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSetPadAftertouch(
         JNIEnv* /* env */, jobject /* thiz */, jint pad, jint pressure)
