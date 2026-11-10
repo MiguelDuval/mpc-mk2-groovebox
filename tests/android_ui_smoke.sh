@@ -13595,7 +13595,6 @@ project_marker_timestamp() {
   project_marker_timestamp_from_logs "$marker" <<<"$logs"
 }
 
-}
 
 project_view_tree_uptime_from_xml() {
   local page="$1"

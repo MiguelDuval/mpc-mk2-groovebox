@@ -1,3 +1,24 @@
+# Live checkpoint — 2026-11-10, smoke preflight syntax repair
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `6d30739cbf9390b33922cffeba07de7de57559c9`.
+
+## Exact-head Android Build #42875525757
+
+- Tested SHA: `6d30739cbf9390b33922cffeba07de7de57559c9`; run [#42875525757](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42875525757) failed before emulator execution.
+- Steps 1–54 succeeded, including native/JVM test suites, debug APK assembly and upload. Step 55, `Validate Android UI smoke syntax and evidence contract`, failed; step 56 emulator smoke was skipped; step 57 visual-evidence upload ran.
+- Exact shell error: `tests/android_ui_smoke.sh: line 13598: syntax error near unexpected token '}'`.
+- The monotonic marker parser itself was corrected on this SHA. The failure was a separate unmatched closing brace immediately after `project_marker_timestamp()`, before `project_view_tree_uptime_from_xml()`.
+
+## Forward correction
+
+Removed only the stray standalone closing brace. The marker parser, monotonic freshness comparison, app-owned View-tree assertions, smoke acceptance checks and timeout budgets remain unchanged. New exact-head Actions run is required; no Android runtime acceptance is inferred from run #42875525757.
+
+PR #139 stays Draft. No merge, rebase, force-push or history rewrite. `main` and primary product PR #23 remain untouched. Physical MPC Studio MkII acceptance remains NOT RUN.
+
+---
+
 # Live checkpoint — 2026-11-10, timestamp parser correction
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  
