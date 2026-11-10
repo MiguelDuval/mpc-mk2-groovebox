@@ -161,6 +161,43 @@ int main() {
     assert(state.activeSequenceIndex() == 0);
     assert(!state.selectSequence(99));
 
+    // Generated IDs use the next unused suffix, not collection size alone.
+    // Imported projects may contain sparse/custom IDs which collide with that
+    // naive count-based candidate.
+    mpc::MpcProjectState sparseTrackState;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    auto& sparseSecondTrack = sparseTrackState.activeSequence().tracks[1];
+    sparseSecondTrack.id = "track-3";
+    sparseSecondTrack.patterns[0].id = "track-3-pattern-1";
+    sparseSecondTrack.placements[0].id = "track-3-placement-1";
+    sparseSecondTrack.placements[0].patternId = sparseSecondTrack.patterns[0].id;
+    assert(sparseTrackState.addTrack(mpc::domain::TrackKind::Audio));
+    const auto& generatedTrackSequence = sparseTrackState.activeSequence();
+    assert(generatedTrackSequence.tracks.size() == 3);
+    assert(generatedTrackSequence.tracks[2].id == "track-4");
+    assert(generatedTrackSequence.tracks[2].patterns[0].id == "track-4-pattern-1");
+    assert(generatedTrackSequence.tracks[2].placements[0].id == "track-4-placement-1");
+    assert(generatedTrackSequence.tracks[1].id != generatedTrackSequence.tracks[2].id);
+
+    mpc::MpcProjectState sparseSequenceState;
+    assert(sparseSequenceState.addSequence());
+    auto& renamedSequence = sparseSequenceState.project().sequences[1];
+    renamedSequence.id = "sequence-3";
+    renamedSequence.tracks[0].id = "sequence-3-track-1";
+    renamedSequence.tracks[0].patterns[0].id = "sequence-3-track-1-pattern-1";
+    renamedSequence.tracks[0].placements[0].id = "sequence-3-track-1-placement-1";
+    renamedSequence.tracks[0].placements[0].patternId =
+            renamedSequence.tracks[0].patterns[0].id;
+    assert(sparseSequenceState.addSequence());
+    const auto& generatedSequences = sparseSequenceState.project().sequences;
+    assert(generatedSequences.size() == 3);
+    assert(generatedSequences[0].id == "sequence-1");
+    assert(generatedSequences[1].id == "sequence-3");
+    assert(generatedSequences[2].id == "sequence-4");
+    assert(generatedSequences[2].name == "Sequence 04");
+    assert(generatedSequences[2].tracks[0].id == "sequence-4-track-1");
+    assert(generatedSequences[2].tracks[0].patterns[0].id
+            == "sequence-4-track-1-pattern-1");
 
     // Project replacement must reset active indices and resolve the Track-owned Program.
     mpc::domain::Project opened;
