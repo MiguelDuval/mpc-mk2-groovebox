@@ -40,10 +40,13 @@ inline constexpr std::array<RepeatRate, 8> kRepeatRates{{
 [[nodiscard]] inline std::int32_t repeatRateIndexForTicks(
         std::int32_t ticks) noexcept {
     std::int32_t bestIndex = 0;
-    auto bestDistance = std::numeric_limits<std::int32_t>::max();
+    auto bestDistance = std::numeric_limits<std::int64_t>::max();
     for (std::size_t i = 0; i < kRepeatRates.size(); ++i) {
-        const auto distance = std::abs(
-                kRepeatRates[i].ticks - ticks);
+        // Widen before subtraction: int32_t inputs can be INT32_MIN/MAX,
+        // and subtracting a positive rate in 32-bit arithmetic can overflow.
+        const auto delta = static_cast<std::int64_t>(kRepeatRates[i].ticks)
+                - static_cast<std::int64_t>(ticks);
+        const auto distance = delta < 0 ? -delta : delta;
         if (distance < bestDistance) {
             bestDistance = distance;
             bestIndex = static_cast<std::int32_t>(i);
