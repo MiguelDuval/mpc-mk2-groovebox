@@ -40,7 +40,9 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
     switch (messageType) {
         case 0x80:
         case 0x90: {
-            if (message.size() < 3) {
+            if (message.size() < 3
+                    || message[1] >= 0x80u
+                    || message[2] >= 0x80u) {
                 return std::nullopt;
             }
 
@@ -92,7 +94,10 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
         }
 
         case 0xA0:
-            if (message.size() < 3 || channel != padChannel) {
+            if (message.size() < 3
+                    || message[1] >= 0x80u
+                    || message[2] >= 0x80u
+                    || channel != padChannel) {
                 return std::nullopt;
             }
 
@@ -110,7 +115,9 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
             return std::nullopt;
 
         case 0xB0:
-            if (message.size() < 3) {
+            if (message.size() < 3
+                    || message[1] >= 0x80u
+                    || message[2] >= 0x80u) {
                 return std::nullopt;
             }
 
@@ -135,6 +142,9 @@ std::optional<InputEvent> decodeInput(std::span<const std::uint8_t> message) {
             return std::nullopt;
 
         case 0xD0:
+            if (message[1] >= 0x80u) {
+                return std::nullopt;
+            }
             return InputEvent{
                 InputEventType::ChannelAftertouch,
                 channel,

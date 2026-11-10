@@ -259,6 +259,30 @@ void testLcdPngSizeBoundaries() {
     check(384, 0x20, 0x01, 0x00);
 }
 
+void testMalformedDataBytesAreRejected() {
+    const auto rejected = [](std::initializer_list<std::uint8_t> bytes) {
+        const auto event = mpc::studio::decodeInput(
+            std::span<const std::uint8_t>(bytes.begin(), bytes.size()));
+        return !event.has_value();
+    };
+
+    // MIDI channel-voice data bytes are seven-bit values. Reject high-bit
+    // payloads instead of emitting impossible velocities or aftertouch values.
+    assert(rejected({0x99, 37, 0x80}));
+    assert(rejected({0x99, 37, 0xFF}));
+    assert(rejected({0xA9, 37, 0x80}));
+    assert(rejected({0xB0, 100, 0x80}));
+    assert(rejected({0xD0, 0x80}));
+
+    // Legal maximum data values still decode at the boundary.
+    const auto maxVelocity = decode({0x99, 37, 0x7F});
+    assert(maxVelocity.type == InputEventType::PadNote);
+    assert(maxVelocity.value == 127);
+    const auto maxPressure = decode({0xD0, 0x7F});
+    assert(maxPressure.type == InputEventType::ChannelAftertouch);
+    assert(maxPressure.value == 127);
+}
+
 void testUnknownMessageIsIgnored() {
     const std::uint8_t bytes[] = {0x99, 99, 100};
 
@@ -288,6 +312,7 @@ int main() {
     testLcdChunkHeader();
     testLcdLargePngSizeFlag();
     testLcdPngSizeBoundaries();
+    testMalformedDataBytesAreRejected();
     testUnknownMessageIsIgnored();
     return 0;
 }
