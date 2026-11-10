@@ -88,6 +88,66 @@ void testFinishClosesHeldNote() {
     assert(track.patterns.front().notes.front().durationTicks == 120);
 }
 
+void testRejectsMalformedQueuedEvents() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    // A negative absolute tick is not a valid captured transport position.
+    // It must not wrap to the end of the Pattern and become an audible note.
+    assert(queue.tryEnqueue({-1, 0, 0, 100, 1}));
+    assert(queue.tryEnqueue({120, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+
+    // Values above MIDI's 7-bit velocity range would be serialized into a
+    // Project which the strict persistence reader later rejects.
+    assert(queue.tryEnqueue({120, 0, 1, 255, 1}));
+    assert(queue.tryEnqueue({240, 0, 1, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+
+    // pressed is a boolean field, not a truthy flag; do not interpret 2 as a
+    // second spelling of note-on.
+    assert(queue.tryEnqueue({120, 0, 2, 90, 2}));
+    assert(queue.tryEnqueue({240, 0, 2, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+}
+
+void testInvalidReleaseLeavesValidHeldNoteForFinish() {
+    mpc::MpcProjectState state;
+    auto& sequence = state.activeSequence();
+    auto& track = sequence.tracks[0];
+    track.recordArmed = true;
+    sequence.timingCorrectEnabled = false;
+
+    mpc::sequencer::SequenceRecordQueue queue;
+    mpc::sequencer::MpcSequenceRecorder recorder;
+    recorder.setMode(mpc::sequencer::PatternRecordMode::Overdub);
+    recorder.begin(state);
+
+    assert(queue.tryEnqueue({120, 0, 0, 100, 1}));
+    assert(queue.tryEnqueue({-1, 0, 0, 0, 0}));
+    assert(recorder.drain(state, queue) == 0);
+    assert(track.patterns.front().notes.empty());
+
+    // Ignoring the malformed release must not clear the valid held press;
+    // finishing at a valid transport tick closes it with the proper duration.
+    assert(recorder.finish(state, queue, 240) == 1);
+    assert(track.patterns.front().notes.size() == 1);
+    assert(track.patterns.front().notes.front().tick == 120);
+    assert(track.patterns.front().notes.front().durationTicks == 120);
+    assert(track.patterns.front().notes.front().velocity == 100);
+}
+
 void testTimingCorrectCanBeDisabled() {
     mpc::MpcProjectState state;
     auto& sequence = state.activeSequence();
@@ -141,5 +201,7 @@ int main() {
     testFinishClosesHeldNote();
     testZeroLengthTapUsesGridDuration();
     testTimingCorrectCanBeDisabled();
+    testRejectsMalformedQueuedEvents();
+    testInvalidReleaseLeavesValidHeldNoteForFinish();
     return 0;
 }
