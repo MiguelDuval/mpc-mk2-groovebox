@@ -50,7 +50,7 @@ std::string makeVersion2BytesFromVersion3(const std::string& version3) {
         if (firstLine) {
             firstLine = false;
             assert(line == "MPCMK2_PROJECT 3");
-            output << "MPCMK2_PROJECT 2\\n";
+            output << "MPCMK2_PROJECT 2\n";
             continue;
         }
         if (line.rfind("TRACK ", 0) == 0) {
@@ -67,10 +67,10 @@ std::string makeVersion2BytesFromVersion3(const std::string& version3) {
             output << tag << ' ' << std::quoted(id) << ' ' << std::quoted(name)
                    << ' ' << type << ' ' << kind << ' ' << std::quoted(programId)
                    << ' ' << muted << ' ' << soloed << ' ' << recordArmed
-                   << ' ' << patternCount << ' ' << placementCount << '\\n';
+                   << ' ' << patternCount << ' ' << placementCount << '\n';
             continue;
         }
-        output << line << '\\n';
+        output << line << '\n';
     }
     return output.str();
 }
