@@ -6263,12 +6263,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             modeParams.width = 0;
             modeParams.height = dp(36);
             modeParams.columnSpec = GridLayout.spec(i % 2, 1f);
-            modeParams.rowSpec = GridLayout.spec(i / 2, 1f);
+            // Keep mode hit targets at their declared 36dp height. A weighted
+            // row expands each Button to the whole grid height on Android's
+            // GridLayout, overlapping Scale/Octave controls and misrouting taps.
+            modeParams.rowSpec = GridLayout.spec(i / 2);
             modeParams.setMargins(dp(2), dp(2), dp(2), dp(2));
             modeGrid.addView(modeButton, modeParams);
         }
+        // Three 36dp rows plus 2dp vertical margins on each row.
         controls.addView(modeGrid, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(116)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
 
         TextView scaleLabel = sectionLabel("SCALE & OCTAVE");
         scaleLabel.setPadding(dp(4), dp(5), dp(4), 0);

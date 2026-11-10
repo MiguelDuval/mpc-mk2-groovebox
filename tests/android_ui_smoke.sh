@@ -2242,6 +2242,12 @@ require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'tuningMilliSemitonesForNot
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MpcPadPerformPolicy.notesForPad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeAudioTriggerPadWithTuning'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Pad Perform physical Pad'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'modeParams.rowSpec = GridLayout.spec(i / 2);'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MATCH_PARENT, dp(120)'
+if grep -Fq -- 'GridLayout.spec(i / 2, 1f)' "$MAIN_ACTIVITY_SOURCE"; then
+  echo "ERROR: Pad Perform mode rows must not use vertical weight"
+  exit 1
+fi
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'playPadPerformKey(value0, value1)'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'padPerformAftertouchTargetPad != selectedPad'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'case MpcStudioMk2SemanticActions.PAD_AFTERTOUCH:'
@@ -13570,6 +13576,32 @@ elif page == "PAD_PERFORM":
     if len(selected_modes) != 1:
         raise SystemExit(f"Pad Perform must expose exactly one selected mode, got {len(selected_modes)}")
     require_target(selected_modes[0].attrib.get("content-desc"))
+    workspace = next((node for node in nodes
+            if node.attrib.get("content-desc") == "MPC Pad Perform workspace"), None)
+    if workspace is None:
+        raise SystemExit("Pad Perform workspace bounds are missing")
+    try:
+        workspace_bounds = workspace.attrib.get("bounds", "")[1:-1].replace("][", ",").split(",")
+        workspace_height = int(workspace_bounds[3]) - int(workspace_bounds[1])
+    except (ValueError, IndexError):
+        raise SystemExit(f"invalid Pad Perform workspace bounds: {workspace.attrib!r}")
+    if workspace_height <= 0:
+        raise SystemExit(f"non-positive Pad Perform workspace height: {workspace_height}")
+    for mode_node in modes:
+        raw = mode_node.attrib.get("bounds", "")
+        try:
+            left_top, right_bottom = raw[1:-1].split("][")
+            left, top = map(int, left_top.split(","))
+            right, bottom = map(int, right_bottom.split(","))
+        except (ValueError, IndexError):
+            raise SystemExit(f"invalid Pad Perform mode bounds: {mode_node.attrib!r}")
+        mode_height = bottom - top
+        if mode_height <= 0 or mode_height * 100 > workspace_height * 30:
+            raise SystemExit(
+                f"Pad Perform mode hit target is oversized/overlapping: "
+                f"height={mode_height} workspace={workspace_height} {mode_node.attrib!r}")
+        if mode_node.attrib.get("clickable") != "true" or mode_node.attrib.get("enabled") != "true":
+            raise SystemExit(f"Pad Perform mode is not actionable: {mode_node.attrib!r}")
     if len(pads) != 16:
         raise SystemExit(f"Pad Perform must expose sixteen mapped pads, got {len(pads)}")
     for node in pads:
