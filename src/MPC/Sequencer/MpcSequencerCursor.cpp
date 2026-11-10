@@ -36,8 +36,18 @@ void MpcSequencerCursor::setPositionTicks(std::int64_t ticks) noexcept {
         return;
     }
 
-    const auto relative = (ticks - loopStart) % loopLength;
-    positionTicks_ = loopStart + (relative < 0 ? relative + loopLength : relative);
+    // Subtracting loopStart from an extreme negative transport position can
+    // overflow signed int64_t. Normalize both operands before taking their
+    // bounded modular difference.
+    const auto positionRemainder = ticks % loopLength;
+    const auto normalizedPosition = positionRemainder < 0
+            ? positionRemainder + loopLength
+            : positionRemainder;
+    const auto startRemainder = loopStart % loopLength;
+    const auto relative = normalizedPosition >= startRemainder
+            ? normalizedPosition - startRemainder
+            : loopLength - (startRemainder - normalizedPosition);
+    positionTicks_ = loopStart + relative;
 }
 
 TickWindow MpcSequencerCursor::advanceTicks(
