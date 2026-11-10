@@ -13592,7 +13592,15 @@ capture_project_persistence_view_tree() {
   local page="$1" target_xml="$2" timeout_seconds="${3:-20}" marker before remote
   case "$page" in
     MENU) marker="MPC_MENU_VIEW_HIERARCHY_READY"; before="$PROJECT_MENU_TREE_MARKER_BEFORE"; remote="cache/mpc-project-menu-view-hierarchy.xml" ;;
-    MAIN) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"; before="$PROJECT_MAIN_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
+    MAIN)
+      marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN"
+      before="$PROJECT_MAIN_TREE_MARKER_BEFORE"
+      remote="cache/mpc-project-persistence-view-hierarchy.xml"
+      # Project Open can return from DocumentsUI before the Activity's first
+      # post-open Main View-tree pre-draw. The marker freshness assertion stays
+      # strict; give slow emulator scheduling a larger wait budget.
+      if [[ -z "${3:-}" ]]; then timeout_seconds=35; fi
+      ;;
     BROWSE) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE"; before="$PROJECT_BROWSER_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     PROJECT) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT"; before="$PROJECT_PROJECT_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
     SHORTCUTS) marker="PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS"; before="$PROJECT_SHORTCUTS_TREE_MARKER_BEFORE"; remote="cache/mpc-project-persistence-view-hierarchy.xml" ;;
