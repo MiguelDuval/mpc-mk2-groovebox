@@ -1,3 +1,26 @@
+# Live checkpoint — 2026-11-10 integration pass
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox.  
+**Working candidate:** PR #139, branch `feature/firmware-informed-midi-list-edit-20261106`. The authoritative branch HEAD is always the current GitHub ref; do not rely on a copied SHA from this note. PR #139 remains a draft integration candidate and is not mergeable into its checkpoint base at this stage. Do not merge, rebase, force-push, or rewrite history. PR #23 and `main` remain outside this work.
+
+## UI smoke synchronization correction
+
+This pass updates the Android UI smoke harness and Project persistence View-tree capture on PR #139:
+
+- The Activity observes the window decor's live `ViewTreeObserver`, requests a fresh root traversal and publishes the app-owned View tree from the next pre-draw. This covers state-only SAMPLE playhead/accessibility updates that do not reliably schedule a workspace-child traversal.
+- View-tree freshness is compared using app-owned XML's monotonic `generated-at-uptime-ms`, with strict page/provenance/non-empty/control validation retained. Baseline collection is batched to two ADB reads; bounded Logcat counts remain for diagnostic/application events.
+- SAMP-007 stops after preserving fresh in-region and advancing native cursor snapshots. It then waits for a newer SAMPLE XML whose native playhead is idle; it no longer depends on a particular Logcat message or a fixed 11-second delay. The edited region start/end/total and idle cursor remain asserted exactly.
+- Reuse of an already-validated View tree updates the current evidence pointer; the v1 Project-open acceptance reuses the fresh Main snapshot rather than racing a duplicate redraw.
+- Shortcut editor freshness checks use monotonic XML timestamps. Existing 16 Levels, Pad Perform, arrangement, project, browser and other acceptance coverage is preserved.
+
+## Verification status
+
+The pre-existing PR #142 run `42627399409` failed in the SAMP-007 *Logcat stop-marker wait* after in-region cursor movement had already passed. That run was on a stale, divergent base and is diagnostic evidence, not the current PR #139 head. The changes above are a forward-only commit on PR #139. The new exact-head GitHub Actions run is the acceptance authority; do not call this pass green until the full workflow, including Android emulator smoke and visual-evidence upload, succeeds on the exact live branch SHA.
+
+Physical Akai MPC Studio MkII acceptance remains separate and has not been established by emulator CI.
+
+---
+
 # Live checkpoint — 2026-11-07 16:28 CET
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox.  
