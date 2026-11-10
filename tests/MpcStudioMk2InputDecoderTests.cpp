@@ -2,7 +2,9 @@
 #include "MPC/MpcStudioMk2InputDecoder.h"
 #include "MPC/MpcStudioMk2LedProtocol.h"
 
+#include <array>
 #include <cassert>
+#include <cstddef>
 #include <initializer_list>
 #include <cstdint>
 #include <optional>
@@ -259,6 +261,34 @@ void testLcdPngSizeBoundaries() {
     check(384, 0x20, 0x01, 0x00);
 }
 
+
+template <std::size_t N>
+void assertMalformedMessageRejected(const std::array<std::uint8_t, N>& bytes) {
+    const auto event = mpc::studio::decodeInput(
+        std::span<const std::uint8_t>(bytes.data(), bytes.size()));
+    assert(!event.has_value());
+}
+
+void testRejectsMalformedChannelMessageBytesAndLengths() {
+    // MIDI channel-message data bytes must stay in 0..127. A high-bit value
+    // must not leak into pad velocity, aftertouch, button, or jog-wheel state.
+    assertMalformedMessageRejected(std::array<std::uint8_t, 3>{{0x99, 37, 0x80}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 3>{{0x90, 82, 0x80}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 3>{{0xA9, 37, 0x80}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 3>{{0xB0, 100, 0xFF}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 2>{{0xD0, 0x80}});
+
+    // decodeInput accepts exactly one complete MIDI message, not truncated
+    // messages or a prefix of a concatenated byte stream.
+    assertMalformedMessageRejected(std::array<std::uint8_t, 2>{{0x99, 37}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 4>{{0x99, 37, 100, 0}});
+    assertMalformedMessageRejected(std::array<std::uint8_t, 3>{{0xD0, 50, 0}});
+
+    const auto boundary = decode({0xB0, 100, 127});
+    assert(boundary.type == InputEventType::JogWheel);
+    assert(boundary.value == 127);
+}
+
 void testUnknownMessageIsIgnored() {
     const std::uint8_t bytes[] = {0x99, 99, 100};
 
@@ -282,6 +312,7 @@ int main() {
     testTouchStripButtonAndTouch();
     testTouchStrip();
     testChannelAftertouch();
+    testRejectsMalformedChannelMessageBytesAndLengths();
     testPadLedBuilder();
     testLedCcBuilders();
     testLcdPayloadEncoding();
