@@ -17413,20 +17413,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         channelMixer, "MPC Channel Mixer selected Track ");
                 final View panVolumeTab = findViewWithContentDescription(
                         channelMixer, "MPC Channel Mixer tab PAN & VOLUME");
+                // performClick() changes the workspace synchronously, but Android
+                // performs the new page's first measure/layout after this UI callback.
+                // Check that real controls are attached, visible and enabled here;
+                // the external UIAutomator smoke verifies their measured bounds and touch targets.
                 if (navigationController.state().mode() != MpcUiState.Mode.CHANNEL_MIXER
                         || !"CHANNEL_MIXER".equals(currentPage)
                         || channelMixerWorkspace == null || !channelMixerWorkspace.isShown()
-                        || channelMixerWorkspace.getWidth() < dp(180)
-                        || channelMixerWorkspace.getHeight() <= dp(160)
+                        || channelMixerWorkspace.getParent() == null
                         || channelMixer == null || !channelMixer.isShown()
+                        || channelMixer.getParent() == null
                         || trackBank == null || !trackBank.isShown()
-                        || trackBank.getHeight() <= dp(120)
+                        || trackBank.getParent() == null
                         || selectedStrip == null || !selectedStrip.isShown()
-                        || selectedStrip.getWidth() < dp(90)
-                        || selectedStrip.getHeight() <= dp(160)
+                        || selectedStrip.getParent() == null
                         || selectedFader == null || !selectedFader.isShown()
+                        || selectedFader.getParent() == null
                         || !selectedFader.isEnabled()
-                        || selectedFader.getHeight() < dp(72)
                         || selectedTrackLabel == null || !selectedTrackLabel.isShown()
                         || panVolumeTab == null || !panVolumeTab.isShown()
                         || !panVolumeTab.isEnabled()
@@ -17454,7 +17457,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         channelMixer, "MPC Channel Mixer Track "
                                 + (trackBefore + 1) + " Pan slider ");
                 if (panSlider == null || !panSlider.isShown()
-                        || !panSlider.isEnabled() || panSlider.getHeight() < dp(24)) {
+                        || panSlider.getParent() == null || !panSlider.isEnabled()) {
                     Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Pan & Volume has no live selected-Track Pan slider"
                             + " | pan=" + describeAuditView(panSlider));
                     return;
