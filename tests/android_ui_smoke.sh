@@ -14733,7 +14733,7 @@ if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_CANCEL_XML"; 
 # codec-only fixture whose PROGRAMS section intentionally violates runtime rules.
 # v3 adds Track Level/Pan after recordArmed; the v1 fixture removes those fields,
 # all Pattern placements, and the v3-only data while retaining the same MIDI model.
-device_project_path="$(adb_bounded 10 shell 'find /storage/emulated/0 -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\\r')"
+device_project_path="$(adb_bounded 10 shell 'find /storage/emulated/0 -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\r')"
 if [[ -z "$device_project_path" ]]; then
   echo "ERROR: could not find the actual SAF saved Project file"; exit 1
 fi
