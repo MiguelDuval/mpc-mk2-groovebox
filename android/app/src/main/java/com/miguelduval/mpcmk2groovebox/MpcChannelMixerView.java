@@ -216,7 +216,7 @@ final class MpcChannelMixerView extends LinearLayout {
 
     private TextView chip(String value,boolean enabled,boolean selected,String description){
         TextView v=label(value,9,enabled?TEXT:MUTED,true);v.setGravity(Gravity.CENTER);
-        v.setContentDescription(description);v.setFocusable(enabled);v.setClickable(enabled);v.setMixerEnabled(enabled);
+        v.setContentDescription(description);v.setEnabled(enabled);v.setFocusable(enabled);v.setClickable(enabled);
         v.setBackground(background(selected?Color.rgb(48,61,77):SURFACE,selected?ACCENT:LINE));return v;
     }
     private TextView label(String value,int size,int color,boolean bold){
