@@ -2337,7 +2337,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
   fi
 done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
-    'open_project_document()' 'final_count="$(project_marker_count "$marker")"' 'Observed fresh Android View-tree marker on final bounded read:' 'PROJECT_OPEN_REJECTED)' \
+    'open_project_document()' 'final_timestamp="$(project_marker_timestamp "$marker")"' 'Observed fresh Android marker on final bounded timestamp read:' 'logcat -d -t 4096 -v brief,monotonic' 'project_marker_timestamp_from_logs' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
@@ -13567,17 +13567,34 @@ PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE=0 PROJECT_SEQUENCE_TREE_UPTIME_BEFORE=0
 PROJECT_LEVELS_16_TREE_UPTIME_BEFORE=0 PROJECT_PAD_PERFORM_TREE_UPTIME_BEFORE=0
 PROJECT_SAMPLE_TREE_UPTIME_BEFORE=0
 
-project_marker_count() {
+project_marker_timestamp_from_logs() {
+  local marker="$1"
+  python3 -c '
+import re
+import sys
+from decimal import Decimal
+marker = sys.argv[1]
+timestamps = []
+for line in sys.stdin:
+    if marker not in line:
+        continue
+    match = re.match(r"^\\s*\\[?\\s*([0-9]+(?:\\.[0-9]+)?)", line)
+    if match:
+        timestamps.append(int(Decimal(match.group(1)) * 1_000_000))
+print(max(timestamps, default=0))
+' "$marker"
+}
+
+project_marker_timestamp() {
   local marker="$1" timeout_seconds="${2:-5}" logs
-  # Use a fixed adb timeout (5s) for logcat -d; the timeout_seconds parameter
-  # is the remaining wait time for the polling loop, not the adb command timeout.
-  # Passing a short remaining time to adb_bounded causes logcat to be killed
-  # before it can complete on slow CI runners, missing the marker.
-  # Bound the logcat read by entry count. A full-buffer dump can outlive the
-  # fixed ADB timeout late in a long smoke run and omit the newest marker.
-  # Keep the marker baseline and freshness comparison below unchanged.
-  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  grep -F -c -- "$marker" <<<"$logs" || true
+  # Logcat is a circular buffer. A match count is not monotonic: after
+  # rollover a new event can replace an old one while the count stays flat.
+  # Compare the newest event's device-monotonic timestamp instead; this is
+  # safe across ring-buffer rollover and wall-clock corrections.
+  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  project_marker_timestamp_from_logs "$marker" <<<"$logs"
+}
+
 }
 
 project_view_tree_uptime_from_xml() {
@@ -13633,19 +13650,19 @@ wait_for_new_project_view_tree() {
 }
 
 snapshot_project_view_tree_marker_baselines() {
-  PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
-  PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
-  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
-  PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
-  PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
-  PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
-  PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
-  PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
-  PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_MENU_RENDER_COMPLETE")"
-  PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_count "MPC_MENU_CLICK_END currentPage=MENU")"
-  PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_count "MPC_PROJECT_RENDER_COMPLETE summary=")"
-  PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_count "MPC_SHELL_STATE_END mode=MAIN")"
-  PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+  PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_timestamp "MPC_MENU_VIEW_HIERARCHY_READY")"
+  PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+  PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
+  PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+  PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+  PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
+  PROJECT_MENU_RENDER_MARKER_BEFORE="$(project_marker_timestamp "MPC_MENU_RENDER_COMPLETE")"
+  PROJECT_MENU_CLICK_MARKER_BEFORE="$(project_marker_timestamp "MPC_MENU_CLICK_END currentPage=MENU")"
+  PROJECT_PROJECT_RENDER_MARKER_BEFORE="$(project_marker_timestamp "MPC_PROJECT_RENDER_COMPLETE summary=")"
+  PROJECT_MAIN_SHELL_MARKER_BEFORE="$(project_marker_timestamp "MPC_SHELL_STATE_END mode=MAIN")"
+  PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
   # Only two ADB reads are needed for all nine page baselines: Menu writes to
   # its own file; all other workspaces share the app-owned persistence file.
   local shared_xml menu_xml
@@ -13663,7 +13680,7 @@ snapshot_project_view_tree_marker_baselines() {
 }
 
 snapshot_browser_view_tree_marker_baseline() {
-  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+  PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
   PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)"
 }
 
@@ -13821,31 +13838,31 @@ PY_PROJECT_APP_VIEW_TREE
   # requires a snapshot newer than the exact one just validated.
   case "$page" in
     MENU)
-      PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_count "MPC_MENU_VIEW_HIERARCHY_READY")"
+      PROJECT_MENU_TREE_MARKER_BEFORE="$(project_marker_timestamp "MPC_MENU_VIEW_HIERARCHY_READY")"
       PROJECT_MENU_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MENU)" ;;
     MAIN)
-      PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
+      PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN")"
       PROJECT_MAIN_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at MAIN)" ;;
     BROWSE)
-      PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
+      PROJECT_BROWSER_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=BROWSE")"
       PROJECT_BROWSER_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at BROWSE)" ;;
     PROJECT)
-      PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
+      PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT")"
       PROJECT_PROJECT_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PROJECT)" ;;
     SHORTCUTS)
-      PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
+      PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS")"
       PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)" ;;
     SEQ)
-      PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
+      PROJECT_SEQUENCE_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SEQ")"
       PROJECT_SEQUENCE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SEQ)" ;;
     SAMPLE)
-      PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
+      PROJECT_SAMPLE_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SAMPLE")"
       PROJECT_SAMPLE_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SAMPLE)" ;;
     LEVELS_16)
-      PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+      PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
       PROJECT_LEVELS_16_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at LEVELS_16)" ;;
     PAD_PERFORM)
-      PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
+      PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
       PROJECT_PAD_PERFORM_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at PAD_PERFORM)" ;;
   esac
   return 0
@@ -13853,44 +13870,41 @@ PY_PROJECT_APP_VIEW_TREE
 
 wait_for_new_project_marker() {
   local marker="$1" before="$2" timeout_seconds="${3:-45}"
-  local deadline=$((SECONDS + timeout_seconds)) remaining count final_count
-  local diagnostic_logs diagnostic_count
+  local deadline=$((SECONDS + timeout_seconds)) remaining current_timestamp
+  local final_timestamp diagnostic_logs diagnostic_timestamp
+
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    count="$(project_marker_count "$marker" "$remaining")"
-    if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
+    current_timestamp="$(project_marker_timestamp "$marker" "$remaining")"
+    if [[ "$current_timestamp" =~ ^[0-9]+$ ]] && (( current_timestamp > before )); then return 0; fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
 
-  # logcat -d snapshots the buffer when each command starts. A UI event can
-  # land just after the final polling snapshot, including between the first
-  # final read and the diagnostic dump. Reuse the diagnostic snapshot itself
-  # as another strict freshness check before reporting a timeout.
-  final_count="$(project_marker_count "$marker")"
-  if [[ "$final_count" =~ ^[0-9]+$ ]] && (( final_count > before )); then
-    echo "Observed fresh Android marker on final bounded read: $marker"
+  final_timestamp="$(project_marker_timestamp "$marker")"
+  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
+    echo "Observed fresh Android marker on final bounded timestamp read: $marker"
     return 0
   fi
 
-  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null || true)"
-  printf '%s\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
-  diagnostic_count="$(grep -F -c -- "$marker" <<<"$diagnostic_logs" || true)"
-  if [[ "$diagnostic_count" =~ ^[0-9]+$ ]] && (( diagnostic_count > before )); then
+  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  printf '%s\\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
+  diagnostic_timestamp="$(project_marker_timestamp_from_logs "$marker" <<<"$diagnostic_logs")"
+  if [[ "$diagnostic_timestamp" =~ ^[0-9]+$ ]] && (( diagnostic_timestamp > before )); then
     echo "Observed fresh Android marker in post-timeout diagnostic snapshot: $marker"
     return 0
   fi
 
-  # A second short read closes the remaining scheduling boundary where the
-  # event is emitted immediately after the diagnostic snapshot was taken.
   sleep 0.25
-  final_count="$(project_marker_count "$marker")"
-  if [[ "$final_count" =~ ^[0-9]+$ ]] && (( final_count > before )); then
-    echo "Observed fresh Android marker on post-diagnostic recheck: $marker"
+  final_timestamp="$(project_marker_timestamp "$marker")"
+  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
+    echo "Observed fresh Android marker on post-diagnostic timestamp recheck: $marker"
     return 0
   fi
 
-  echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker (baseline=$before current=$final_timestamp)"
   return 1
+}
+
 }
 
 # Reuse a View tree that was freshly captured and validated by the immediately
@@ -13997,7 +14011,7 @@ tap_mpc_menu_tile() {
   render_before="$PROJECT_PROJECT_RENDER_MARKER_BEFORE"
   shell_before="$PROJECT_MAIN_SHELL_MARKER_BEFORE"
   if [[ "$page" == "LEVELS_16" || "$page" == "PAD_PERFORM" ]]; then
-    shell_before="$(project_marker_count "MPC_SHELL_STATE_END mode=$page")"
+    shell_before="$(project_marker_timestamp "MPC_SHELL_STATE_END mode=$page")"
   fi
   echo "Real measured Menu tile tap target=$description"
   if ! tap_visible_description_early "$PROJECT_CURRENT_APP_XML" "$description"; then return 1; fi
@@ -14192,7 +14206,7 @@ if ! capture_ui_screenshot "/tmp/mpc-groovebox-16levels-velocity.png" 10; then e
 
 LEVELS16_DIALOG_XML="/tmp/mpc-groovebox-16levels-type-dialog-uiautomator.xml"
 LEVELS16_DIALOG_REMOTE="/sdcard/mpc-groovebox-16levels-type-dialog-uiautomator.xml"
-PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
 if ! tap_visible_description_early "$LEVELS16_VELOCITY_XML" "16 Levels select type VELOCITY"; then
   echo "ERROR: 16 Levels Type selector was not actionable"; exit 1
 fi
@@ -14214,13 +14228,13 @@ if len(matches) != 1: raise SystemExit(f"expected one Pad 09 Tune target, got {l
 print(matches[0])
 PY_LEVELS16_TUNE_TARGET
 )" || { echo "ERROR: could not derive Pad 09 Tune target"; exit 1; }
-levels16_tune_before="$(project_marker_count "LEVELS16_TRIGGER type=TUNE physicalPad=8 sourcePad=0")"
+levels16_tune_before="$(project_marker_timestamp "LEVELS16_TRIGGER type=TUNE physicalPad=8 sourcePad=0")"
 if ! tap_visible_description_early "$LEVELS16_TUNE_XML" "$levels16_tune_target"; then exit 1; fi
 if ! wait_for_new_project_marker "LEVELS16_TRIGGER type=TUNE physicalPad=8 sourcePad=0" "$levels16_tune_before" 10; then
   echo "ERROR: Pad 09 Tune touch did not reach native trigger"; exit 1
 fi
 
-PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
+PROJECT_LEVELS_16_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=LEVELS_16")"
 if ! tap_visible_description_early "$LEVELS16_TUNE_XML" "16 Levels select type TUNE"; then exit 1; fi
 if ! dump_device_ui "$LEVELS16_DIALOG_REMOTE" "$LEVELS16_DIALOG_XML"; then exit 1; fi
 if ! tap_ui_text "$LEVELS16_DIALOG_XML" "FILTER"; then
@@ -14238,7 +14252,7 @@ if len(matches) != 1: raise SystemExit(f"expected one Pad 16 Filter target, got 
 print(matches[0])
 PY_LEVELS16_FILTER_TARGET
 )" || { echo "ERROR: could not derive Pad 16 Filter target"; exit 1; }
-levels16_filter_before="$(project_marker_count "LEVELS16_TRIGGER type=FILTER physicalPad=15 sourcePad=0")"
+levels16_filter_before="$(project_marker_timestamp "LEVELS16_TRIGGER type=FILTER physicalPad=15 sourcePad=0")"
 if ! tap_visible_description_early "$LEVELS16_FILTER_XML" "$levels16_filter_target"; then exit 1; fi
 if ! wait_for_new_project_marker "LEVELS16_TRIGGER type=FILTER physicalPad=15 sourcePad=0" "$levels16_filter_before" 10; then
   echo "ERROR: Pad 16 Filter touch did not reach native trigger"; exit 1
@@ -14248,7 +14262,7 @@ if ! tap_project_toolbar_menu; then echo "ERROR: Menu exit from 16 Levels failed
 if ! tap_mpc_menu_tile 2 3; then echo "ERROR: measured Menu PAD PERFORM touch failed"; exit 1; fi
 PAD_PERFORM_CHROMATIC_XML="/tmp/mpc-groovebox-pad-perform-chromatic-uiautomator.xml"
 if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$PAD_PERFORM_CHROMATIC_XML"; then exit 1; fi
-PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
+PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
 if ! tap_visible_description_early "$PAD_PERFORM_CHROMATIC_XML" "MPC Pad Perform mode CHORDS"; then
   echo "ERROR: Pad Perform CHORDS selector was not actionable"; exit 1
 fi
@@ -14264,7 +14278,7 @@ if len(matches) != 1: raise SystemExit(f"expected one Pad Perform Pad 01 target,
 print(matches[0])
 PY_PAD_PERFORM_CHORD_TARGET
 )" || { echo "ERROR: could not derive Pad Perform Pad 01 target"; exit 1; }
-pad_perform_chord_before="$(project_marker_count "PAD_PERFORM_TRIGGER mode=CHORDS physicalPad=0 sourcePad=0 notes=[48, 52, 55]")"
+pad_perform_chord_before="$(project_marker_timestamp "PAD_PERFORM_TRIGGER mode=CHORDS physicalPad=0 sourcePad=0 notes=[48, 52, 55]")"
 if ! tap_visible_description_early "$PAD_PERFORM_CHORDS_XML" "$pad_perform_chord_target"; then exit 1; fi
 if ! wait_for_new_project_marker "PAD_PERFORM_TRIGGER mode=CHORDS physicalPad=0 sourcePad=0 notes=[48, 52, 55]" "$pad_perform_chord_before" 10; then
   echo "ERROR: Pad Perform chord touch did not trigger all three native notes"; exit 1
@@ -14286,7 +14300,7 @@ fi
 echo "Real Main → Menu → Project touch path and native summary verified; fresh Android View-tree evidence captured."
 
 # Save the real native Project model through ACTION_CREATE_DOCUMENT.
-project_save_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+project_save_marker_before="$(project_marker_timestamp "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 1; then exit 1; fi
 project_save_picker_ready=0
 for ((attempt=1; attempt<=25; attempt++)); do
@@ -14351,7 +14365,7 @@ if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_MUTATED_XML"; then echo
 
 # Open the saved file through ACTION_OPEN_DOCUMENT. This parses the file into
 # a new domain Project and replaces the already-mutated in-memory model.
-project_open_marker_before="$(project_marker_count "PROJECT_OPEN_COMPLETE")"
+project_open_marker_before="$(project_marker_timestamp "PROJECT_OPEN_COMPLETE")"
 if ! tap_project_function_bar 0; then exit 1; fi
 project_open_picker_ready=0
 for ((attempt=1; attempt<=25; attempt++)); do
@@ -14561,8 +14575,8 @@ cancel_android_document_picker() {
 open_project_document() {
   local item="$1" expected_marker="${2:-PROJECT_OPEN_COMPLETE}"
   local expected_before expected_page
-  OPEN_PROJECT_COMPLETE_BEFORE="$(project_marker_count "PROJECT_OPEN_COMPLETE")"
-  OPEN_PROJECT_REJECTED_BEFORE="$(project_marker_count "PROJECT_OPEN_REJECTED")"
+  OPEN_PROJECT_COMPLETE_BEFORE="$(project_marker_timestamp "PROJECT_OPEN_COMPLETE")"
+  OPEN_PROJECT_REJECTED_BEFORE="$(project_marker_timestamp "PROJECT_OPEN_REJECTED")"
   case "$expected_marker" in
     PROJECT_OPEN_COMPLETE)
       expected_before="$OPEN_PROJECT_COMPLETE_BEFORE"
@@ -14635,7 +14649,7 @@ if ! tap_project_toolbar_menu; then exit 1; fi
 if ! tap_mpc_menu_tile 3 3; then exit 1; fi
 if ! assert_latest_project_summary "TRACKS=2" "PLACEMENTS=2"; then exit 1; fi
 
-project_save_update_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+project_save_update_marker_before="$(project_marker_timestamp "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 2; then exit 1; fi
 if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_save_update_marker_before" 45; then
   echo "ERROR: SAVE did not overwrite the already-linked Project document"; exit 1
@@ -14659,7 +14673,7 @@ echo "Project SAVE overwrite passed: linked SAF file now represents TRACKS=2 / P
 PROJECT_DOC_A_SHA="$project_saved_sha_ext"
 PROJECT_DOC_B_NAME="mpc-isolation-${BASHPID}.mpcproj"
 echo "Running real two-document Save As/Open isolation: A=Untitled.mpcproj, B=$PROJECT_DOC_B_NAME"
-project_save_b_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+project_save_b_marker_before="$(project_marker_timestamp "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 1; then exit 1; fi
 # Reuse the proven bounded compressed-tree path for this second large DocumentsUI
 # surface. There is no cached-tree fallback and the form acceptance stays strict.
@@ -14710,7 +14724,7 @@ sleep 1
 if ! tap_project_toolbar_menu; then exit 1; fi
 if ! tap_mpc_menu_tile 3 3; then exit 1; fi
 if ! assert_latest_project_summary "TRACKS=3" "PLACEMENTS=3"; then exit 1; fi
-project_doc_b_update_marker_before="$(project_marker_count "PROJECT_SAVE_COMPLETE")"
+project_doc_b_update_marker_before="$(project_marker_timestamp "PROJECT_SAVE_COMPLETE")"
 if ! tap_project_function_bar 2; then exit 1; fi
 if ! wait_for_new_project_marker "PROJECT_SAVE_COMPLETE" "$project_doc_b_update_marker_before" 45; then
   echo "ERROR: direct SAVE did not overwrite B after its third Track mutation"; exit 1
@@ -14812,7 +14826,7 @@ fi
 if ! reuse_current_project_view_tree "PROJECT" "$PROJECT_EXT_RESTART_PROJECT_XML"; then echo "ERROR: validated restart Project View tree missing"; exit 1; fi
 
 # Cancel Save As, then Open, and ensure the same real Project remains in memory.
-save_cancel_marker_before="$(project_marker_count "PROJECT_SAVE_AS_CANCELLED")"
+save_cancel_marker_before="$(project_marker_timestamp "PROJECT_SAVE_AS_CANCELLED")"
 if ! tap_project_function_bar 1; then exit 1; fi
 wait_for_project_picker_item "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_PNG" "Untitled.mpcproj"
 if ! cancel_android_document_picker "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" "Save As"; then exit 1; fi
@@ -14831,7 +14845,7 @@ if ! capture_project_persistence_view_tree "PROJECT" /tmp/mpc-groovebox-project-
   echo "ERROR: could not capture fresh Save As cancellation View tree"; exit 1
 fi
 
-open_cancel_marker_before="$(project_marker_count "PROJECT_OPEN_CANCELLED")"
+open_cancel_marker_before="$(project_marker_timestamp "PROJECT_OPEN_CANCELLED")"
 if ! tap_project_function_bar 0; then exit 1; fi
 wait_for_project_picker_item "$PROJECT_EXT_OPEN_CANCEL_PICKER_XML" "$PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE" "$PROJECT_EXT_OPEN_CANCEL_PICKER_PNG" "Untitled.mpcproj"
 if ! cancel_android_document_picker "$PROJECT_EXT_OPEN_CANCEL_PICKER_REMOTE" "$PROJECT_EXT_OPEN_CANCEL_PICKER_XML" "$PROJECT_EXT_OPEN_CANCEL_PICKER_PNG" "Open"; then exit 1; fi
@@ -15586,7 +15600,7 @@ PROJECT_NEW_MAIN_PNG="/tmp/mpc-groovebox-project-new-ready.png"
 PROJECT_NEW_PROJECT_XML="/tmp/mpc-groovebox-project-new-project-view-hierarchy.xml"
 PROJECT_NEW_PROJECT_PNG="/tmp/mpc-groovebox-project-new-unlinked.png"
 
-new_cancel_before="$(project_marker_count "PROJECT_NEW_CANCELLED" 5)"
+new_cancel_before="$(project_marker_timestamp "PROJECT_NEW_CANCELLED" 5)"
 PROJECT_CURRENT_APP_XML="$PROJECT_EXT_V1_XML"
 if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu from the measured v1-loaded Android View tree"; exit 1
@@ -15614,14 +15628,14 @@ if [[ "$new_cancel_sha" != "$legacy_sha_ext" ]] \
   echo "Expected unchanged SHA: $legacy_sha_ext"; echo "$new_cancel_line"; exit 1
 fi
 
-new_complete_before="$(project_marker_count "PROJECT_NEW_COMPLETE" 5)"
+new_complete_before="$(project_marker_timestamp "PROJECT_NEW_COMPLETE" 5)"
 if ! tap_visible_description_early "$PROJECT_NEW_MENU_APP_XML" "MPC Menu New Project"; then
   echo "ERROR: could not reopen New Project from the measured Menu View tree"; exit 1
 fi
 if ! wait_for_ui_text "$PROJECT_NEW_DIALOG_XML" "$DEVICE_DUMP" "DISCARD & NEW" 30; then
   echo "ERROR: New Project confirmation lost the destructive action"; exit 1
 fi
-PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
+PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
 if ! tap_ui_text "$PROJECT_NEW_DIALOG_XML" "DISCARD & NEW"; then
   echo "ERROR: could not confirm real New Project"; exit 1
 fi
@@ -15654,7 +15668,7 @@ if ! tap_project_toolbar_menu; then
   echo "ERROR: could not open Menu from the measured post-reset Main View tree"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="/tmp/mpc-groovebox-project-current-view-hierarchy.xml"
-PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT" 5)"
+PROJECT_PROJECT_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PROJECT" 5)"
 if ! tap_mpc_menu_tile 3 3; then
   echo "ERROR: could not inspect new Project's unlinked status"; exit 1
 fi
@@ -15764,7 +15778,7 @@ fi
 
 # Assign GRID to slot 1, then move that slot below slot 2. This verifies both
 # the spinner's actual callback and the visible order-control mutation.
-shortcut_grid_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
+shortcut_grid_write_before="$(project_marker_timestamp "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=GRID,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "Shortcut 1 mode selector"; then
   echo "ERROR: the live slot-1 mode selector is not an enabled visible target"; exit 1
 fi
@@ -15774,7 +15788,7 @@ fi
 # Snapshot after the real popup is visible but before selection: selecting GRID
 # schedules the app-owned View-tree capture immediately, so waiting for the
 # preference-write marker before recording this baseline would miss that tree.
-PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
 PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_ui_text "$PROJECT_SHORTCUTS_SPINNER_XML" "GRID"; then
   echo "ERROR: could not select GRID from the real Shortcut slot-1 popup"; exit 1
@@ -15792,8 +15806,8 @@ if ! capture_ui_screenshot "/tmp/mpc-groovebox-project-shortcuts-assigned.png" 1
   echo "ERROR: could not capture real Shortcut editor after assigning GRID"; exit 1
 fi
 
-shortcut_order_write_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" 5)"
-PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+shortcut_order_write_before="$(project_marker_timestamp "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=CHANNEL_MIXER,GRID,PAD_MIXER,SOUNDS,XYFX" 5)"
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
 PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcut 1 move down"; then
   echo "ERROR: slot-1 move-down target is not a live enabled control"; exit 1
@@ -15832,8 +15846,8 @@ fi
 if ! capture_project_persistence_view_tree "SHORTCUTS" "$PROJECT_SHORTCUTS_CONFIG_XML"; then
   echo "ERROR: could not capture Shortcut editor before factory reset"; exit 1
 fi
-shortcut_defaults_before="$(project_marker_count "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
-PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
+shortcut_defaults_before="$(project_marker_timestamp "MPC_SHORTCUT_PREFERENCES_WRITE saved=true modes=BROWSER,CHANNEL_MIXER,PAD_MIXER,SOUNDS,XYFX" 5)"
+PROJECT_SHORTCUTS_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=SHORTCUTS" 5)"
 PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE="$(project_view_tree_generated_at SHORTCUTS)"
 if ! tap_visible_description_early "$PROJECT_SHORTCUTS_CONFIG_XML" "MPC Shortcuts Reset Defaults"; then
   echo "ERROR: Shortcut editor does not expose an enabled Reset Defaults action"; exit 1
@@ -15997,7 +16011,7 @@ PY
 then
   echo "ERROR: Mute fixture state was not restored"; exit 1
 fi
-PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
+PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
 if ! adb_bounded 10 shell input keyevent 4; then
   echo "ERROR: could not return to Main from Channel Mixer"; exit 1
 fi
@@ -16034,7 +16048,7 @@ PROJECT_CURRENT_APP_XML="$PROJECT_SAVE_XML"
 snapshot_project_view_tree_marker_baselines
 # Cancellation is a real lifecycle edge: leave the provider without changing the
 # active musical state, and preserve the private recovery source for a retry.
-project_recovery_cancel_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_CANCELLED" 5)"
+project_recovery_cancel_marker_before="$(project_marker_timestamp "PROJECT_RECOVERY_EXPORT_CANCELLED" 5)"
 if ! tap_project_function_bar 3; then echo "ERROR: RECOVERY action unavailable before cancellation test"; exit 1; fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_source_name" 15; then
   echo "ERROR: recovery chooser did not show source for cancellation test"; exit 1
@@ -16084,7 +16098,7 @@ done
 if [ "$project_recovery_picker_ready" -ne 1 ]; then echo "ERROR: DocumentsUI did not open for recovery-copy export"; exit 1; fi
 if ! capture_stable_picker_state "$PROJECT_SAVE_REMOTE" "$PROJECT_SAVE_XML" "$PROJECT_SAVE_PNG" 20; then echo "ERROR: could not capture recovery-export destination"; exit 1; fi
 if ! wait_for_ui_text "$PROJECT_SAVE_XML" "$PROJECT_SAVE_REMOTE" "$project_recovery_export_name" 20; then echo "ERROR: recovery-export filename was not prefilled"; exit 1; fi
-project_recovery_export_marker_before="$(project_marker_count "PROJECT_RECOVERY_EXPORT_COMPLETE" 5)"
+project_recovery_export_marker_before="$(project_marker_timestamp "PROJECT_RECOVERY_EXPORT_COMPLETE" 5)"
 if ! tap_ui_text "$PROJECT_SAVE_XML" "SAVE"; then echo "ERROR: recovery export SAVE action is not a real target"; exit 1; fi
 if ! wait_for_new_project_marker "PROJECT_RECOVERY_EXPORT_COMPLETE" "$project_recovery_export_marker_before" 45; then echo "ERROR: SAF recovery export did not complete"; exit 1; fi
 project_recovery_export_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_RECOVERY_EXPORT_COMPLETE" | tail -n 1 || true)"

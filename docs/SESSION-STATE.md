@@ -1,3 +1,28 @@
+# Live checkpoint — 2026-11-10, Logcat rollover correction
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**Integration PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `803541960c1fe838a3bed907f95029b00ef77f4a`.
+
+## Exact-head Android Build #42862450499
+
+- Tested exact SHA `803541960c1fe838a3bed907f95029b00ef77f4a`; run [#42862450499](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42862450499) failed at emulator smoke step 56.
+- Steps 1–55 passed, including native/JVM tests, APK assembly/upload and smoke syntax/evidence preflight. Step 57 uploaded visual evidence.
+- The Menu action itself succeeded: the log contains `MPC_MENU_RENDER_COMPLETE` and `MPC_MENU_CLICK_END currentPage=MENU`, followed by a fresh Menu app-owned hierarchy.
+- Root cause: `project_marker_count` counted matches only in the last 4,096 Logcat entries. This is a circular buffer; after rollover, a new event can replace an old match while the total count remains unchanged. The previous final-read/diagnostic-read patch could not solve that invariant.
+
+## Forward correction
+
+`tests/android_ui_smoke.sh` now records the latest matching marker's device-monotonic timestamp (`logcat -v brief,monotonic`) as integer microseconds. Every wait compares the newest timestamp against its original baseline. Freshness therefore remains ordered through ring-buffer rollover and is independent of wall-clock corrections. Diagnostic fallback and the final post-deadline recheck use the same timestamp parser; no event assertion or timeout budget is weakened.
+
+The separate app-owned View-tree acceptance continues to use the independent `generated-at-uptime-ms` contract.
+
+## Verification boundary
+
+The next exact-HEAD Android Build is authoritative. Do not call P0 green until step 56 emulator smoke and step 57 visual evidence upload both succeed on that exact SHA. PR #139 remains Draft; no merge/rebase/force-push or `main` changes. VIS-054 Next Sequence work remains behind this P0 Project/Browser acceptance gate. Physical MPC Studio MkII acceptance remains separate and NOT RUN.
+
+---
+
 # Live checkpoint — 2026-11-10, post-run #42840353384
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  
