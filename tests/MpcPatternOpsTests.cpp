@@ -628,6 +628,17 @@ int main() {
 
     assert(mpc::sequencer::applySwing(swingPattern, 0, 50) == 0);
     assert(mpc::sequencer::applySwing(swingPattern, 480, 0) == 0);
+    // Zero-delay swing is a no-op and must not be reported as an edit.
+    mpc::domain::Pattern zeroDelaySwingPattern;
+    zeroDelaySwingPattern.lengthTicks = 16;
+    zeroDelaySwingPattern.notes = {
+            {0, 1, 36, 100, 127, 1},
+            {1, 1, 38, 100, 127, 1},
+            {3, 1, 42, 100, 127, 1}};
+    assert(mpc::sequencer::applySwing(zeroDelaySwingPattern, 1, 100) == 0);
+    assert(zeroDelaySwingPattern.notes[0].tick == 0);
+    assert(zeroDelaySwingPattern.notes[1].tick == 1);
+    assert(zeroDelaySwingPattern.notes[2].tick == 3);
     assert(swingPattern.notes[0].tick == 0);
     assert(swingPattern.notes[1].tick == 600);
     assert(swingPattern.notes[2].tick == 720);
