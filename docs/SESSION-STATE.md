@@ -567,3 +567,25 @@ PR #133 remains Draft for product review. Do not merge automatically or change m
 All four builds compiled and assembled the APK successfully (steps 1-54 pass), but step 55 (emulator smoke test) consistently fails after ~75 seconds. Detailed step-55 logs are not accessible via the available API. The failure may be in the SAMPLE view-tree capture protocol, the `tap_visible_text_early "SAMPLE"` action, or an earlier test section affected by the `project-persistence` smoke-mode restart.
 
 **Not yet verified:** complete idle → playback → idle → playback lifecycle; physical MPC Studio MkII validation remains PENDING.
+
+
+---
+
+## Project / Browser Android smoke — logcat timestamp format correction (2026-11-10)
+
+**Canonical branch:** `feature/firmware-informed-midi-list-edit-20261106`  
+**Parent tested:** `7ce7de8356408c20a5bc646a438248cc919983b4`  
+**Build #3966:** [run 42890159999](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42890159999) — **FAILURE in emulator smoke**, after steps 1–55 succeeded.
+
+### Confirmed cause
+
+- The syntax/evidence preflight passed; native and JVM test suites passed; the debug APK assembled and uploaded.
+- The emulator cold-started, loaded the Project persistence fixture, and published a fresh app-owned MAIN hierarchy.
+- A real touch opened Menu. App logs contain `MPC_MENU_RENDER_COMPLETE`, `MPC_MENU_CLICK_END currentPage=MENU`, and `MPC_MENU_VIEW_HIERARCHY_READY`.
+- The smoke helper nevertheless timed out with `baseline=0 current=0`. Its timestamp reader used `logcat -v brief,monotonic`; Android's `brief` format omits timestamps, so the numeric monotonic parser had no timestamp to read. This is a smoke-observability defect, not evidence that the Menu failed to open.
+- Forward fix: use `threadtime,monotonic` for both event timestamp reads and timeout diagnostics, and update the static synchronization contract. Keep strict monotonic timestamp comparison; do not fall back to match counts or weaken UI assertions.
+- Build #3966's APK and partial visual-evidence archive are diagnostic only. They do not establish Project/Browser acceptance because the emulator run stopped before the full scenario.
+
+### Remaining gates
+
+Run the complete exact-HEAD Android workflow with the timestamp format correction. Require emulator smoke SUCCESS and inspect exact-run APK plus complete visual-evidence artifact. Continue to keep PR #139 Draft; do not merge/rebase/force-push. Physical Akai MPC Studio MkII acceptance remains NOT RUN.

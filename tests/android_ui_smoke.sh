@@ -2337,7 +2337,7 @@ for required in   'String[] mainShellExpectedDescriptions'   'MPC One Main Toolb
   fi
 done
 for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + UI_AUDIT_TIMEOUT_SECONDS))'   'adb_bounded()'   'cleanup_stale_device_uiautomator()'   'ps -A -o PID,NAME,ARGS'   'ps -A 2>/dev/null'   'com.android.commands.uiautomator'   'timeout --signal=TERM --kill-after=3s'   'UI_MAIN_CAPTURE_READY'   'mpc-main-capture-release'   'mpc-groovebox-main-ready-uiautomator.xml'   'UI_BROWSER_CAPTURE_READY'   'mpc-browser-capture-release'   'mpc-groovebox-browser-uiautomator.xml'   'UI_STORAGE_PICKER_LAUNCH_REQUESTED'   'UI_STORAGE_PICKER_RETURNED'   'mpc-groovebox-storage-picker.png'   'UI_TRACK_VIEW_MUTED_CAPTURE_READY:'   'mpc-track-view-muted-capture-release'   'mpc-groovebox-track-view-muted.png'   'mpc-groovebox-track-view-muted-uiautomator.xml'   'UI_TRACK_SOLO_CAPTURE_READY:'   'mpc-track-solo-before-capture-release'   'mpc-track-solo-toggled-capture-release'   'mpc-groovebox-track-solo-on.png'   'mpc-groovebox-track-solo-on-uiautomator.xml'   'mpc-groovebox-track-solo-off.png'   'mpc-groovebox-track-solo-off-uiautomator.xml'   'UI_INTERACTION_COMPLETE'   'UI_HIERARCHY_FAILED:'   'UI_INTERACTION_FAILED:'   'uiautomator dump' 'tap_ui_picker_result_row()' 'tap_sample_edit_control()' 'SAMP-010: zoom must change only' 'SAMPLE_ZOOM_OUT_PNG' 'PICKER_ROOT_DRAWER_FAILURE_PNG' 'DocumentsUI root drawer did not expose Downloads' \
-    'open_project_document()' 'final_timestamp="$(project_marker_timestamp "$marker")"' 'Observed fresh Android marker on final bounded timestamp read:' 'logcat -d -t 4096 -v brief,monotonic' 'project_marker_timestamp_from_logs' 'PROJECT_OPEN_REJECTED)' \
+    'open_project_document()' 'final_timestamp="$(project_marker_timestamp "$marker")"' 'Observed fresh Android marker on final bounded timestamp read:' 'logcat -d -t 4096 -v threadtime,monotonic' 'project_marker_timestamp_from_logs' 'PROJECT_OPEN_REJECTED)' \
     'open_project_document "Malformed-project.mpcproj" "PROJECT_OPEN_REJECTED"' \
     'picker_hierarchy_ready=0' 'for picker_hierarchy_attempt in {1..2}; do' \
     'dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2 compressed' \
@@ -13589,9 +13589,10 @@ project_marker_timestamp() {
   local marker="$1" timeout_seconds="${2:-5}" logs
   # Logcat is a circular buffer. A match count is not monotonic: after
   # rollover a new event can replace an old one while the count stays flat.
-  # Compare the newest event's device-monotonic timestamp instead; this is
-  # safe across ring-buffer rollover and wall-clock corrections.
-  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  # Use threadtime so logcat emits a timestamp; brief omits timestamps and
+  # would make the monotonic parser return zero for every marker.
+  # Compare device-monotonic time to remain safe across rollover and clock changes.
+  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
   project_marker_timestamp_from_logs "$marker" <<<"$logs"
 }
 
@@ -13885,7 +13886,7 @@ wait_for_new_project_marker() {
     return 0
   fi
 
-  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
   printf '%s\\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   diagnostic_timestamp="$(project_marker_timestamp_from_logs "$marker" <<<"$diagnostic_logs")"
   if [[ "$diagnostic_timestamp" =~ ^[0-9]+$ ]] && (( diagnostic_timestamp > before )); then
