@@ -6246,6 +6246,100 @@ PY
       cat /tmp/mpc-groovebox-main-ready-uiautomator.xml
       exit 1
     fi
+    # Real-touch acceptance for the selected Track's native Level/Pan channel strip.
+    TRACK_MIXER_INITIAL_REMOTE="/sdcard/mpc-track-mixer-initial.xml"
+    TRACK_MIXER_INITIAL_XML="/tmp/mpc-track-mixer-initial.xml"
+    if ! dump_device_ui "$TRACK_MIXER_INITIAL_REMOTE" "$TRACK_MIXER_INITIAL_XML"; then
+      echo "ERROR: Track mixer initial hierarchy capture failed"; exit 1
+    fi
+    if ! mixer_touch_coordinates="$(python3 - "$TRACK_MIXER_INITIAL_XML" <<'PY'
+import re
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+def one(prefix):
+    found = [n for n in nodes
+             if n.attrib.get("content-desc", "").startswith(prefix)]
+    if len(found) != 1:
+        raise AssertionError(f"expected one Track mixer control {prefix!r}; got {len(found)}")
+    raw = found[0].attrib.get("bounds", "")
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", raw)
+    if not match:
+        raise AssertionError(f"invalid bounds for {prefix}: {raw!r}")
+    x1, y1, x2, y2 = map(int, match.groups())
+    if x2 <= x1 or y2 <= y1 or found[0].attrib.get("visible-to-user") == "false":
+        raise AssertionError(f"control is not visibly touchable: {prefix}")
+    return x1, y1, x2, y2
+fx1, fy1, fx2, fy2 = one("MPC XL selected track level fader")
+px1, py1, px2, py2 = one("MPC XL selected track pan slider")
+fader_x = (fx1 + fx2) // 2
+fader_top, fader_bottom = fy1 + 8, fy2 - 8
+fader_target_y = round(fader_top + (fader_bottom - fader_top) * 0.25)
+fader_center_y = (fader_top + fader_bottom) // 2
+pan_left = round(px1 + (px2 - px1) * 0.16)
+pan_right = round(px1 + (px2 - px1) * 0.84)
+pan_target_x = round(pan_left + (pan_right - pan_left) * 0.30)
+pan_center_x = (pan_left + pan_right) // 2
+pan_y = (py1 + py2) // 2
+print(f"{fader_x} {fader_target_y} {fader_center_y} {pan_target_x} {pan_center_x} {pan_y}")
+PY
+)"; then
+      echo "ERROR: could not resolve live Track mixer fader/Pan bounds"; exit 1
+    fi
+    read -r track_fader_x track_fader_150_y track_fader_100_y track_pan_left40_x track_pan_center_x track_pan_y <<<"$mixer_touch_coordinates"
+    if ! adb_bounded 10 shell input swipe "$track_fader_x" "$track_fader_100_y" "$track_fader_x" "$track_fader_150_y" 450; then
+      echo "ERROR: Track Level fader drag to 150 percent failed"; exit 1
+    fi
+    if ! adb_bounded 10 shell input swipe "$track_pan_center_x" "$track_pan_y" "$track_pan_left40_x" "$track_pan_y" 450; then
+      echo "ERROR: Track Pan slider drag to L40 failed"; exit 1
+    fi
+    TRACK_MIXER_CHANGED_REMOTE="/sdcard/mpc-track-mixer-changed.xml"
+    TRACK_MIXER_CHANGED_XML="/tmp/mpc-track-mixer-changed.xml"
+    if ! dump_device_ui "$TRACK_MIXER_CHANGED_REMOTE" "$TRACK_MIXER_CHANGED_XML"; then
+      echo "ERROR: changed Track mixer hierarchy capture failed"; exit 1
+    fi
+    if ! python3 - "$TRACK_MIXER_CHANGED_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+descriptions = [n.attrib.get("content-desc", "") for n in nodes]
+if descriptions.count("MPC XL selected track level fader 150 percent") != 1:
+    raise AssertionError("Track Level drag did not update to 150 percent: " + repr(descriptions))
+if descriptions.count("MPC XL selected track pan slider L 40") != 1:
+    raise AssertionError("Track Pan drag did not update to L 40: " + repr(descriptions))
+print("Real-touch Track strip changed Level to 150% and Pan to L40.")
+PY
+    then
+      echo "ERROR: Track mixer touch values were not projected into accessibility state"; cat "$TRACK_MIXER_CHANGED_XML"; exit 1
+    fi
+    # Restore the fixture's neutral Track mix so later Main/Project smoke steps
+    # do not inherit state changed by this control test.
+    if ! adb_bounded 10 shell input swipe "$track_fader_x" "$track_fader_150_y" "$track_fader_x" "$track_fader_100_y" 450; then
+      echo "ERROR: Track Level fader restore to 100 percent failed"; exit 1
+    fi
+    if ! adb_bounded 10 shell input swipe "$track_pan_left40_x" "$track_pan_y" "$track_pan_center_x" "$track_pan_y" 450; then
+      echo "ERROR: Track Pan slider restore to Center failed"; exit 1
+    fi
+    TRACK_MIXER_RESTORED_REMOTE="/sdcard/mpc-track-mixer-restored.xml"
+    TRACK_MIXER_RESTORED_XML="/tmp/mpc-track-mixer-restored.xml"
+    if ! dump_device_ui "$TRACK_MIXER_RESTORED_REMOTE" "$TRACK_MIXER_RESTORED_XML"; then
+      echo "ERROR: restored Track mixer hierarchy capture failed"; exit 1
+    fi
+    if ! python3 - "$TRACK_MIXER_RESTORED_XML" <<'PY'
+import sys
+import xml.etree.ElementTree as ET
+nodes = list(ET.parse(sys.argv[1]).getroot().iter("node"))
+descriptions = [n.attrib.get("content-desc", "") for n in nodes]
+if descriptions.count("MPC XL selected track level fader 100 percent") != 1:
+    raise AssertionError("Track Level fader did not restore to 100 percent")
+if descriptions.count("MPC XL selected track pan slider C") != 1:
+    raise AssertionError("Track Pan slider did not restore to Center")
+print("Track channel strip real-touch values restored to unity/center.")
+PY
+    then
+      echo "ERROR: Track mixer fixture was not restored to neutral values"; cat "$TRACK_MIXER_RESTORED_XML"; exit 1
+    fi
+
     if ! adb_bounded 10 shell run-as "$PACKAGE" touch cache/mpc-main-capture-release; then
       echo "ERROR: could not release app-side Main capture checkpoint"
       exit 1
