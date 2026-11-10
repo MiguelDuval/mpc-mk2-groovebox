@@ -14752,7 +14752,7 @@ if not any(line.startswith("PLACEMENT ") for line in lines) or not any(line.star
     raise AssertionError("source fixture needs a placement and non-default MIDI events")
 legacy, canonical = [], []
 track_count = 0
-track_v3 = re.compile(r"^(TRACK .+) (\\S+) (\\S+) (\\d+) (\\d+)$")
+track_v3 = re.compile(r"^(TRACK .+) (\S+) (\S+) (\d+) (\d+)$")
 for line in lines:
     if line.startswith("PLACEMENT "):
         continue
@@ -14774,9 +14774,9 @@ if track_count == 0:
     raise AssertionError("source v3 Project has no Tracks")
 legacy[0] = "MPCMK2_PROJECT 1"
 canonical[0] = "MPCMK2_PROJECT 3"
-legacy_path.write_text("\\n".join(legacy) + "\\n", encoding="utf-8")
-canonical_path.write_text("\\n".join(canonical) + "\\n", encoding="utf-8")
-malformed_path.write_text("not a valid MPCMK2_PROJECT document\\n", encoding="utf-8")
+legacy_path.write_text("\n".join(legacy) + "\n", encoding="utf-8")
+canonical_path.write_text("\n".join(canonical) + "\n", encoding="utf-8")
+malformed_path.write_text("not a valid MPCMK2_PROJECT document\n", encoding="utf-8")
 if any(line.startswith("PLACEMENT ") for line in legacy + canonical):
     raise AssertionError("placement-free fixture/canonical oracle contains a clip")
 if not any(line.startswith('TRACK "') for line in legacy) or not any(line.startswith("NOTE ") for line in legacy):
