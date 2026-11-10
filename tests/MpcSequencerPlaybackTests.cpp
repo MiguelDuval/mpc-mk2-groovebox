@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <limits>
 
 int main() {
     mpc::domain::Sequence sequence;
@@ -119,6 +120,30 @@ int main() {
     assert(ratchetEvents[2].offsetFrames == 6000);
     assert(ratchetEvents[3].offsetFrames == 9000);
     assert(!ratchetQueue.tryDequeue(ratchetEvents[0]));
+
+    // Invalid stored BPM must use the same normalized tempo for event-frame
+    // offsets as the transport clock; otherwise extreme BPM collapses later
+    // events onto frame zero while the transport advances at a bounded rate.
+    auto extremeTempoSequence = sequence;
+    extremeTempoSequence.loopEnabled = false;
+    extremeTempoSequence.tempoBpm = std::numeric_limits<double>::max();
+    mpc::audio::AudioTriggerQueue extremeTempoQueue;
+    mpc::sequencer::MpcSequencerPlayback extremeTempoPlayback(
+            extremeTempoSequence,
+            pattern,
+            program,
+            extremeTempoQueue);
+    extremeTempoPlayback.start();
+    const auto extremeTempoResult =
+            extremeTempoPlayback.advance(1920, 99u, 48000);
+    assert(extremeTempoResult.scheduled == 2);
+    assert(extremeTempoResult.queued == 2);
+    std::array<mpc::audio::AudioTriggerEvent, 2> extremeTempoEvents{};
+    assert(extremeTempoQueue.tryDequeue(extremeTempoEvents[0]));
+    assert(extremeTempoQueue.tryDequeue(extremeTempoEvents[1]));
+    assert(extremeTempoEvents[0].offsetFrames == 0);
+    assert(extremeTempoEvents[1].offsetFrames == 9600);
+    assert(!extremeTempoQueue.tryDequeue(extremeTempoEvents[0]));
 
     return 0;
 }

@@ -150,7 +150,7 @@ public:
                 std::span<const ScheduledPadEvent>(
                         routedEvents_.data(),
                         route.written),
-                sequence_.tempoBpm,
+                sanitizeTempoBpm(sequence_.tempoBpm),
                 sampleRate);
         result.queued = bridge.written;
         result.dropped = bridge.dropped;
