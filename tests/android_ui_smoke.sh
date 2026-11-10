@@ -13902,6 +13902,7 @@ wait_for_new_project_marker() {
 
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker (baseline=$before current=$final_timestamp)"
   return 1
+}
 
 # Reuse a View tree that was freshly captured and validated by the immediately
 # preceding navigation helper. Requiring another pre-draw event without any UI

@@ -1,3 +1,25 @@
+# Live checkpoint — 2026-11-10, restore wait-helper boundary
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `fc142c92afa23faea706ebaa561e456230ce3383`.
+
+## Exact-head Android Build #42889181952
+
+- Tested SHA: `fc142c92afa23faea706ebaa561e456230ce3383`; run [#42889181952](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42889181952) failed in step 55, before emulator execution.
+- Native/JVM and policy steps 1–52 succeeded. Debug APK assembly and upload (steps 53–54) succeeded. Step 55 failed with `tests/android_ui_smoke.sh: line 16122: syntax error: unexpected end of file`; step 56 was skipped; evidence upload step 57 ran.
+- The first forward correction at `14fc395f...` removed the unexpected extra brace after `project_marker_timestamp()`. The subsequent correction inadvertently removed both adjacent braces after `wait_for_new_project_marker()`; one of those was the required function terminator.
+
+## Forward correction
+
+Restored exactly one closing brace after `wait_for_new_project_marker()`. The second adjacent brace remains removed. No assertions, timeout values, marker comparisons, or function bodies changed.
+
+Next exact-head workflow must pass both `bash -n` and the screenshot capture/upload contract before emulator smoke can start. Run #3965 APK is diagnostic only.
+
+PR #139 remains Draft. No merge, rebase, reset, force-push or history rewrite. `main` and PR #23 remain untouched. Physical Studio MkII acceptance remains NOT RUN.
+
+---
+
 # Live checkpoint — 2026-11-10, second smoke preflight brace correction
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  
