@@ -1,3 +1,25 @@
+# Live checkpoint — 2026-11-10, second smoke preflight brace correction
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `14fc395f11099bc84cb48191603028afd16854d1`.
+
+## Exact-head Android Build #42879310935
+
+- Tested SHA: `14fc395f11099bc84cb48191603028afd16854d1`; run [#42879310935](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42879310935) failed in step 55, before emulator execution.
+- Native/JVM tests, debug APK assembly and APK upload succeeded. Step 55 passed the initial `bash -n` phase but failed on a second unmatched closing brace at line 13907. Step 56 emulator smoke was skipped; step 57 visual-evidence upload ran.
+- The extra brace was immediately after `wait_for_new_project_marker()` and before `reuse_current_project_view_tree()`. A full-file structural scan found this as the only duplicate standalone closing-brace sequence after the prior correction.
+
+## Forward correction
+
+Removed the second stray closing brace. Both affected helpers retain their original bodies and control flow; all acceptance assertions and timeouts are unchanged. New exact-head Build is required to verify shell syntax plus screenshot capture/upload allowlists before emulator smoke.
+
+The preceding Build #3964 also confirms all preceding native/JVM and policy test steps passed and APK assembly/upload succeeded. Its uploaded APK is diagnostic only.
+
+PR #139 remains Draft. No merge, rebase, reset, force-push or history rewrite. `main` and PR #23 remain untouched. Physical Studio MkII acceptance is NOT RUN.
+
+---
+
 # Live checkpoint — 2026-11-10, smoke preflight syntax repair
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  
