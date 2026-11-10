@@ -1,3 +1,15 @@
+# Live checkpoint — 2026-11-10, timestamp parser correction
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**Integration PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `8452e1102d51f4477c78d90e24bc186dd55a856a`.
+
+The monotonic Logcat freshness implementation introduced in the parent commit had an over-escaped raw Python regex. Corrected the parser to match the leading device-monotonic timestamp (with or without surrounding brackets/spaces) and convert it to integer microseconds. The freshness contract remains strict: newest timestamp must be greater than the baseline timestamp.
+
+Run #42875383559 was already triggered on parent SHA `8452e1102d51f4477c78d90e24bc186dd55a856a` before this parser correction and is not authoritative for the corrected source. Do not claim its runtime result validates this parser. The next workflow triggered by the corrected SHA is authoritative.
+
+---
+
 # Live checkpoint — 2026-11-10, Logcat rollover correction
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  

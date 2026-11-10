@@ -13578,7 +13578,7 @@ timestamps = []
 for line in sys.stdin:
     if marker not in line:
         continue
-    match = re.match(r"^\\s*\\[?\\s*([0-9]+(?:\\.[0-9]+)?)", line)
+    match = re.match(r"^\s*\[?\s*([0-9]+(?:\.[0-9]+)?)", line)
     if match:
         timestamps.append(int(Decimal(match.group(1)) * 1_000_000))
 print(max(timestamps, default=0))
