@@ -17391,6 +17391,115 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
 
+            if (expectedMode == MpcUiState.Mode.CHANNEL_MIXER) {
+                final View channelMixerWorkspace = findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Channel Mixer workspace");
+                final View channelMixer = findViewWithContentDescription(
+                        getWindow().getDecorView(), "MPC Channel Mixer per-Track workspace");
+                final View trackBank = findViewWithContentDescription(
+                        getWindow().getDecorView(),
+                        "MPC Channel Mixer horizontally scrollable Track bank");
+                final View staleTrackView = findViewWithContentDescription(
+                        getWindow().getDecorView(), "Track View track 1");
+                final String stripPrefix = String.format(
+                        Locale.ROOT, "MPC Channel Mixer Track %02d strip ", trackBefore + 1);
+                final View selectedStrip = findViewWithContentDescriptionPrefix(
+                        channelMixer, stripPrefix);
+                final String faderPrefix = "MPC Channel Mixer Track "
+                        + (trackBefore + 1) + " Level fader ";
+                final View selectedFader = findViewWithContentDescriptionPrefix(
+                        channelMixer, faderPrefix);
+                final View selectedTrackLabel = findViewWithContentDescriptionPrefix(
+                        channelMixer, "MPC Channel Mixer selected Track ");
+                final View panVolumeTab = findViewWithContentDescription(
+                        channelMixer, "MPC Channel Mixer tab PAN & VOLUME");
+                if (navigationController.state().mode() != MpcUiState.Mode.CHANNEL_MIXER
+                        || !"CHANNEL_MIXER".equals(currentPage)
+                        || channelMixerWorkspace == null || !channelMixerWorkspace.isShown()
+                        || channelMixerWorkspace.getWidth() < dp(180)
+                        || channelMixerWorkspace.getHeight() <= dp(160)
+                        || channelMixer == null || !channelMixer.isShown()
+                        || trackBank == null || !trackBank.isShown()
+                        || trackBank.getHeight() <= dp(120)
+                        || selectedStrip == null || !selectedStrip.isShown()
+                        || selectedStrip.getWidth() < dp(90)
+                        || selectedStrip.getHeight() <= dp(160)
+                        || selectedFader == null || !selectedFader.isShown()
+                        || !selectedFader.isEnabled()
+                        || selectedFader.getHeight() < dp(72)
+                        || selectedTrackLabel == null || !selectedTrackLabel.isShown()
+                        || panVolumeTab == null || !panVolumeTab.isShown()
+                        || !panVolumeTab.isEnabled()
+                        || staleTrackView != null) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Shortcut did not open its real per-Track workspace"
+                            + " | mode=" + navigationController.state().mode()
+                            + " | currentPage=" + currentPage
+                            + " | workspace=" + describeAuditView(channelMixerWorkspace)
+                            + " | mixer=" + describeAuditView(channelMixer)
+                            + " | trackBank=" + describeAuditView(trackBank)
+                            + " | selectedStrip=" + describeAuditView(selectedStrip)
+                            + " | selectedFader=" + describeAuditView(selectedFader)
+                            + " | selectedTrack=" + describeAuditView(selectedTrackLabel)
+                            + " | panVolumeTab=" + describeAuditView(panVolumeTab)
+                            + " | staleTrackView=" + describeAuditView(staleTrackView));
+                    return;
+                }
+
+                if (!panVolumeTab.performClick()
+                        || channelMixerTab != MpcChannelMixerView.Tab.PAN_VOLUME) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Pan & Volume tab did not activate");
+                    return;
+                }
+                final View panSlider = findViewWithContentDescriptionPrefix(
+                        channelMixer, "MPC Channel Mixer Track "
+                                + (trackBefore + 1) + " Pan slider ");
+                if (panSlider == null || !panSlider.isShown()
+                        || !panSlider.isEnabled() || panSlider.getHeight() < dp(24)) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Pan & Volume has no live selected-Track Pan slider"
+                            + " | pan=" + describeAuditView(panSlider));
+                    return;
+                }
+
+                final View volumeTab = findViewWithContentDescriptionPrefix(
+                        channelMixer, "MPC Channel Mixer tab VOLUME");
+                if (volumeTab == null || !volumeTab.isShown()
+                        || !volumeTab.isEnabled() || !volumeTab.performClick()
+                        || channelMixerTab != MpcChannelMixerView.Tab.VOLUME) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer Volume tab did not restore");
+                    return;
+                }
+                final View mixerBack = findViewWithExactText(
+                        getWindow().getDecorView(), "BACK");
+                if (mixerBack == null || !mixerBack.isShown()
+                        || !mixerBack.isEnabled() || !mixerBack.performClick()
+                        || navigationController.state().mode() != MpcUiState.Mode.TRACK_VIEW
+                        || !"TRACK_VIEW".equals(currentPage)
+                        || nativeSequenceGetIndex() != sequenceBefore
+                        || nativeSequenceGetSelectedTrack() != trackBefore
+                        || selectedPadIndexForUi() != padBefore
+                        || navigationController.state().selectedSequence()
+                                != baseline.selectedSequence()
+                        || navigationController.state().selectedTrack()
+                                != baseline.selectedTrack()
+                        || findViewWithContentDescription(
+                                getWindow().getDecorView(), "Track View track 1") == null
+                        || findViewWithContentDescription(
+                                getWindow().getDecorView(), "MPC Channel Mixer workspace") != null) {
+                    Log.e(TAG, "UI_INTERACTION_FAILED: Channel Mixer BACK did not restore previous Track View context"
+                            + " | currentPage=" + currentPage
+                            + " | mode=" + navigationController.state().mode()
+                            + " | sequence=" + nativeSequenceGetIndex()
+                            + " | track=" + nativeSequenceGetSelectedTrack()
+                            + " | pad=" + selectedPadIndexForUi()
+                            + " | back=" + describeAuditView(mixerBack));
+                    return;
+                }
+                Log.i(TAG, "UI_CHANNEL_MIXER_SHORTCUT_ROUNDTRIP_COMPLETE: "
+                        + "perTrackWorkspace=true volumeTab=true panVolumeTab=true "
+                        + "back=true selectionPreserved=true");
+                continue;
+            }
+
             final View unavailableWorkspace = findViewWithContentDescription(
                     getWindow().getDecorView(),
                     "MPC Unavailable workspace " + title);
@@ -17399,21 +17508,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     "MPC unavailable status " + title);
             final View back = findViewWithContentDescription(
                     getWindow().getDecorView(), "MPC unavailable mode Back");
-            final View staleTrackView = findViewWithContentDescription(
+            final View reservedStaleTrackView = findViewWithContentDescription(
                     getWindow().getDecorView(), "Track View track 1");
             if (navigationController.state().mode() != expectedMode
                     || !("UNAVAILABLE_" + expectedMode.name()).equals(currentPage)
                     || unavailableWorkspace == null || !unavailableWorkspace.isShown()
                     || unavailableStatus == null || !unavailableStatus.isShown()
                     || back == null || !back.isShown() || !back.isEnabled()
-                    || staleTrackView != null) {
+                    || reservedStaleTrackView != null) {
                 Log.e(TAG, "UI_INTERACTION_FAILED: reserved Shortcut did not replace stale workspace"
                         + " | expectedMode=" + expectedMode
                         + " | currentPage=" + currentPage
                         + " | workspace=" + describeAuditView(unavailableWorkspace)
                         + " | status=" + describeAuditView(unavailableStatus)
                         + " | back=" + describeAuditView(back)
-                        + " | staleTrackView=" + describeAuditView(staleTrackView));
+                        + " | staleTrackView=" + describeAuditView(reservedStaleTrackView));
                 return;
             }
 
