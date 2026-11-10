@@ -14590,7 +14590,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 setBottomStatus(loaded + " • " + audioResult);
                 final byte[] restoredDomain = nativeProjectSerialize();
                 final int formatVersion = projectFileFormatVersion(bytes);
-                final String persistedDomainExact = formatVersion == 2
+                // Only v3 is byte-for-byte comparable after load: v1/v2 are
+                // intentionally upgraded with neutral Track Level/Pan on serialization.
+                final String persistedDomainExact = formatVersion == 3
                         ? Boolean.toString(Arrays.equals(bytes, restoredDomain))
                         : "not-applicable";
                 Log.i(TAG, "PROJECT_OPEN_COMPLETE bytes=" + bytes.length

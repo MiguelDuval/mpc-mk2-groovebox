@@ -14292,9 +14292,9 @@ echo "Initial Project Save As → mutate → Open path passed; continuing with d
 
 
 echo "Running extended Project persistence acceptance: full state digest, restart, legacy v1, cancel and malformed input..."
-PROJECT_V2_HOST="/tmp/mpc-groovebox-project-v2.mpcproj"
+PROJECT_V3_HOST="/tmp/mpc-groovebox-project-v3.mpcproj"
 PROJECT_V1_HOST="/tmp/mpc-groovebox-project-v1-no-placements.mpcproj"
-PROJECT_V1_CANONICAL_HOST="/tmp/mpc-groovebox-project-v1-canonical-v2.mpcproj"
+PROJECT_V1_CANONICAL_HOST="/tmp/mpc-groovebox-project-v1-canonical-v3.mpcproj"
 PROJECT_MALFORMED_HOST="/tmp/mpc-groovebox-project-malformed.mpcproj"
 PROJECT_EXT_OPEN_XML="/tmp/mpc-groovebox-project-extended-open-uiautomator.xml"
 PROJECT_EXT_OPEN_REMOTE="/sdcard/mpc-groovebox-project-extended-open-uiautomator.xml"
@@ -14497,13 +14497,13 @@ project_domain_sha_ext="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$
 if [[ ! "$project_saved_sha_ext" =~ ^[0-9a-f]{64}$ ]] \
     || [[ "$project_saved_sha_ext" != "$project_file_sha_ext" ]] \
     || [[ "$project_saved_sha_ext" != "$project_domain_sha_ext" ]] \
-    || ! grep -Fq -- "formatVersion=2" <<<"$project_save_line_ext" \
-    || ! grep -Fq -- "formatVersion=2" <<<"$project_open_line_ext" \
+    || ! grep -Fq -- "formatVersion=3" <<<"$project_save_line_ext" \
+    || ! grep -Fq -- "formatVersion=3" <<<"$project_open_line_ext" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$project_open_line_ext"; then
   echo "ERROR: Project Save → mutated model → Open did not preserve exact native-domain bytes"
   echo "Save: $project_save_line_ext"; echo "Open: $project_open_line_ext"; exit 1
 fi
-echo "Project v2 Save/Open exact domain SHA passed: $project_saved_sha_ext"
+echo "Project v3 Save/Open exact domain SHA passed: $project_saved_sha_ext"
 
 # The first Save As/Open round-trip above proves file creation and loading.
 # Now mutate the loaded native model and exercise the distinct SAVE action,
@@ -14525,8 +14525,8 @@ project_save_update_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGrooveb
 project_save_update_sha="$(sed -nE 's/.*stateSha256=([0-9a-f]{64}).*/\1/p' <<<"$project_save_update_line")"
 if [[ ! "$project_save_update_sha" =~ ^[0-9a-f]{64}$ ]] \
     || [[ "$project_save_update_sha" == "$project_saved_sha_ext" ]] \
-    || ! grep -Fq -- "formatVersion=2" <<<"$project_save_update_line"; then
-  echo "ERROR: SAVE did not serialize the mutated Project to a new v2 domain digest"
+    || ! grep -Fq -- "formatVersion=3" <<<"$project_save_update_line"; then
+  echo "ERROR: SAVE did not serialize the mutated Project to a new v3 domain digest"
   echo "$project_save_update_line"; exit 1
 fi
 project_saved_sha_ext="$project_save_update_sha"
@@ -14678,7 +14678,7 @@ if ! wait_for_new_project_marker "PROJECT_OPEN_COMPLETE" "$OPEN_PROJECT_COMPLETE
 fi
 restart_open_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null | grep -F -- "PROJECT_OPEN_COMPLETE" | tail -n 1 || true)"
 restart_open_sha="$(sed -nE 's/.*domainSha256=([0-9a-f]{64}).*/\1/p' <<<"$restart_open_line")"
-if ! grep -Fq -- "formatVersion=2" <<<"$restart_open_line" \
+if ! grep -Fq -- "formatVersion=3" <<<"$restart_open_line" \
     || ! grep -Fq -- "persistedDomainExact=true" <<<"$restart_open_line" \
     || ! grep -Fq -- "TRACKS=2" <<<"$restart_open_line" \
     || ! grep -Fq -- "PLACEMENTS=2" <<<"$restart_open_line" \
@@ -14729,48 +14729,59 @@ if ! capture_ui_screenshot "$PROJECT_EXT_CANCEL_PNG" 10; then
 fi
 if ! capture_project_persistence_view_tree "PROJECT" "$PROJECT_EXT_CANCEL_XML"; then echo "ERROR: Open cancellation View tree missing"; exit 1; fi
 
-# Build a valid v1 fixture from the actual saved file, not the older native
+# Build a valid v1 fixture from the actual v3 Save As document, not the older
 # codec-only fixture whose PROGRAMS section intentionally violates runtime rules.
-# Search the real shared-storage mount. On Android, /sdcard is a symlink;
-# toybox find without -L does not necessarily traverse that starting path.
-device_project_path="$(adb_bounded 10 shell 'find /storage/emulated/0 -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\r')"
+# v3 adds Track Level/Pan after recordArmed; the v1 fixture removes those fields,
+# all Pattern placements, and the v3-only data while retaining the same MIDI model.
+device_project_path="$(adb_bounded 10 shell 'find /storage/emulated/0 -type f -name "Untitled.mpcproj" 2>/dev/null | head -n 1' | tr -d '\\r')"
 if [[ -z "$device_project_path" ]]; then
   echo "ERROR: could not find the actual SAF saved Project file"; exit 1
 fi
-if ! adb_bounded 30 pull "$device_project_path" "$PROJECT_V2_HOST"; then
+if ! adb_bounded 30 pull "$device_project_path" "$PROJECT_V3_HOST"; then
   echo "ERROR: could not pull the real SAF saved Project to derive a v1 fixture"; exit 1
 fi
-if ! python3 - "$PROJECT_V2_HOST" "$PROJECT_V1_HOST" "$PROJECT_V1_CANONICAL_HOST" "$PROJECT_MALFORMED_HOST" <<'PY'
-import pathlib, sys
+if ! python3 - "$PROJECT_V3_HOST" "$PROJECT_V1_HOST" "$PROJECT_V1_CANONICAL_HOST" "$PROJECT_MALFORMED_HOST" <<'PY'
+import pathlib, re, sys
 source_path, legacy_path, canonical_path, malformed_path = map(pathlib.Path, sys.argv[1:])
 lines = source_path.read_text(encoding="utf-8").splitlines()
-if not lines or lines[0] != "MPCMK2_PROJECT 2":
-    raise AssertionError("expected the actual Save As document in v2 format")
+if not lines or lines[0] != "MPCMK2_PROJECT 3":
+    raise AssertionError("expected the actual Save As document in v3 format")
 if not any(line.startswith('PROGRAM "') for line in lines):
     raise AssertionError("v1 fixture must retain a runtime-valid Program")
 if not any(line.startswith("PLACEMENT ") for line in lines) or not any(line.startswith("NOTE ") for line in lines):
     raise AssertionError("source fixture needs a placement and non-default MIDI events")
 legacy, canonical = [], []
+track_count = 0
+track_v3 = re.compile(r"^(TRACK .+) (\\S+) (\\S+) (\\d+) (\\d+)$")
 for line in lines:
     if line.startswith("PLACEMENT "):
         continue
     if line.startswith("TRACK "):
-        prior = line.rsplit(" ", 1)[0]
-        legacy.append(prior)
-        canonical.append(prior + " 0")
+        match = track_v3.fullmatch(line)
+        if not match:
+            raise AssertionError("could not parse v3 Track mix/collection suffix: " + line)
+        prefix, level, pan, pattern_count, placement_count = match.groups()
+        if not (0.0 <= float(level) <= 2.0 and -1.0 <= float(pan) <= 1.0):
+            raise AssertionError("source Track Level/Pan is outside the v3 domain")
+        legacy.append(f"{prefix} {pattern_count}")
+        # Loading v1 supplies the domain's neutral Track mixer defaults and no clips.
+        canonical.append(f"{prefix} 1 0 {pattern_count} 0")
+        track_count += 1
     else:
         legacy.append(line)
         canonical.append(line)
+if track_count == 0:
+    raise AssertionError("source v3 Project has no Tracks")
 legacy[0] = "MPCMK2_PROJECT 1"
-canonical[0] = "MPCMK2_PROJECT 2"
-legacy_path.write_text("\n".join(legacy) + "\n", encoding="utf-8")
-canonical_path.write_text("\n".join(canonical) + "\n", encoding="utf-8")
-malformed_path.write_text("not a valid MPCMK2_PROJECT document\n", encoding="utf-8")
+canonical[0] = "MPCMK2_PROJECT 3"
+legacy_path.write_text("\\n".join(legacy) + "\\n", encoding="utf-8")
+canonical_path.write_text("\\n".join(canonical) + "\\n", encoding="utf-8")
+malformed_path.write_text("not a valid MPCMK2_PROJECT document\\n", encoding="utf-8")
 if any(line.startswith("PLACEMENT ") for line in legacy + canonical):
     raise AssertionError("placement-free fixture/canonical oracle contains a clip")
 if not any(line.startswith('TRACK "') for line in legacy) or not any(line.startswith("NOTE ") for line in legacy):
     raise AssertionError("legacy fixture lost its Track or MIDI events")
-print("Derived valid placement-free v1 fixture and canonical-v2 state oracle from real SAF file.")
+print("Derived valid placement-free v1 fixture and canonical-v3 state oracle from real SAF file.")
 PY
 then
   echo "ERROR: failed to produce checked v1/malformed fixtures"; exit 1
@@ -14832,7 +14843,7 @@ if ! capture_ui_screenshot "$PROJECT_EXT_V1_PNG" 10; then
   echo "ERROR: could not capture v1-loaded state"; exit 1
 fi
 if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_EXT_V1_XML" 30; then echo "ERROR: v1-loaded Main View tree missing"; exit 1; fi
-echo "Extended Project UI acceptance passed: exact v2 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
+echo "Extended Project UI acceptance passed: exact v3 state, direct SAVE overwrite, process restart, Save As/Open cancel, malformed-load preservation and placement-free v1 canonical-state equality."
 
 # SAMP-007: adjust a real sample region and verify the playback cursor from native audio telemetry.
 echo "Running SAMP-007 real sample-region audition and native playback-cursor acceptance..."
