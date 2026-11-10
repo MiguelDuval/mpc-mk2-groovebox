@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -37,6 +39,40 @@ const mpc::domain::PatternPlacement* findPlacement(
         if (placement.id == id) return &placement;
     }
     return nullptr;
+}
+
+std::string makeVersion2BytesFromVersion3(const std::string& version3) {
+    std::istringstream input(version3);
+    std::ostringstream output;
+    std::string line;
+    bool firstLine = true;
+    while (std::getline(input, line)) {
+        if (firstLine) {
+            firstLine = false;
+            assert(line == "MPCMK2_PROJECT 3");
+            output << "MPCMK2_PROJECT 2\\n";
+            continue;
+        }
+        if (line.rfind("TRACK ", 0) == 0) {
+            std::istringstream record(line);
+            std::string tag, id, name, programId;
+            unsigned int type = 0, kind = 0, muted = 0, soloed = 0, recordArmed = 0;
+            float level = 1.0f, pan = 0.0f;
+            std::size_t patternCount = 0, placementCount = 0;
+            record >> tag >> std::quoted(id) >> std::quoted(name)
+                   >> type >> kind >> std::quoted(programId)
+                   >> muted >> soloed >> recordArmed
+                   >> level >> pan >> patternCount >> placementCount;
+            assert(record && tag == "TRACK");
+            output << tag << ' ' << std::quoted(id) << ' ' << std::quoted(name)
+                   << ' ' << type << ' ' << kind << ' ' << std::quoted(programId)
+                   << ' ' << muted << ' ' << soloed << ' ' << recordArmed
+                   << ' ' << patternCount << ' ' << placementCount << '\\n';
+            continue;
+        }
+        output << line << '\\n';
+    }
+    return output.str();
 }
 
 mpc::domain::Project makeProject() {
@@ -112,6 +148,8 @@ mpc::domain::Project makeProject() {
     track.muted = false;
     track.soloed = true;
     track.recordArmed = false;
+    track.level = 1.65F;
+    track.pan = -0.275F;
 
     Pattern pattern;
     pattern.id = "pattern-shared-01";
@@ -145,7 +183,7 @@ int main() {
     domain::Project source = makeProject();
     const auto baselineNotes = source.sequences[0].tracks[0].patterns[0].notes;
     const auto serialized = persistence::serializeProject(source);
-    assert(serialized.find("MPCMK2_PROJECT 2") == 0);
+    assert(serialized.find("MPCMK2_PROJECT 3") == 0);
     assert(serialized.find("PLACEMENT \"clip-b\" \"pattern-shared-01\" 1200 720 120")
             != std::string::npos);
 
@@ -213,6 +251,8 @@ int main() {
     assert(loadedTrack.name == "DRUMS");
     assert(loadedTrack.programId == "program-drums-01");
     assert(loadedTrack.soloed);
+    assert(std::abs(loadedTrack.level - 1.65F) < 0.0001F);
+    assert(std::abs(loadedTrack.pan - (-0.275F)) < 0.0001F);
     assert(loadedTrack.patterns.size() == 1);
     assert(loadedTrack.placements.size() == 3);
     const auto* clipA = findPlacement(loadedTrack, "clip-a");
@@ -277,6 +317,8 @@ int main() {
     assert(legacy.sequences.size() == 1);
     assert(legacy.sequences[0].tracks.size() == 1);
     assert(legacy.sequences[0].tracks[0].placements.empty());
+    assert(legacy.sequences[0].tracks[0].level == 1.0F);
+    assert(legacy.sequences[0].tracks[0].pan == 0.0F);
     const auto& legacyNote = legacy.sequences[0].tracks[0].patterns[0].notes[0];
     assert(legacyNote.tick == 120);
     assert(legacyNote.durationTicks == 240);
@@ -285,6 +327,21 @@ int main() {
     assert(legacyNote.probability == 99);
     assert(legacyNote.ratchet == 2);
     assert(legacyNote.nudgeTicks == -3);
+
+    // Version 2 includes Pattern placements but predates Track mixer state.
+    // It must continue to load with neutral per-Track Level/Pan defaults.
+    const std::string legacyV2 = makeVersion2BytesFromVersion3(serialized);
+    assert(legacyV2.find("MPCMK2_PROJECT 2") == 0);
+    domain::Project legacyV2Project;
+    assert(persistence::deserializeProject(legacyV2, legacyV2Project, &error));
+    assert(error.empty());
+    assert(legacyV2Project.sequences.size() == 1);
+    assert(legacyV2Project.sequences[0].tracks.size() == 1);
+    const auto& legacyV2Track = legacyV2Project.sequences[0].tracks[0];
+    assert(legacyV2Track.level == 1.0F);
+    assert(legacyV2Track.pan == 0.0F);
+    assert(legacyV2Track.placements.size() == 3);
+    assert(legacyV2Track.placements[1].startTick == 1200);
 
     // A failed parse must leave every field of the already-open Project intact,
     // not merely preserve its identity. The truncated v2 payload is deliberately
