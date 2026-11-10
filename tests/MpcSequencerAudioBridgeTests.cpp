@@ -118,6 +118,16 @@ int main() {
                     120.0,
                     48000);
 
+    mpc::audio::AudioTriggerQueue trackMixQueue;
+    const auto trackMix = mpc::sequencer::enqueueScheduledPadEvents(
+            trackMixQueue, timingInput, 120.0, 48000, 1650, -275);
+    assert(trackMix.written == 2 && trackMix.invalid == 0);
+    mpc::audio::AudioTriggerEvent mixedEvent;
+    assert(trackMixQueue.tryDequeue(mixedEvent));
+    assert(mixedEvent.trackLevelMilli == 1650);
+    assert(mixedEvent.trackPanMilli == -275);
+
+
     assert(timing.input == 2);
     assert(timing.written == 2);
     assert(timing.dropped == 0);

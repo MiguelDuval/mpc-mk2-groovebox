@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cmath>
 
 namespace mpc::sequencer {
 
@@ -34,14 +35,18 @@ public:
             audio::AudioTriggerQueue& audioQueue,
             const bool* trackMuted = nullptr,
             const bool* trackSoloed = nullptr,
-            const bool* anyTrackSoloed = nullptr) noexcept
+            const bool* anyTrackSoloed = nullptr,
+            const float* trackLevel = nullptr,
+            const float* trackPan = nullptr) noexcept
             : sequence_(sequence),
               program_(program),
               runtime_(sequence, pattern),
               audioQueue_(audioQueue),
               trackMuted_(trackMuted),
               trackSoloed_(trackSoloed),
-              anyTrackSoloed_(anyTrackSoloed) {
+              anyTrackSoloed_(anyTrackSoloed),
+              trackLevel_(trackLevel),
+              trackPan_(trackPan) {
     }
 
     MpcSequencerPlayback(const MpcSequencerPlayback&) = delete;
@@ -170,7 +175,9 @@ public:
                         routedEvents_.data(),
                         route.written),
                 sanitizeTempoBpm(sequence_.tempoBpm),
-                sampleRate);
+                sampleRate,
+                normalizedTrackLevelMilli(),
+                normalizedTrackPanMilli());
         result.queued = bridge.written;
         result.dropped = bridge.dropped;
         result.invalid += bridge.invalid;
@@ -189,6 +196,23 @@ private:
     const bool* trackMuted_ = nullptr;
     const bool* trackSoloed_ = nullptr;
     const bool* anyTrackSoloed_ = nullptr;
+    const float* trackLevel_ = nullptr;
+    const float* trackPan_ = nullptr;
+
+    std::int32_t normalizedTrackLevelMilli() const noexcept {
+        const float value = trackLevel_ == nullptr ? 1.0f : *trackLevel_;
+        if (!std::isfinite(value)) return 1000;
+        return static_cast<std::int32_t>(std::clamp(
+                std::lround(value * 1000.0f), 0L, 2000L));
+    }
+
+    std::int32_t normalizedTrackPanMilli() const noexcept {
+        const float value = trackPan_ == nullptr ? 0.0f : *trackPan_;
+        if (!std::isfinite(value)) return 0;
+        return static_cast<std::int32_t>(std::clamp(
+                std::lround(value * 1000.0f), -1000L, 1000L));
+    }
+
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> scheduledEvents_{};
     std::array<ScheduledMidiEvent, kMaxPlaybackEvents> expandedScheduledEvents_{};
     std::array<ScheduledPadEvent, kMaxPlaybackEvents> routedEvents_{};

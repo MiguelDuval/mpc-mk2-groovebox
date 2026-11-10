@@ -108,7 +108,9 @@ public:
                     audioQueue_,
                     &track.muted,
                     &track.soloed,
-                    &anySoloedPlayableTrack_));
+                    &anySoloedPlayableTrack_,
+                    &track.level,
+                    &track.pan));
             playbackTracks_.push_back(&track);
         }
 

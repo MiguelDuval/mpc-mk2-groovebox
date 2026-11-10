@@ -53,6 +53,18 @@ jstring toJString(JNIEnv* env, const std::string& text) {
     return env->NewStringUTF(text.c_str());
 }
 
+std::pair<std::int32_t, std::int32_t> trackMixMilli(
+        const mpc::domain::Track* track) noexcept {
+    if (track == nullptr) return {1000, 0};
+    const float level = std::isfinite(track->level) ? track->level : 1.0f;
+    const float pan = std::isfinite(track->pan) ? track->pan : 0.0f;
+    return {
+            static_cast<std::int32_t>(std::clamp(
+                    std::lround(level * 1000.0f), 0L, 2000L)),
+            static_cast<std::int32_t>(std::clamp(
+                    std::lround(pan * 1000.0f), -1000L, 1000L))};
+}
+
 void stopSequenceForMutation() {
     auto& core = mpc::MpcCore::instance();
     auto& state = core.projectState();
@@ -1045,12 +1057,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPad(
     const auto padIndex = static_cast<std::uint8_t>(pad);
     const auto velocityValue = static_cast<std::uint8_t>(velocity);
 
-    core.audio().triggerPad(padIndex, velocityValue);
-
-    const auto state = core.sequenceTransportClock().snapshot();
     const auto& projectState = core.projectState();
     const auto trackIndex = projectState.activeTrackIndex();
     const auto& tracks = projectState.activeSequence().tracks;
+    const auto mix = trackMixMilli(
+            trackIndex < tracks.size() ? &tracks[trackIndex] : nullptr);
+    core.audio().triggerPadWithMix(
+            padIndex, velocityValue,
+            std::numeric_limits<std::int32_t>::min(),
+            mix.first, mix.second);
+
+    const auto state = core.sequenceTransportClock().snapshot();
 
     if (state.playing
             && trackIndex < tracks.size()
@@ -1088,14 +1105,17 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
     const auto padIndex = static_cast<std::uint8_t>(pad);
     const auto velocityValue = static_cast<std::uint8_t>(velocity);
 
-    core.audio().triggerPadWithTuningOverride(
-            padIndex, velocityValue,
-            static_cast<std::int32_t>(tuningMilliSemitones));
-
-    const auto state = core.sequenceTransportClock().snapshot();
     const auto& projectState = core.projectState();
     const auto trackIndex = projectState.activeTrackIndex();
     const auto& tracks = projectState.activeSequence().tracks;
+    const auto mix = trackMixMilli(
+            trackIndex < tracks.size() ? &tracks[trackIndex] : nullptr);
+    core.audio().triggerPadWithMix(
+            padIndex, velocityValue,
+            static_cast<std::int32_t>(tuningMilliSemitones),
+            mix.first, mix.second);
+
+    const auto state = core.sequenceTransportClock().snapshot();
 
     if (state.playing
             && trackIndex < tracks.size()
@@ -4314,6 +4334,58 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceToggleTrackSolo(
             env,
             "TRACK " + std::to_string(trackIndex + 1)
                     + " SOLO " + (track.soloed ? "ON" : "OFF"));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackLevel(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& tracks = mpc::MpcCore::instance()
+            .projectState().activeSequence().tracks;
+    if (trackIndex < 0 || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return 1.0f;
+    }
+    return tracks[static_cast<std::size_t>(trackIndex)].level;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceGetTrackPan(
+        JNIEnv* /* env */, jobject /* thiz */, jint trackIndex)
+{
+    const auto& tracks = mpc::MpcCore::instance()
+            .projectState().activeSequence().tracks;
+    if (trackIndex < 0 || static_cast<std::size_t>(trackIndex) >= tracks.size()) {
+        return 0.0f;
+    }
+    return tracks[static_cast<std::size_t>(trackIndex)].pan;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackLevel(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jfloat level)
+{
+    auto& tracks = mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (trackIndex < 0 || static_cast<std::size_t>(trackIndex) >= tracks.size()
+            || !std::isfinite(level) || level < 0.0f || level > 2.0f) {
+        return toJString(env, "Track level failed: expected 0..200%");
+    }
+    tracks[static_cast<std::size_t>(trackIndex)].level = level;
+    return toJString(env, "TRACK " + std::to_string(trackIndex + 1)
+            + " LEVEL " + std::to_string(std::lround(level * 100.0f)) + "%");
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceSetTrackPan(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jfloat pan)
+{
+    auto& tracks = mpc::MpcCore::instance().projectState().activeSequence().tracks;
+    if (trackIndex < 0 || static_cast<std::size_t>(trackIndex) >= tracks.size()
+            || !std::isfinite(pan) || pan < -1.0f || pan > 1.0f) {
+        return toJString(env, "Track pan failed: expected -100..+100");
+    }
+    tracks[static_cast<std::size_t>(trackIndex)].pan = pan;
+    return toJString(env, "TRACK " + std::to_string(trackIndex + 1)
+            + " PAN " + std::to_string(std::lround(pan * 100.0f)));
 }
 
 extern "C" JNIEXPORT jlong JNICALL

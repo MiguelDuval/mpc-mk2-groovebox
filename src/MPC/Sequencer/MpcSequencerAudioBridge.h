@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 namespace mpc::sequencer {
@@ -32,11 +33,18 @@ namespace detail {
 [[nodiscard]] inline AudioBridgeResult enqueueScheduledPadEventsAsFrames(
         audio::AudioTriggerQueue& queue,
         std::span<const ScheduledPadEvent> input,
-        std::span<const std::int32_t> offsetFrames) noexcept {
+        std::span<const std::int32_t> offsetFrames,
+        std::int32_t trackLevelMilli = 1000,
+        std::int32_t trackPanMilli = 0) noexcept {
     AudioBridgeResult result;
     result.input = input.size();
 
     if (offsetFrames.size() != input.size()) {
+        result.invalid = input.size();
+        return result;
+    }
+    if (trackLevelMilli < 0 || trackLevelMilli > 2000
+            || trackPanMilli < -1000 || trackPanMilli > 1000) {
         result.invalid = input.size();
         return result;
     }
@@ -53,7 +61,10 @@ namespace detail {
         const audio::AudioTriggerEvent trigger{
             static_cast<std::uint8_t>(event.padIndex),
             event.velocity,
-            frameOffset};
+            frameOffset,
+            std::numeric_limits<std::int32_t>::min(),
+            trackLevelMilli,
+            trackPanMilli};
 
         if (queue.tryEnqueue(trigger)) {
             ++result.written;
@@ -71,9 +82,16 @@ namespace detail {
         audio::AudioTriggerQueue& queue,
         std::span<const ScheduledPadEvent> input,
         double tempoBpm,
-        std::int32_t sampleRate) noexcept {
+        std::int32_t sampleRate,
+        std::int32_t trackLevelMilli = 1000,
+        std::int32_t trackPanMilli = 0) noexcept {
     AudioBridgeResult result;
     result.input = input.size();
+    if (trackLevelMilli < 0 || trackLevelMilli > 2000
+            || trackPanMilli < -1000 || trackPanMilli > 1000) {
+        result.invalid = input.size();
+        return result;
+    }
 
     for (const auto& event : input) {
         const auto frameOffset =
@@ -87,7 +105,10 @@ namespace detail {
         const audio::AudioTriggerEvent trigger{
             static_cast<std::uint8_t>(event.padIndex),
             event.velocity,
-            *frameOffset};
+            *frameOffset,
+            std::numeric_limits<std::int32_t>::min(),
+            trackLevelMilli,
+            trackPanMilli};
 
         if (queue.tryEnqueue(trigger)) {
             ++result.written;
