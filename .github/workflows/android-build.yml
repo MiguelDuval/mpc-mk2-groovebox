@@ -165,6 +165,7 @@ jobs:
             --tests com.miguelduval.mpcmk2groovebox.MpcProjectRecoveryStoreTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcProjectUriGrantPolicyTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcBrowserFileTest \
+            --tests com.miguelduval.mpcmk2groovebox.MpcPadMixerViewAccessibilityTest \
             --tests com.miguelduval.mpcmk2groovebox.MpcTrackProgramPolicyTest
 
       - name: Test MPC Studio MkII semantic routing
