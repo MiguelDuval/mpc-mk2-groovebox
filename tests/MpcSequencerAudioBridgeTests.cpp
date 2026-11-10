@@ -31,19 +31,21 @@ int main() {
         assert(event.offsetFrames == offsets[index]);
     }
 
-    const std::array<mpc::sequencer::ScheduledPadEvent, 2> invalidInput{{
+    const std::array<mpc::sequencer::ScheduledPadEvent, 4> invalidInput{{
             {0, 0, 100, 0},
-            {0, 255, 0, 1}}};
-    const std::array<std::int32_t, 2> invalidOffsets{{-1, 12}};
+            {0, 255, 100, 1},
+            {0, 2, 128, 2},
+            {0, mpc::domain::kMaxProgramPads, 100, 3}}};
+    const std::array<std::int32_t, 4> invalidOffsets{{-1, 12, 12, 12}};
 
     const auto invalid =
             mpc::sequencer::enqueueScheduledPadEventsAsFrames(
                     queue, invalidInput, invalidOffsets);
 
-    assert(invalid.input == 2);
+    assert(invalid.input == 4);
     assert(invalid.written == 0);
     assert(invalid.dropped == 0);
-    assert(invalid.invalid == 2);
+    assert(invalid.invalid == 4);
 
     const std::array<std::int32_t, 1> mismatchedOffsets{{8}};
     const auto mismatched =
@@ -111,6 +113,18 @@ int main() {
     assert(invalidTiming.written == 0);
     assert(invalidTiming.dropped == 0);
     assert(invalidTiming.invalid == 2);
+
+    const std::array<mpc::sequencer::ScheduledPadEvent, 3> malformedTimingInput{{
+            {960, mpc::domain::kMaxProgramPads, 100, 0},
+            {1920, 2, 128, 1},
+            {2400, 3, 0, 2}}};
+    const auto malformedTiming =
+            mpc::sequencer::enqueueScheduledPadEvents(
+                    timingQueue, malformedTimingInput, 120.0, 48000);
+    assert(malformedTiming.input == 3);
+    assert(malformedTiming.written == 0);
+    assert(malformedTiming.dropped == 0);
+    assert(malformedTiming.invalid == 3);
 
     return 0;
 }
