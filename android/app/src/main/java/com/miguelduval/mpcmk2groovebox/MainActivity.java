@@ -15621,14 +15621,16 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         View xlMixerToggle = findViewWithContentDescription(
                 getWindow().getDecorView(),
                 "MPC Main mixer strips shown");
-        View selectedTrackMeter = findViewWithContentDescription(
-                getWindow().getDecorView(),
-                "MPC XL selected track level meter and fader reserved");
+        View selectedTrackMeter = findViewWithContentDescriptionPrefix(
+                xlMixerStrip,
+                "MPC XL selected track level fader ");
         if (xlMixerStrip == null
                 || xlMixerStrip.getWidth() < dp(180)
                 || xlMixerStrip.getHeight() <= dp(160)
                 || xlMixerToggle == null
-                || selectedTrackMeter == null) {
+                || selectedTrackMeter == null
+                || !selectedTrackMeter.isShown()
+                || selectedTrackMeter.getHeight() < dp(72)) {
             Log.e(TAG, "UI_INTERACTION_FAILED: visible Main XL Channel Strip"
                     + " | strip=" + describeAuditView(xlMixerStrip)
                     + " | toggle=" + describeAuditView(xlMixerToggle)
