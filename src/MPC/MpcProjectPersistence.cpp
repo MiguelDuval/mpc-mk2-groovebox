@@ -443,6 +443,13 @@ bool validateSerializableNumericFields(
                     || static_cast<unsigned int>(track.kind) > 4) {
                 return setError(error, "Track type or kind is out of range");
             }
+            if (!std::isfinite(track.level) || !std::isfinite(track.pan)) {
+                return setError(error, "Track mixer values must be finite");
+            }
+            if (track.level < 0.0f || track.level > 2.0f
+                    || track.pan < -1.0f || track.pan > 1.0f) {
+                return setError(error, "Track mixer values are out of range");
+            }
         }
     }
     return true;
@@ -634,6 +641,7 @@ std::string serializeProject(const domain::Project& project, std::string* error)
                 << static_cast<unsigned int>(track.muted) << ' '
                 << static_cast<unsigned int>(track.soloed) << ' '
                 << static_cast<unsigned int>(track.recordArmed) << ' '
+                << track.level << ' ' << track.pan << ' '
                 << track.patterns.size() << ' '
                 << track.placements.size() << '\n';
 
@@ -685,7 +693,8 @@ bool deserializeProject(
     if (!in.value(magic) || magic != "MPCMK2_PROJECT" || !in.value(version)) {
         return setError(error, "Invalid project header");
     }
-    if (version != 1 && version != kCurrentProjectFormatVersion) {
+    if (version != 1 && version != 2
+            && version != kCurrentProjectFormatVersion) {
         return setError(error, "Unsupported project format version");
     }
 
@@ -772,11 +781,21 @@ bool deserializeProject(
                     || !in.text(track.programId)
                     || !in.boolean(track.muted)
                     || !in.boolean(track.soloed)
-                    || !in.boolean(track.recordArmed)
-                    || !in.count(patternCount, kMaxPatternsPerTrack, "Pattern")) {
+                    || !in.boolean(track.recordArmed)) {
+                return false;
+            }
+            // v1/v2 have no Track mixer fields and intentionally retain the
+            // neutral defaults declared by domain::Track.
+            if (version >= 3
+                    && (!in.finiteFloat(track.level) || !in.finiteFloat(track.pan))) {
                 return false;
             }
             if (type > 3 || kind > 4) return in.fail("Track type is out of range");
+            if (track.level < 0.0f || track.level > 2.0f
+                    || track.pan < -1.0f || track.pan > 1.0f) {
+                return in.fail("Track mixer values are out of range");
+            }
+            if (!in.count(patternCount, kMaxPatternsPerTrack, "Pattern")) return false;
             if (version >= 2
                     && !in.count(placementCount, kMaxPlacementsPerTrack, "Pattern placement")) {
                 return false;

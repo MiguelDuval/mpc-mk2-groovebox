@@ -168,6 +168,10 @@ struct Track {
     ProgramType type = ProgramType::Drum;
     TrackKind kind = TrackKind::Drum;
     std::string programId;
+    // Channel-strip mix state. Audio triggers snapshot these values before
+    // crossing into the realtime queue; no project containers are read by DSP.
+    float level = 1.0f;
+    float pan = 0.0f;
     bool muted = false;
     bool soloed = false;
     bool recordArmed = false;

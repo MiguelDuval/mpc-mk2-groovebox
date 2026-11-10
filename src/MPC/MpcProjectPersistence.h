@@ -7,9 +7,9 @@
 
 namespace mpc::persistence {
 
-// Version 2 adds explicit Pattern-placement records. Version 1 is accepted
-// for projects whose Tracks contain Patterns but no explicit placements.
-inline constexpr int kCurrentProjectFormatVersion = 2;
+// Version 2 adds explicit Pattern-placement records. Version 3 adds persistent
+// Track channel-strip level/pan. Versions 1 and 2 load with neutral Track mix.
+inline constexpr int kCurrentProjectFormatVersion = 3;
 
 std::string serializeProject(const domain::Project& project, std::string* error = nullptr);
 bool deserializeProject(
