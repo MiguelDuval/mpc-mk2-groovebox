@@ -261,8 +261,12 @@ inline bool setStepNote(
         std::int32_t durationTicks = 0,
         std::uint8_t probability = 127,
         std::uint8_t ratchet = 1) {
-    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0 ||
-        velocity == 0 || ratchet == 0 || probability > 127) {
+    if (stepIndex < 0 || gridTicks <= 0 || pattern.lengthTicks <= 0
+            || noteNumber > 127
+            || velocity == 0 || velocity > 127
+            || durationTicks < 0
+            || probability > 127
+            || ratchet == 0 || ratchet > 8) {
         return false;
     }
 
@@ -361,7 +365,7 @@ inline bool setStepNoteVelocity(
         std::int32_t gridTicks,
         std::uint8_t noteNumber,
         std::uint8_t velocity) noexcept {
-    if (velocity == 0) {
+    if (velocity == 0 || velocity > 127) {
         return false;
     }
     auto* note = findStepNote(
@@ -436,7 +440,8 @@ inline bool setStepNoteDuration(
         std::int32_t durationTicks) noexcept {
     if (gridTicks <= 0
             || durationTicks < std::max(1, gridTicks / 4)
-            || durationTicks > gridTicks * 4) {
+            || static_cast<std::int64_t>(durationTicks)
+                    > static_cast<std::int64_t>(gridTicks) * 4) {
         return false;
     }
     const auto* existing = findStepNote(

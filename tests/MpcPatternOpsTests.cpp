@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cassert>
+#include <limits>
 
 int main() {
     // Explicit Arrangement Pattern placements reference Pattern data without copying it.
@@ -437,6 +438,31 @@ int main() {
             stepPattern, 1, 0, 40, 100));
     assert(!mpc::sequencer::setStepNote(
             stepPattern, 1, 120, 40, 0));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 128, 100));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 128));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 100, -1));
+    assert(!mpc::sequencer::setStepNote(
+            stepPattern, 1, 120, 40, 100, 120, 127, 9));
+    assert(!mpc::sequencer::setStepNoteVelocity(
+            stepPattern, 0, 120, 36, 128));
+    assert(stepPattern.notes.size() == 1);
+
+    // Grid multiplication is performed in int64_t, even for hostile input.
+    // The largest 32-bit grid must not wrap in the duration upper-bound check.
+    mpc::domain::Pattern extremeGridPattern;
+    extremeGridPattern.lengthTicks = std::numeric_limits<std::int32_t>::max();
+    assert(mpc::sequencer::setStepNote(
+            extremeGridPattern, 0,
+            std::numeric_limits<std::int32_t>::max(), 36, 127));
+    assert(mpc::sequencer::setStepNoteDuration(
+            extremeGridPattern, 0,
+            std::numeric_limits<std::int32_t>::max(), 36,
+            std::numeric_limits<std::int32_t>::max()));
+    assert(extremeGridPattern.notes.front().durationTicks
+            == std::numeric_limits<std::int32_t>::max());
 
     // Arrangement moves change only event position and reject collisions.
     mpc::domain::Pattern arrangementPattern;
