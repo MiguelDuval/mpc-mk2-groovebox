@@ -13854,23 +13854,42 @@ PY_PROJECT_APP_VIEW_TREE
 wait_for_new_project_marker() {
   local marker="$1" before="$2" timeout_seconds="${3:-45}"
   local deadline=$((SECONDS + timeout_seconds)) remaining count final_count
+  local diagnostic_logs diagnostic_count
   while [ "$SECONDS" -lt "$deadline" ]; do
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
     count="$(project_marker_count "$marker" "$remaining")"
     if [[ "$count" =~ ^[0-9]+$ ]] && (( count > before )); then return 0; fi
     remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
   done
-  # logcat -d snapshots the buffer when each command starts. If the app emits
-  # the marker while the final bounded read is in flight, the loop can reach
-  # its deadline without seeing it. Re-read after that command returns; keep
-  # the same strict count > baseline freshness requirement.
+
+  # logcat -d snapshots the buffer when each command starts. A UI event can
+  # land just after the final polling snapshot, including between the first
+  # final read and the diagnostic dump. Reuse the diagnostic snapshot itself
+  # as another strict freshness check before reporting a timeout.
   final_count="$(project_marker_count "$marker")"
   if [[ "$final_count" =~ ^[0-9]+$ ]] && (( final_count > before )); then
-    echo "Observed fresh Android View-tree marker on final bounded read: $marker"
+    echo "Observed fresh Android marker on final bounded read: $marker"
     return 0
   fi
+
+  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null || true)"
+  printf '%s\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
+  diagnostic_count="$(grep -F -c -- "$marker" <<<"$diagnostic_logs" || true)"
+  if [[ "$diagnostic_count" =~ ^[0-9]+$ ]] && (( diagnostic_count > before )); then
+    echo "Observed fresh Android marker in post-timeout diagnostic snapshot: $marker"
+    return 0
+  fi
+
+  # A second short read closes the remaining scheduling boundary where the
+  # event is emitted immediately after the diagnostic snapshot was taken.
+  sleep 0.25
+  final_count="$(project_marker_count "$marker")"
+  if [[ "$final_count" =~ ^[0-9]+$ ]] && (( final_count > before )); then
+    echo "Observed fresh Android marker on post-diagnostic recheck: $marker"
+    return 0
+  fi
+
   echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker"
-  adb_bounded 5 shell logcat -d -t 4096 -v brief -s MpcGroovebox:I 2>/dev/null | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
   return 1
 }
 

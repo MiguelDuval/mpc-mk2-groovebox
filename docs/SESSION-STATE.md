@@ -1,3 +1,28 @@
+# Live checkpoint — 2026-11-10, post-run #42840353384
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**Integration PR:** #139, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Source SHA before this forward-only correction:** `9d29d2987ba1732522f1926f2979507ab505941f`.
+
+## Exact-head Android Build #42840353384
+
+- Exact HEAD: `9d29d2987ba1732522f1926f2979507ab505941f`.
+- Native/JVM tests and APK assembly/upload succeeded.
+- Android UI smoke reached late Project → Menu acceptance; the full workflow failed at step 56.
+- The monotonic Android View-tree capture worked: Project Open emitted a fresh app-owned MAIN snapshot at uptime 1,069,978 ms and the smoke validated 232 nodes.
+- Browser BROW-010 cancellation had one bounded UiAutomator dump timeout (8s); the next fresh attempt succeeded and BROW-010 passed with unchanged target Pad/Layer/sample/Browser state.
+- The terminating failure was a Logcat marker race. `wait_for_new_project_marker` timed out waiting for `MPC_MENU_RENDER_COMPLETE`; the diagnostic log immediately afterward contained `MPC_MENU_RENDER_COMPLETE`, `MPC_MENU_CLICK_END currentPage=MENU` and a fresh Menu hierarchy marker. This was not a missing Menu render or failed navigation.
+
+## Forward correction
+
+The marker waiter now checks three bounded evidence points after its deadline: the existing final poll, the post-timeout diagnostic snapshot itself, and a short post-diagnostic recheck. Every branch preserves the strict `count > original baseline` requirement; no stale marker or cached UI tree can satisfy the wait. The Browser picker retry remains unchanged because its retry already recovered and passed.
+
+## Verification boundary
+
+The next full Android Build on the exact new HEAD is authoritative. Do not mark UI acceptance complete until step 56 (emulator smoke) and step 57 (visual evidence upload) both succeed on that same SHA. Keep PR #139 Draft and do not merge/rebase/force-push or modify `main`. Physical MPC Studio MkII acceptance remains separate.
+
+---
+
 # Live checkpoint — 2026-11-10 integration pass
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox.  
