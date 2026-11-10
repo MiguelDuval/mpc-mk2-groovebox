@@ -15694,6 +15694,155 @@ if ! capture_ui_screenshot "$PROJECT_SHORTCUTS_RESET_PNG" 10; then
   echo "ERROR: could not capture factory Shortcut Rail after second restart"; exit 1
 fi
 PROJECT_CURRENT_APP_XML="$PROJECT_SHORTCUTS_RESET_MAIN_XML"
+
+# Open the new Channel Mixer from the live Shortcut Rail and exercise native Track controls.
+CHANNEL_MIXER_MAIN_XML="/tmp/mpc-channel-mixer-main.xml"
+CHANNEL_MIXER_PAN_XML="/tmp/mpc-channel-mixer-pan.xml"
+CHANNEL_MIXER_CHANGED_XML="/tmp/mpc-channel-mixer-changed.xml"
+CHANNEL_MIXER_RESTORED_XML="/tmp/mpc-channel-mixer-restored.xml"
+if ! tap_visible_description_early "$PROJECT_SHORTCUTS_RESET_MAIN_XML" "MPC shortcut CHANNEL MIXER"; then
+  echo "ERROR: could not open Channel Mixer from Shortcut Rail"; exit 1
+fi
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-main.xml" "$CHANNEL_MIXER_MAIN_XML" 12; then
+  echo "ERROR: Channel Mixer hierarchy capture failed"; exit 1
+fi
+if ! python3 - "$CHANNEL_MIXER_MAIN_XML" <<'PY'
+import sys, xml.etree.ElementTree as ET
+d=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")]
+assert d.count("MPC Channel Mixer per-Track workspace")==1
+assert any(x.startswith("MPC Channel Mixer Track ") and " strip " in x for x in d)
+for tab in ("VOLUME","PAN & VOLUME","SENDS","EFFECTS","I/O"):
+    assert any(x.startswith("MPC Channel Mixer tab "+tab) or
+               x.startswith("MPC Channel Mixer "+tab+" unavailable") for x in d), tab
+print("Channel Mixer rendered native Track strips and five destination tabs.")
+PY
+then
+  echo "ERROR: Channel Mixer runtime hierarchy incomplete"; cat "$CHANNEL_MIXER_MAIN_XML"; exit 1
+fi
+if ! tap_visible_description_early "$CHANNEL_MIXER_MAIN_XML" "MPC Channel Mixer tab PAN & VOLUME"; then
+  echo "ERROR: Pan & Volume tab is not clickable"; exit 1
+fi
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-pan.xml" "$CHANNEL_MIXER_PAN_XML" 12; then
+  echo "ERROR: Channel Mixer Pan & Volume hierarchy capture failed"; exit 1
+fi
+if ! coords="$(python3 - "$CHANNEL_MIXER_PAN_XML" <<'PY'
+import re, sys, xml.etree.ElementTree as ET
+ns=list(ET.parse(sys.argv[1]).getroot().iter("node"))
+drums=[n.attrib.get("content-desc","") for n in ns
+       if n.attrib.get("content-desc","").startswith("MPC Channel Mixer Track ")
+       and " strip DRUM " in n.attrib.get("content-desc","")]
+if not drums: raise AssertionError("no editable Drum Track strip found")
+p=drums[0].split(" strip ",1)[0]
+def rect(prefix):
+    h=[n for n in ns if n.attrib.get("content-desc","").startswith(prefix)]
+    if len(h)!=1: raise AssertionError(f"{prefix!r}: expected one hit target, got {len(h)}")
+    m=re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]",h[0].attrib.get("bounds",""))
+    if not m: raise AssertionError("invalid bounds "+repr(h[0].attrib))
+    a,b,c,d=map(int,m.groups())
+    if c<=a or d<=b: raise AssertionError("empty hit target")
+    return a,b,c,d
+a,b,c,d=rect(p+" Level fader");e,f,g,h=rect(p+" Pan slider")
+print((a+c)//2,round(b+(d-b)*.25),round(b+(d-b)*.5),
+      round(e+(g-e)*.30),(e+g)//2,(f+h)//2,p)
+PY
+)"; then
+  echo "ERROR: could not resolve live Channel Mixer touch targets"; exit 1
+fi
+read -r cm_fx cm_l150 cm_l100 cm_pl40 cm_pc cm_py cm_prefix <<<"$coords"
+if ! adb_bounded 10 shell input swipe "$cm_fx" "$cm_l100" "$cm_fx" "$cm_l150" 400; then
+  echo "ERROR: Channel Mixer Level drag failed"; exit 1
+fi
+if ! adb_bounded 10 shell input swipe "$cm_pc" "$cm_py" "$cm_pl40" "$cm_py" 400; then
+  echo "ERROR: Channel Mixer Pan drag failed"; exit 1
+fi
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-changed.xml" "$CHANNEL_MIXER_CHANGED_XML" 12; then
+  echo "ERROR: Channel Mixer changed state capture failed"; exit 1
+fi
+if ! python3 - "$CHANNEL_MIXER_CHANGED_XML" "$cm_prefix" <<'PY'
+import sys, xml.etree.ElementTree as ET
+p=sys.argv[2]
+d=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")]
+assert d.count(p+" Level fader 150 percent")==1, "Level did not read back as 150%"
+assert d.count(p+" Pan slider L 40")==1, "Pan did not read back as L40"
+print("Channel Mixer real-touch Level/Pan readback verified.")
+PY
+then
+  echo "ERROR: Channel Mixer values did not update"; cat "$CHANNEL_MIXER_CHANGED_XML"; exit 1
+fi
+if ! adb_bounded 10 shell input swipe "$cm_fx" "$cm_l150" "$cm_fx" "$cm_l100" 400; then
+  echo "ERROR: Channel Mixer Level restore failed"; exit 1
+fi
+if ! adb_bounded 10 shell input swipe "$cm_pl40" "$cm_py" "$cm_pc" "$cm_py" 400; then
+  echo "ERROR: Channel Mixer Pan restore failed"; exit 1
+fi
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-restored.xml" "$CHANNEL_MIXER_RESTORED_XML" 12; then
+  echo "ERROR: Channel Mixer neutral restore capture failed"; exit 1
+fi
+if ! python3 - "$CHANNEL_MIXER_RESTORED_XML" "$cm_prefix" <<'PY'
+import sys, xml.etree.ElementTree as ET
+p=sys.argv[2]
+d=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")]
+assert d.count(p+" Level fader 100 percent")==1
+assert d.count(p+" Pan slider C")==1
+print("Channel Mixer fader/Pan restored to unity/Center.")
+PY
+then
+  echo "ERROR: Channel Mixer controls did not restore to neutral"; exit 1
+fi
+cm_mute="$(python3 - "$CHANNEL_MIXER_RESTORED_XML" "$cm_prefix" <<'PY'
+import sys, xml.etree.ElementTree as ET
+p=sys.argv[2]
+h=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")
+   if n.attrib.get("content-desc","").startswith(p+" Mute ")]
+if len(h)!=1: raise AssertionError("Mute control missing")
+print(h[0])
+PY
+)" || { echo "ERROR: Channel Mixer Mute unavailable"; exit 1; }
+if ! tap_visible_description_early "$CHANNEL_MIXER_RESTORED_XML" "$cm_mute"; then
+  echo "ERROR: Channel Mixer Mute is not clickable"; exit 1
+fi
+CHANNEL_MIXER_MUTE_XML="/tmp/mpc-channel-mixer-mute.xml"
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-mute.xml" "$CHANNEL_MIXER_MUTE_XML" 12; then
+  echo "ERROR: Mute state capture failed"; exit 1
+fi
+cm_mute_after="$(python3 - "$CHANNEL_MIXER_MUTE_XML" "$cm_prefix" <<'PY'
+import sys, xml.etree.ElementTree as ET
+p=sys.argv[2]
+h=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")
+   if n.attrib.get("content-desc","").startswith(p+" Mute ")]
+if len(h)!=1: raise AssertionError("Mute state missing")
+print(h[0])
+PY
+)" || { echo "ERROR: Mute state readback missing"; exit 1; }
+if [[ "$cm_mute" == "$cm_mute_after" ]]; then
+  echo "ERROR: Channel Mixer Mute did not toggle"; exit 1
+fi
+if ! tap_visible_description_early "$CHANNEL_MIXER_MUTE_XML" "$cm_mute_after"; then
+  echo "ERROR: could not restore original Mute state"; exit 1
+fi
+if ! dump_device_ui "/sdcard/mpc-channel-mixer-mute-restored.xml" "$CHANNEL_MIXER_RESTORED_XML" 12; then
+  echo "ERROR: Mute restoration capture failed"; exit 1
+fi
+if ! python3 - "$CHANNEL_MIXER_RESTORED_XML" "$cm_prefix" "$cm_mute" <<'PY'
+import sys, xml.etree.ElementTree as ET
+p,expected=sys.argv[2],sys.argv[3]
+h=[n.attrib.get("content-desc","") for n in ET.parse(sys.argv[1]).getroot().iter("node")
+   if n.attrib.get("content-desc","").startswith(p+" Mute ")]
+assert h==[expected], "Mute fixture state not restored: "+repr(h)
+print("Channel Mixer Mute toggled/restored.")
+PY
+then
+  echo "ERROR: Mute fixture state was not restored"; exit 1
+fi
+PROJECT_MAIN_TREE_MARKER_BEFORE="$(project_marker_count "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=MAIN" 5)"
+if ! adb_bounded 10 shell input keyevent 4; then
+  echo "ERROR: could not return to Main from Channel Mixer"; exit 1
+fi
+if ! capture_project_persistence_view_tree "MAIN" "$PROJECT_SHORTCUTS_RESET_MAIN_XML"; then
+  echo "ERROR: Main workspace did not return after Channel Mixer test"; exit 1
+fi
+PROJECT_CURRENT_APP_XML="$PROJECT_SHORTCUTS_RESET_MAIN_XML"
+echo "Channel Mixer real-touch acceptance passed: Track Level/Pan/Mute changed and restored."
 echo "Extended Shortcut Rail UI acceptance passed: actual assignment, reorder, process restart, visible five-slot order, factory reset and second restart."
 
 # Export a genuine native Project snapshot from private recovery storage through

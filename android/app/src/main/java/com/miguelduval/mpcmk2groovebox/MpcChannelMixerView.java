@@ -177,6 +177,8 @@ final class MpcChannelMixerView extends LinearLayout {
             float actual=listener.onTrackLevelChanged(track.index,value);
             level.setText(String.format(Locale.ROOT,"LEVEL\n%3d%%",Math.round(actual*100)));
             level.setContentDescription("MPC Channel Mixer Track "+(track.index+1)+" Level "+Math.round(actual*100)+" percent");
+            fader.setContentDescription("MPC Channel Mixer Track "
+                    +(track.index+1)+" Level fader "+Math.round(actual*100)+" percent");
             return actual;
         });
         strip.addView(fader,new LayoutParams(LayoutParams.MATCH_PARENT,0,1f));
@@ -197,6 +199,8 @@ final class MpcChannelMixerView extends LinearLayout {
                 float actual=listener.onTrackPanChanged(track.index,value);
                 panLabel.setText("PAN • "+MpcTrackMixerPolicy.panLabel(actual));
                 panLabel.setContentDescription("MPC Channel Mixer Track "+(track.index+1)+" Pan "+MpcTrackMixerPolicy.panLabel(actual));
+                pan.setContentDescription("MPC Channel Mixer Track "
+                        +(track.index+1)+" Pan slider "+MpcTrackMixerPolicy.panLabel(actual));
                 return actual;
             });
             strip.addView(pan,new LayoutParams(LayoutParams.MATCH_PARENT,dp(42)));
