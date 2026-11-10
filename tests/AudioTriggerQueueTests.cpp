@@ -20,6 +20,12 @@ int main() {
     assert(!mpc::audio::isValidAudioTriggerEvent({0, 128, 0}, pads));
     assert(!mpc::audio::isValidAudioTriggerEvent({0, 255, 0}, pads));
     assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, -1}, pads));
+    assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 0,
+            std::numeric_limits<std::int32_t>::min(), 2000, -1000}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 0,
+            std::numeric_limits<std::int32_t>::min(), 2001, 0}, pads));
+    assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 0,
+            std::numeric_limits<std::int32_t>::min(), 1000, 1001}, pads));
     assert(mpc::audio::isValidAudioTriggerEvent({0, 127, 48000}, pads, 48000));
     assert(!mpc::audio::isValidAudioTriggerEvent({0, 127, 48001}, pads, 48000));
     mpc::audio::AudioTriggerQueue queue;

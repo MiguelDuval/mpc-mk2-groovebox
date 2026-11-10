@@ -204,6 +204,16 @@ public:
             std::int32_t tuningOverrideMilliSemitones,
             std::int32_t offsetFrames = 0);
 
+    // Queues a Pad trigger with a pre-snapshotted Track channel-strip mix.
+    // Track level uses 0..2000 (0..200%); pan uses -1000..1000.
+    void triggerPadWithMix(
+            std::uint8_t padIndex,
+            std::uint8_t velocity,
+            std::int32_t tuningOverrideMilliSemitones,
+            std::int32_t trackLevelMilli,
+            std::int32_t trackPanMilli,
+            std::int32_t offsetFrames = 0);
+
     AudioTriggerQueue& triggerQueue() noexcept {
         return triggerQueue_;
     }

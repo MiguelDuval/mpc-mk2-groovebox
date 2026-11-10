@@ -17,6 +17,10 @@ struct AudioTriggerEvent final {
     // INT32_MIN means "no override — use the pad's persistent tuning".
     std::int32_t tuningOverrideMilliSemitones =
             std::numeric_limits<std::int32_t>::min();
+    // Track-channel mix captured by the control/sequence thread before enqueue.
+    // The audio callback never dereferences project/Track containers.
+    std::int32_t trackLevelMilli = 1000;
+    std::int32_t trackPanMilli = 0;
 };
 
 // This queue carries note-on events; velocity-zero note-off messages are not
@@ -33,7 +37,11 @@ struct AudioTriggerEvent final {
     return event.padIndex < padCount
             && isValidAudioTriggerVelocity(event.velocity)
             && event.offsetFrames >= 0
-            && event.offsetFrames <= maxOffsetFrames;
+            && event.offsetFrames <= maxOffsetFrames
+            && event.trackLevelMilli >= 0
+            && event.trackLevelMilli <= 2000
+            && event.trackPanMilli >= -1000
+            && event.trackPanMilli <= 1000;
 }
 
 template <typename T, std::size_t Capacity>

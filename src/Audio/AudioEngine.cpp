@@ -350,7 +350,9 @@ public:
                             pending.padIndex,
                             pending.velocity,
                             sampleRate,
-                            pending.tuningOverrideMilliSemitones);
+                            pending.tuningOverrideMilliSemitones,
+                            pending.trackLevelMilli,
+                            pending.trackPanMilli);
                 }
 
                 --pendingTriggerCount_;
@@ -628,7 +630,9 @@ private:
             std::uint8_t velocity,
             int32_t sampleRate,
             std::int32_t tuningOverrideMilliSemitones =
-                    std::numeric_limits<std::int32_t>::min()) noexcept {
+                    std::numeric_limits<std::int32_t>::min(),
+            std::int32_t trackLevelMilli = 1000,
+            std::int32_t trackPanMilli = 0) noexcept {
         std::size_t selectedIndex = nextVoiceIndex_[padIndex];
         for (std::size_t offset = 0; offset < kMaxPadVoices; ++offset) {
             const std::size_t candidate =
@@ -650,17 +654,25 @@ private:
                 static_cast<float>(
                     levelMilli_[padIndex].load(std::memory_order_relaxed))
                 / 1000.0f;
-        const float pan =
+        const float trackLevel =
+                static_cast<float>(std::clamp(trackLevelMilli, 0, 2000))
+                / 1000.0f;
+        const float trackPan =
+                static_cast<float>(std::clamp(trackPanMilli, -1000, 1000))
+                / 1000.0f;
+        const float pan = std::clamp(
                 static_cast<float>(
                     panMilli_[padIndex].load(std::memory_order_relaxed))
-                / 1000.0f;
+                        / 1000.0f + trackPan,
+                -1.0f,
+                1.0f);
         const float filterCutoffHz =
                 static_cast<float>(
                         filterCutoffMilliHz_[padIndex]
                                 .load(std::memory_order_relaxed))
                 / 1000.0f;
 
-        voice.gain = velocityGain * level * kPadAmplitude;
+        voice.gain = velocityGain * level * trackLevel * kPadAmplitude;
         voice.baseFilterCutoffHz = filterCutoffHz;
         voice.lastFilterCutoffHz = filterCutoffHz;
         voice.leftGain = pan > 0.0f ? 1.0f - pan : 1.0f;
@@ -1972,7 +1984,21 @@ void AudioEngine::triggerPadWithTuningOverride(
         std::uint8_t velocity,
         std::int32_t tuningOverrideMilliSemitones,
         std::int32_t offsetFrames) {
-    if (padIndex >= kPadCount || !isValidAudioTriggerVelocity(velocity)) {
+    triggerPadWithMix(
+            padIndex, velocity, tuningOverrideMilliSemitones,
+            1000, 0, offsetFrames);
+}
+
+void AudioEngine::triggerPadWithMix(
+        std::uint8_t padIndex,
+        std::uint8_t velocity,
+        std::int32_t tuningOverrideMilliSemitones,
+        std::int32_t trackLevelMilli,
+        std::int32_t trackPanMilli,
+        std::int32_t offsetFrames) {
+    if (padIndex >= kPadCount || !isValidAudioTriggerVelocity(velocity)
+            || trackLevelMilli < 0 || trackLevelMilli > 2000
+            || trackPanMilli < -1000 || trackPanMilli > 1000) {
         return;
     }
 
@@ -1982,7 +2008,9 @@ void AudioEngine::triggerPadWithTuningOverride(
                 padIndex,
                 velocity,
                 clampedOffset,
-                tuningOverrideMilliSemitones}));
+                tuningOverrideMilliSemitones,
+                trackLevelMilli,
+                trackPanMilli}));
 }
 
 std::string AudioEngine::openInputStream() {
