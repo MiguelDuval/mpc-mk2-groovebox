@@ -43,7 +43,7 @@ void MpcNoteRepeatScheduler::setPad(
         std::uint8_t velocity) noexcept {
     if (!enabled_.load(std::memory_order_acquire)
             || padIndex >= domain::kMaxProgramPads
-            || velocity == 0) {
+            || !audio::isValidAudioTriggerVelocity(velocity)) {
         return;
     }
 

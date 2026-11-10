@@ -299,12 +299,20 @@ public:
             testTonePhase_ = 0.0;
         }
 
+        // Pad events are scheduled relative to the active render window.
+        // Reject anything more than one second ahead before it can occupy one
+        // of the bounded pending slots and starve immediate live pad triggers.
+        const auto maxTriggerOffsetFrames =
+                sampleRate > 0 ? sampleRate : 0;
         while (pendingTriggerCount_ < pendingTriggerEvents_.size()
                 && triggerQueue_.tryDequeue(
                         pendingTriggerEvents_[pendingTriggerCount_])) {
             auto& pending =
                     pendingTriggerEvents_[pendingTriggerCount_];
-            pending.offsetFrames = std::max(pending.offsetFrames, 0);
+            if (!isValidAudioTriggerEvent(
+                        pending, kPadCount, maxTriggerOffsetFrames)) {
+                continue;
+            }
             ++pendingTriggerCount_;
         }
 
@@ -335,7 +343,7 @@ public:
                     continue;
                 }
 
-                if (pending.padIndex < kPadCount && pending.velocity != 0) {
+                if (isValidAudioTriggerEvent(pending, kPadCount)) {
                     startVoice(
                             pending.padIndex,
                             pending.velocity,
@@ -1814,7 +1822,7 @@ void AudioEngine::triggerPadAtOffset(
         std::uint8_t padIndex,
         std::uint8_t velocity,
         std::int32_t offsetFrames) {
-    if (padIndex >= kPadCount || velocity == 0) {
+    if (padIndex >= kPadCount || !isValidAudioTriggerVelocity(velocity)) {
         return;
     }
 
