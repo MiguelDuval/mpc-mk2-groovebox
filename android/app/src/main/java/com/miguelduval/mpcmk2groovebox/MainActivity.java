@@ -281,6 +281,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private MpcTrackEditView mainTrackEditView;
     private MpcPadMixerView padMixerView;
     private MpcMainMixerStripView mainMixerStripView;
+    private MpcChannelMixerView channelMixerView;
+    private MpcChannelMixerView.Tab channelMixerTab = MpcChannelMixerView.Tab.VOLUME;
     private WaveformView recordingWaveform;
     private TextView recordingTelemetry;
     private SequenceTimelineView sequenceTimeline;
@@ -1716,10 +1718,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showSamplePage();
                 break;
             case CHANNEL_MIXER:
-                showUnavailableModePage(
-                        mode,
-                        "CHANNEL MIXER",
-                        "A real multi-channel mixer requires track level, pan, routing, sends and insert state. Those controls are not available yet.");
+                showChannelMixerPage();
                 break;
             case MUTE:
                 showMutePage();
@@ -2178,8 +2177,30 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        if (mode == MpcUiState.Mode.CHANNEL_MIXER
-                || mode == MpcUiState.Mode.SOUNDS
+        if (mode == MpcUiState.Mode.CHANNEL_MIXER) {
+            final int selected = startupComplete
+                    ? Math.max(0, nativeSequenceGetSelectedTrack()) : 0;
+            final int count = startupComplete
+                    ? Math.max(0, nativeSequenceGetTrackCount()) : 0;
+            final boolean drum = startupComplete
+                    && "DRUM".equalsIgnoreCase(nativeSequenceGetTrackType(selected));
+            addFunction("TRACK −", count > 0 && selected > 0,
+                    v -> selectAdjacentTrack(-1));
+            addSequenceRecArmFunction(drum, () -> {
+                setBottomStatus(nativeSequenceSetSelectedTrackArmed(
+                        !nativeSequenceIsSelectedTrackArmed()));
+                syncHardwareTransportLeds();
+                refreshChannelMixerPage();
+            });
+            addFunction("TRACK +", count > 0 && selected + 1 < count,
+                    v -> selectAdjacentTrack(1));
+            addFunction("PAD MIXER", true, v -> showMixPage());
+            addFunction("MAIN", true, v -> showMainPage());
+            addFunction("BACK", true, v -> navigateBackFromShell());
+            return;
+        }
+
+        if (mode == MpcUiState.Mode.SOUNDS
                 || mode == MpcUiState.Mode.XYFX
                 || mode == MpcUiState.Mode.RESERVED) {
             Button back = addFunction("BACK", true, v -> navigateBackFromShell());
@@ -2737,6 +2758,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     MpcUiState.Subcontext.TRACK_SELECT);
             navigationController.setDataDialFocus(
                     MpcUiState.DataDialFocus.TRACK);
+        } else if (mode == MpcUiState.Mode.CHANNEL_MIXER) {
+            refreshChannelMixerPage();
         } else {
             showMainPage();
         }
@@ -2762,6 +2785,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
         if ("MAIN".equals(currentPage)) {
             showMainPage();
+            return;
+        }
+        if ("CHANNEL_MIXER".equals(currentPage)) {
+            refreshChannelMixerPage();
+            refreshMpcCompactContext();
             return;
         }
         refreshMpcCompactContext();
@@ -12171,6 +12199,104 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         continuation.run();
     }
 
+    private void refreshChannelMixerPage() {
+        if (channelMixerView == null
+                || !"CHANNEL_MIXER".equals(currentPage)
+                || !startupComplete
+                || !NATIVE_LIBRARY_LOADED) {
+            return;
+        }
+        final int count = Math.max(0, nativeSequenceGetTrackCount());
+        final ArrayList<MpcChannelMixerView.TrackState> tracks =
+                new ArrayList<>(count);
+        for (int index = 0; index < count; index++) {
+            final String type = nativeSequenceGetTrackType(index);
+            final String status = nativeSequenceTrackStatus(index);
+            final String name = cleanTrackDisplayName(
+                    status == null || status.isEmpty()
+                            ? "Track " + String.format(Locale.ROOT, "%02d", index + 1)
+                            : status);
+            final boolean canSolo = nativeSequenceCanSoloTrack(index);
+            tracks.add(new MpcChannelMixerView.TrackState(
+                    index, name, type,
+                    nativeSequenceGetTrackLevel(index),
+                    nativeSequenceGetTrackPan(index),
+                    nativeSequenceIsTrackMuted(index),
+                    canSolo, canSolo && nativeSequenceIsTrackSoloed(index),
+                    "DRUM".equalsIgnoreCase(type)));
+        }
+        channelMixerView.setState(
+                tracks, Math.max(0, nativeSequenceGetSelectedTrack()), channelMixerTab);
+    }
+
+    private void showChannelMixerPage() {
+        clearStepEditPadLeds();
+        stopSamplePlaybackCursorUpdates();
+        nativeSequenceSetStepEditContext(false, 0);
+        nativeSequenceSetLauncherContext(false, 0);
+        currentPage = "CHANNEL_MIXER";
+        navigationController.navigate(MpcUiState.Mode.CHANNEL_MIXER);
+        navigationController.setSubcontext(MpcUiState.Subcontext.PERFORMANCE);
+        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+        navigationController.setActionAvailable(true);
+        pageTitle.setText("CHANNEL MIXER");
+        content.removeAllViews();
+
+        final LinearLayout workspace = page();
+        workspace.setContentDescription("MPC Channel Mixer workspace");
+        workspace.setPadding(dp(6), dp(5), dp(6), dp(4));
+        channelMixerView = new MpcChannelMixerView(this,
+                new MpcChannelMixerView.Listener() {
+                    @Override public void onSelectTrack(int index) {
+                        setBottomStatus(nativeSequenceSelectTrack(index));
+                        navigationController.setSelectedTrack(index);
+                        navigationController.setDataDialFocus(MpcUiState.DataDialFocus.TRACK);
+                        refreshChannelMixerPage();
+                        refreshMpcCompactContext();
+                        refreshMpcFunctionBar();
+                    }
+                    @Override public float onTrackLevelChanged(int index, float value) {
+                        setBottomStatus(nativeSequenceSetTrackLevel(index, value));
+                        return nativeSequenceGetTrackLevel(index);
+                    }
+                    @Override public float onTrackPanChanged(int index, float value) {
+                        setBottomStatus(nativeSequenceSetTrackPan(index, value));
+                        return nativeSequenceGetTrackPan(index);
+                    }
+                    @Override public void onToggleTrackMute(int index) {
+                        setBottomStatus(nativeSequenceToggleTrackMute(index));
+                        refreshChannelMixerPage();
+                        refreshMpcCompactContext();
+                    }
+                    @Override public void onToggleTrackSolo(int index) {
+                        if (!nativeSequenceCanSoloTrack(index)) {
+                            setBottomStatus("Track Solo unavailable: no active Drum playback route");
+                            refreshChannelMixerPage();
+                            return;
+                        }
+                        setBottomStatus(nativeSequenceToggleTrackSolo(index));
+                        refreshChannelMixerPage();
+                        refreshMpcCompactContext();
+                    }
+                    @Override public void onTabChanged(MpcChannelMixerView.Tab tab) {
+                        channelMixerTab = tab;
+                        refreshChannelMixerPage();
+                    }
+                });
+        workspace.addView(channelMixerView, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        content.addView(workspace);
+        refreshChannelMixerPage();
+        refreshMpcCompactContext();
+        refreshMpcFunctionBar();
+        updateModeRailSelection();
+        notifyMpcWorkspaceAccessibilityChanged();
+        Log.i(TAG, "MPC_CHANNEL_MIXER_READY tracks="
+                + nativeSequenceGetTrackCount()
+                + " selected=" + (nativeSequenceGetSelectedTrack() + 1)
+                + " tab=" + channelMixerTab.name());
+    }
+
     private void showMixPage() {
         clearStepEditPadLeds();
         stopSamplePlaybackCursorUpdates();
@@ -19093,8 +19219,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 showSamplePage();
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_PAD_MIXER:
-            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
                 showMixPage();
+                return;
+            case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:
+                showChannelMixerPage();
                 return;
             case MpcStudioMk2SemanticActions.NAVIGATE_SEQUENCE_LAUNCHER:
                 showSequenceLauncherPage();
@@ -19406,6 +19534,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             case MpcStudioMk2SemanticActions.TRACK_MUTE_TARGET:
                 setBottomStatus(nativeSequenceToggleTrackMute(value0));
+                if ("CHANNEL_MIXER".equals(currentPage)) refreshChannelMixerPage();
                 refreshSequenceControls();
                 return;
             case MpcStudioMk2SemanticActions.TRANSPORT_RECORD:

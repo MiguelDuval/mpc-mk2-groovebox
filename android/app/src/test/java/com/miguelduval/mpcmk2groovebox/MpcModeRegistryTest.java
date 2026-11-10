@@ -24,7 +24,7 @@ public final class MpcModeRegistryTest {
         assertEquals(MpcUiState.Mode.PAD_MIXER, entries[2].mode);
         assertEquals(MpcUiState.Mode.SOUNDS, entries[3].mode);
         assertEquals(MpcUiState.Mode.XYFX, entries[4].mode);
-        assertFalse(entries[1].available);
+        assertTrue(entries[1].available);
         assertFalse(entries[3].available);
         assertFalse(entries[4].available);
     }
@@ -33,7 +33,7 @@ public final class MpcModeRegistryTest {
     public void unavailableModesAreExplicitlyReserved() {
         assertTrue(MpcModeRegistry.menuEntry(5).available);
         assertEquals(MpcUiState.Mode.TRACK_EDIT, MpcModeRegistry.menuEntry(5).mode);
-        assertFalse(MpcModeRegistry.menuEntry(8).available);
+        assertTrue(MpcModeRegistry.menuEntry(8).available);
         assertEquals(MpcUiState.Mode.CHANNEL_MIXER, MpcModeRegistry.menuEntry(8).mode);
         assertTrue(MpcModeRegistry.menuEntry(9).available);
         assertTrue(MpcModeRegistry.menuEntry(10).available);
@@ -55,7 +55,7 @@ public final class MpcModeRegistryTest {
         assertEquals(MpcUiState.Mode.XYFX, shortcuts[4]);
 
         assertTrue(MpcModeRegistry.shortcutEntries()[0].available);
-        assertFalse(MpcModeRegistry.shortcutEntries()[1].available);
+        assertTrue(MpcModeRegistry.shortcutEntries()[1].available);
         assertTrue(MpcModeRegistry.shortcutEntries()[2].available);
         assertFalse(MpcModeRegistry.shortcutEntries()[3].available);
         assertFalse(MpcModeRegistry.shortcutEntries()[4].available);

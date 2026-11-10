@@ -2239,6 +2239,16 @@ PAD_PERFORM_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groov
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'CHROMATIC_CHORDS'
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'notesForPad'
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'tuningMilliSemitonesForNote'
+CHANNEL_MIXER_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcChannelMixerView.java"
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'private void showChannelMixerPage()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'private void refreshChannelMixerPage()'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'case MpcStudioMk2SemanticActions.NAVIGATE_TRACK_MIXER:'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'MPC Channel Mixer Track'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'PAN & VOLUME'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'SENDS'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'EFFECTS'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'I/O'
+require_source_contains "$CHANNEL_MIXER_VIEW_SOURCE" 'routing and effects backend not implemented'
 TRACK_MIXER_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcMainMixerStripView.java"
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceGetTrackLevel'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'nativeSequenceSetTrackLevel'

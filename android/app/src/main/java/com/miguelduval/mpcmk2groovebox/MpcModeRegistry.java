@@ -33,7 +33,7 @@ final class MpcModeRegistry {
             new Entry(MpcUiState.Mode.SAMPLE_EDIT, "SAMPLE EDIT", true),
             new Entry(MpcUiState.Mode.SAMPLER, "SAMPLER", true),
 
-            new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", false),
+            new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", true),
             new Entry(MpcUiState.Mode.PAD_MIXER, "PAD MIXER", true),
             new Entry(MpcUiState.Mode.LEVELS_16, "16 LEVELS", true),
             new Entry(MpcUiState.Mode.PAD_PERFORM, "PAD PERFORM", true),
@@ -74,7 +74,7 @@ final class MpcModeRegistry {
     static Entry[] shortcutEntries() {
         final Entry[] promoted = {
                 new Entry(MpcUiState.Mode.BROWSER, "BROWSER", true),
-                new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", false),
+                new Entry(MpcUiState.Mode.CHANNEL_MIXER, "CHANNEL MIXER", true),
                 new Entry(MpcUiState.Mode.PAD_MIXER, "PAD MIXER", true),
                 new Entry(MpcUiState.Mode.SOUNDS, "SOUNDS", false),
                 new Entry(MpcUiState.Mode.XYFX, "XY", false)
