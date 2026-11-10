@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -31,6 +32,8 @@ final class MpcMainMixerStripView extends LinearLayout {
         boolean isStartupReady();
         boolean mixerStripVisible();
         void toggleTrackMute();
+        void onTrackLevelChanged(int trackIndex, float value);
+        void onTrackPanChanged(int trackIndex, float value);
         void onMixerStripVisibilityChanged(boolean visible);
     }
 
@@ -99,6 +102,8 @@ final class MpcMainMixerStripView extends LinearLayout {
             String trackType,
             String trackName,
             String programName,
+            float trackLevel,
+            float trackPan,
             int selectedPad,
             float padLevel,
             float padPan,
@@ -145,6 +150,8 @@ final class MpcMainMixerStripView extends LinearLayout {
                             trackType,
                             trackName,
                             programName,
+                            trackLevel,
+                            trackPan,
                             trackMuted,
                             listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
@@ -157,6 +164,8 @@ final class MpcMainMixerStripView extends LinearLayout {
                             trackType,
                             trackName,
                             programName,
+                            trackLevel,
+                            trackPan,
                             trackMuted,
                             listener != null && listener.isStartupReady()),
                     new LayoutParams(0, LayoutParams.MATCH_PARENT, 1));
@@ -172,6 +181,8 @@ final class MpcMainMixerStripView extends LinearLayout {
             String trackType,
             String trackName,
             String programName,
+            float trackLevel,
+            float trackPan,
             boolean muted,
             boolean ready) {
         LinearLayout strip = baseStrip(context);
@@ -192,27 +203,46 @@ final class MpcMainMixerStripView extends LinearLayout {
 
         addTabs(strip, new String[]{"LVL", "FX", "SEND", "I/O"});
 
-        MpcVerticalMeter meter = new MpcVerticalMeter(context);
-        // Track level is not yet backed by a writable mixer value. Do not
-        // fabricate a half-scale meter; reserved state must remain visually empty.
-        meter.setValue(0.0f);
-        meter.setEnabledState(false);
-        meter.setContentDescription("MPC XL selected track level meter and fader reserved");
-        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
-
-        TextView level = valueLabel(
+        final TextView level = valueLabel(
                 context,
-                "LEVEL\nRESERVED",
-                MUTED);
+                String.format(Locale.ROOT, "LEVEL\n%3d%%",
+                        Math.round(MpcTrackMixerPolicy.clampLevel(trackLevel) * 100.0f)),
+                ready ? TEXT : MUTED);
+        final MpcVerticalMeter meter = new MpcVerticalMeter(context);
+        meter.setValue(trackLevel, 2.0f);
+        meter.setEnabledState(ready);
+        meter.setContentDescription(String.format(
+                Locale.ROOT,
+                "MPC XL selected track level fader %.0f percent",
+                MpcTrackMixerPolicy.clampLevel(trackLevel) * 100.0f));
+        meter.setOnValueChangeListener(value -> {
+            level.setText(String.format(
+                    Locale.ROOT, "LEVEL\n%3d%%", Math.round(value * 100.0f)));
+            meter.setContentDescription(String.format(
+                    Locale.ROOT,
+                    "MPC XL selected track level fader %.0f percent",
+                    value * 100.0f));
+            if (listener != null) listener.onTrackLevelChanged(track, value);
+        });
+        strip.addView(meter, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 104)));
         strip.addView(level, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 30)));
 
-        MpcPanSlider pan = new MpcPanSlider(context);
-        pan.setValue(0.0f);
-        pan.setEnabledState(false);
-        pan.setContentDescription("MPC XL selected track pan slider reserved");
+        final TextView panValue = valueLabel(
+                context,
+                "PAN\n" + MpcTrackMixerPolicy.panLabel(trackPan),
+                ready ? TEXT : MUTED);
+        final MpcPanSlider pan = new MpcPanSlider(context);
+        pan.setValue(trackPan);
+        pan.setEnabledState(ready);
+        pan.setContentDescription("MPC XL selected track pan slider "
+                + MpcTrackMixerPolicy.panLabel(trackPan));
+        pan.setOnValueChangeListener(value -> {
+            panValue.setText("PAN\n" + MpcTrackMixerPolicy.panLabel(value));
+            pan.setContentDescription("MPC XL selected track pan slider "
+                    + MpcTrackMixerPolicy.panLabel(value));
+            if (listener != null) listener.onTrackPanChanged(track, value);
+        });
         strip.addView(pan, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 42)));
-
-        TextView panValue = valueLabel(context, "PAN\nC • RESERVED", MUTED);
         strip.addView(panValue, new LayoutParams(LayoutParams.MATCH_PARENT, dp(context, 28)));
 
         LinearLayout controls = row(context);
@@ -652,11 +682,17 @@ final class MpcMainMixerStripView extends LinearLayout {
         return Math.round(value * context.getResources().getDisplayMetrics().density);
     }
 
+    private interface ValueChangeListener {
+        void onValueChanged(float value);
+    }
+
     private static final class MpcVerticalMeter extends View {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private float value;
+        private float maximumValue = 1.0f;
         private boolean enabledState = true;
         private boolean dialFocus;
+        private ValueChangeListener valueChangeListener;
 
         MpcVerticalMeter(Context context) {
             super(context);
@@ -665,12 +701,26 @@ final class MpcMainMixerStripView extends LinearLayout {
         }
 
         void setValue(float value) {
-            this.value = Math.max(0.0f, Math.min(1.0f, value));
+            setValue(value, 1.0f);
+        }
+
+        void setValue(float value, float maximumValue) {
+            this.maximumValue = Math.max(0.001f, maximumValue);
+            this.value = Math.max(0.0f, Math.min(
+                    this.maximumValue,
+                    MpcTrackMixerPolicy.clampLevel(value)));
             invalidate();
+        }
+
+        void setOnValueChangeListener(ValueChangeListener listener) {
+            valueChangeListener = listener;
+            setClickable(listener != null);
         }
 
         void setEnabledState(boolean enabled) {
             enabledState = enabled;
+            setFocusable(enabled);
+            setClickable(enabled && valueChangeListener != null);
             invalidate();
         }
 
@@ -694,7 +744,9 @@ final class MpcMainMixerStripView extends LinearLayout {
             canvas.drawRect(meterLeft, top, meterRight, bottom, paint);
 
             paint.setColor(enabledState ? METER : DISABLED);
-            final float filled = (bottom - top) * value;
+            final float normalizedValue = Math.max(
+                    0.0f, Math.min(1.0f, value / maximumValue));
+            final float filled = (bottom - top) * normalizedValue;
             canvas.drawRect(
                     meterLeft,
                     bottom - filled,
@@ -715,7 +767,7 @@ final class MpcMainMixerStripView extends LinearLayout {
             final float faderX = w * 0.72f;
             paint.setColor(enabledState ? WHITE : DISABLED);
             paint.setStrokeWidth(enabledState ? 3 : 2);
-            final float faderY = bottom - (bottom - top) * value;
+            final float faderY = bottom - (bottom - top) * normalizedValue;
             canvas.drawLine(faderX - 15, faderY, faderX + 9, faderY, paint);
             canvas.drawLine(faderX, top, faderX, bottom, paint);
 
@@ -723,7 +775,9 @@ final class MpcMainMixerStripView extends LinearLayout {
             paint.setColor(MUTED);
             paint.setTextSize(Math.max(7, getResources().getDisplayMetrics().scaledDensity * 7));
             canvas.drawText("0", w * 0.13f, bottom + 1, paint);
-            canvas.drawText("-∞", w * 0.13f, top + 8, paint);
+            canvas.drawText(
+                    maximumValue > 1.0f ? "+6" : "100",
+                    w * 0.13f, top + 8, paint);
 
             if (dialFocus) {
                 paint.setStyle(Paint.Style.STROKE);
@@ -733,6 +787,41 @@ final class MpcMainMixerStripView extends LinearLayout {
                 paint.setStyle(Paint.Style.FILL);
             }
         }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            if (!enabledState || valueChangeListener == null) return false;
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_MOVE:
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                    updateFromTouch(event.getY());
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    updateFromTouch(event.getY());
+                    performClick();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private void updateFromTouch(float y) {
+            final float top = 8.0f;
+            final float bottom = Math.max(top + 1.0f, getHeight() - 8.0f);
+            final float next = MpcTrackMixerPolicy.levelForTouch(
+                    y, top, bottom, maximumValue);
+            if (Math.abs(next - value) < maximumValue / 400.0f) return;
+            value = next;
+            invalidate();
+            valueChangeListener.onValueChanged(value);
+        }
+
+        @Override public boolean performClick() {
+            super.performClick();
+            return true;
+        }
     }
 
     private static final class MpcPanSlider extends View {
@@ -740,6 +829,7 @@ final class MpcMainMixerStripView extends LinearLayout {
         private float value;
         private boolean enabledState = true;
         private boolean dialFocus;
+        private ValueChangeListener valueChangeListener;
 
         MpcPanSlider(Context context) {
             super(context);
@@ -747,12 +837,19 @@ final class MpcMainMixerStripView extends LinearLayout {
         }
 
         void setValue(float value) {
-            this.value = Math.max(-1.0f, Math.min(1.0f, value));
+            this.value = MpcTrackMixerPolicy.clampPan(value);
             invalidate();
+        }
+
+        void setOnValueChangeListener(ValueChangeListener listener) {
+            valueChangeListener = listener;
+            setClickable(listener != null);
         }
 
         void setEnabledState(boolean enabled) {
             enabledState = enabled;
+            setFocusable(enabled);
+            setClickable(enabled && valueChangeListener != null);
             invalidate();
         }
 
@@ -792,6 +889,40 @@ final class MpcMainMixerStripView extends LinearLayout {
                 canvas.drawRect(1, 1, w - 1, getHeight() - 1, paint);
                 paint.setStyle(Paint.Style.FILL);
             }
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            if (!enabledState || valueChangeListener == null) return false;
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                case MotionEvent.ACTION_MOVE:
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                    updateFromTouch(event.getX());
+                    return true;
+                case MotionEvent.ACTION_UP:
+                    updateFromTouch(event.getX());
+                    performClick();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        private void updateFromTouch(float x) {
+            final float left = getWidth() * 0.16f;
+            final float right = Math.max(left + 1.0f, getWidth() * 0.84f);
+            final float next = MpcTrackMixerPolicy.panForTouch(x, left, right);
+            if (Math.abs(next - value) < 0.005f) return;
+            value = next;
+            invalidate();
+            valueChangeListener.onValueChanged(value);
+        }
+
+        @Override public boolean performClick() {
+            super.performClick();
+            return true;
         }
     }
 }

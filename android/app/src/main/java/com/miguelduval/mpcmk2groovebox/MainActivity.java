@@ -621,6 +621,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceSetTrackProgram(
             int trackIndex, int programIndex);
     private static native String nativeSequenceGetTrackType(int trackIndex);
+    private static native float nativeSequenceGetTrackLevel(int trackIndex);
+    private static native float nativeSequenceGetTrackPan(int trackIndex);
+    private static native String nativeSequenceSetTrackLevel(int trackIndex, float level);
+    private static native String nativeSequenceSetTrackPan(int trackIndex, float pan);
     private static native String nativeSequenceGetTrackArrangementData(int trackIndex);
     private static native String nativeSequenceGetTrackArrangementPlacements(int trackIndex);
     private static native String nativeSequenceSplitPatternPlacement(int trackIndex, long splitTick);
@@ -1471,6 +1475,20 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     }
 
                     @Override
+                    public void onTrackLevelChanged(int trackIndex, float value) {
+                        if (startupComplete) {
+                            setBottomStatus(nativeSequenceSetTrackLevel(trackIndex, value));
+                        }
+                    }
+
+                    @Override
+                    public void onTrackPanChanged(int trackIndex, float value) {
+                        if (startupComplete) {
+                            setBottomStatus(nativeSequenceSetTrackPan(trackIndex, value));
+                        }
+                    }
+
+                    @Override
                     public void onMixerStripVisibilityChanged(boolean visible) {
                         final boolean padMode =
                                 navigationController != null
@@ -2037,6 +2055,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final String program = ready
                 ? nativeSequenceGetTrackProgram(track)
                 : "—";
+        final float trackLevel = ready ? nativeSequenceGetTrackLevel(track) : 1.0f;
+        final float trackPan = ready ? nativeSequenceGetTrackPan(track) : 0.0f;
         final boolean padMode = navigationController.state().compactMixerPadMode()
                 && "DRUM".equalsIgnoreCase(trackType);
         final int pad = selectedPadIndexForUi();
@@ -2057,6 +2077,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 cleanTrackDisplayName(
                         ready ? nativeSequenceTrackStatus(track) : "Track"),
                 program,
+                trackLevel,
+                trackPan,
                 pad,
                 level,
                 pan,
