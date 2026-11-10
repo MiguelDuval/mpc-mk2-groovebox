@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 
 namespace mpc::sequencer {
@@ -55,6 +56,20 @@ struct RatchetExpansionResult final {
             continue;
         }
 
+        const auto divisor = static_cast<std::int64_t>(count);
+        const auto step = spanTicks / divisor;
+        const auto remainder = spanTicks % divisor;
+        const auto lastIndex = divisor - 1;
+        // Divide before multiplying: spanTicks * index can overflow even
+        // though the final rational offset is bounded by spanTicks.
+        const auto lastRelativeOffset =
+                step * lastIndex + (remainder * lastIndex) / divisor;
+        if (event.offsetTicks
+                > std::numeric_limits<std::int64_t>::max() - lastRelativeOffset) {
+            result.invalid = true;
+            continue;
+        }
+
         for (std::size_t index = 0; index < count; ++index) {
             if (result.written >= output.size()) {
                 result.truncated = true;
@@ -65,9 +80,9 @@ struct RatchetExpansionResult final {
             expanded = event;
             expanded.ratchetCount = 1;
 
-            const auto relativeOffset = static_cast<std::int64_t>(
-                    (spanTicks * static_cast<std::int64_t>(index)) /
-                    static_cast<std::int64_t>(count));
+            const auto indexTicks = static_cast<std::int64_t>(index);
+            const auto relativeOffset =
+                    step * indexTicks + (remainder * indexTicks) / divisor;
             expanded.offsetTicks = event.offsetTicks + relativeOffset;
         }
     }
