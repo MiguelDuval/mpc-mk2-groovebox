@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 #include <utility>
 
 namespace mpc::sequencer {
@@ -33,6 +34,10 @@ public:
         startTicks_.fill({});
         startVelocities_.fill({});
         replaceCleared_.fill(false);
+        recordingProjectId_ = state.project().id;
+        recordingProjectGeneration_ = state.projectGeneration();
+        recordingSequenceId_ = state.activeSequence().id;
+        recordingSequenceIndex_ = state.activeSequenceIndex();
         active_ = true;
 
         for (std::size_t index = 0;
@@ -64,10 +69,37 @@ public:
             return 0;
         }
 
+        // A recording session belongs to the Project and Sequence where it
+        // began. Never carry held presses or Replace bookkeeping across a
+        // project/sequence switch, where track indices refer to other Patterns.
+        if (!recordingContextMatches(state)) {
+            held_.fill({});
+            startTicks_.fill({});
+            startVelocities_.fill({});
+            replaceCleared_.fill(false);
+            SequenceRecordEvent discarded{};
+            for (std::size_t count = 0;
+                    count < kSequenceRecordQueueCapacity
+                    && queue.tryDequeue(discarded);
+                    ++count) {
+            }
+            active_ = false;
+            return 0;
+        }
+
         std::size_t recorded = 0;
         SequenceRecordEvent event{};
 
         while (queue.tryDequeue(event)) {
+            // These events cross the real-time input boundary into project
+            // state. The MIDI decoder already validates physical messages,
+            // but the public queue can also receive synthetic/late producers.
+            // Never persist an out-of-range 7-bit velocity or non-boolean
+            // pressed value into a Pattern note.
+            if (event.velocity > 127 || event.pressed > 1) {
+                continue;
+            }
+
             if (event.trackIndex >= replaceCleared_.size()
                     || event.trackIndex >= state.activeSequence().tracks.size()
                     || event.padIndex >= domain::kMaxProgramPads) {
@@ -171,6 +203,9 @@ public:
         }
 
         std::size_t recorded = drain(state, queue);
+        if (!active_) {
+            return recorded;
+        }
 
         for (std::size_t trackIndex = 0;
              trackIndex < state.activeSequence().tracks.size()
@@ -288,6 +323,13 @@ private:
         note.tick = static_cast<std::int32_t>(tick);
     }
 
+    bool recordingContextMatches(const MpcProjectState& state) const noexcept {
+        return state.project().id == recordingProjectId_
+                && state.projectGeneration() == recordingProjectGeneration_
+                && state.activeSequenceIndex() == recordingSequenceIndex_
+                && state.activeSequence().id == recordingSequenceId_;
+    }
+
     void sortTouchedPatterns(MpcProjectState& state) noexcept {
         for (auto& track : state.activeSequence().tracks) {
             if (track.kind != domain::TrackKind::Drum
@@ -305,6 +347,10 @@ private:
         }
     }
 
+    std::string recordingProjectId_;
+    std::uint64_t recordingProjectGeneration_ = 0;
+    std::string recordingSequenceId_;
+    std::size_t recordingSequenceIndex_ = 0;
     std::array<std::array<bool, domain::kMaxProgramPads>,
                domain::kMaxSequenceTracks> held_{};
     std::array<std::array<std::int64_t, domain::kMaxProgramPads>,

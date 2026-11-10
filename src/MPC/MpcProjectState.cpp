@@ -93,6 +93,8 @@ bool MpcProjectState::canReplaceProject(const domain::Project& project) noexcept
 
 bool MpcProjectState::replaceProject(domain::Project project) {
     if (!canReplaceProject(project)) return false;
+    ++projectGeneration_;
+    if (projectGeneration_ == 0) projectGeneration_ = 1;
     project_ = std::move(project);
     activeSequenceIndex_ = 0;
     activeTrackIndex_ = 0;

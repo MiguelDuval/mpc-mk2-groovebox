@@ -49,6 +49,12 @@ public:
         return activeSequenceIndex_;
     }
 
+    // Increments whenever a new Project replaces the current in-memory Project,
+    // even when the loaded Project happens to reuse the same serialized IDs.
+    std::uint64_t projectGeneration() const noexcept {
+        return projectGeneration_;
+    }
+
     std::size_t sequenceCount() const noexcept {
         return project_.sequences.size();
     }
@@ -105,6 +111,7 @@ public:
 
 private:
     domain::Project project_{};
+    std::uint64_t projectGeneration_ = 1;
     std::size_t activeDrumProgramIndex_ = 0;
     std::size_t activeSequenceIndex_ = 0;
     std::size_t activeTrackIndex_ = 0;
