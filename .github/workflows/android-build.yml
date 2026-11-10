@@ -654,6 +654,11 @@ jobs:
             /tmp/mpc-groovebox-grid-edit-after-draw-uiautomator.xml
             /tmp/mpc-groovebox-browser.png
             /tmp/mpc-groovebox-browser-local-results.png
+            /tmp/mpc-groovebox-browser-file-size-hidden.png
+            /tmp/mpc-groovebox-browser-file-size-hidden-uiautomator.xml
+            /tmp/mpc-groovebox-browser-file-size-restored.png
+            /tmp/mpc-groovebox-browser-file-size-restored-uiautomator.xml
+            /tmp/mpc-browser-options-prefs.xml
             /tmp/mpc-groovebox-browser-local-results-uiautomator.xml
             /tmp/mpc-groovebox-picker-select-source.png
             /tmp/mpc-groovebox-picker-select-source-uiautomator.xml
