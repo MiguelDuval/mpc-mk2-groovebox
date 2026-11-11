@@ -12665,11 +12665,11 @@ SAMPLE_CHOP_NAV_XML="/tmp/sample-chop-navigation-uiautomator.xml"
 SAMPLE_CHOP_NAV_REMOTE="/sdcard/sample-chop-navigation-uiautomator.xml"
 
 echo "Starting the native output stream before CH4/CH8/CH16 restart acceptance..."
-SAMPLE_CHOP_AUDITION_MARKER_BEFORE="$(project_marker_timestamp "UI_SAMPLE_AUDITION_TRIGGERED")"
+SAMPLE_CHOP_AUDITION_MARKER_BEFORE="$(project_marker_timestamp "SAMPLE_EDIT_PLAY_TRIGGERED")"
 if ! tap_ui_description "$SAMPLE_CROP_CROPPED_XML" "Sample Edit audition selected Pad"; then
   echo "ERROR: could not trigger the cropped source Pad before Chop restart acceptance"; exit 1
 fi
-if ! wait_for_new_project_marker "UI_SAMPLE_AUDITION_TRIGGERED" "$SAMPLE_CHOP_AUDITION_MARKER_BEFORE" 10; then
+if ! wait_for_new_project_marker "SAMPLE_EDIT_PLAY_TRIGGERED" "$SAMPLE_CHOP_AUDITION_MARKER_BEFORE" 10; then
   echo "ERROR: real Sample Edit audition did not start before Chop restart acceptance"; exit 1
 fi
 echo "Native Pad audition started; the following real CH4 action must restart the running output stream."
