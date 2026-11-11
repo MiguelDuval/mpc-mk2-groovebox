@@ -2350,6 +2350,31 @@ for required in   'UI_AUDIT_TIMEOUT_SECONDS=360'   'audit_deadline=$((SECONDS + 
     exit 1
   fi
 done
+echo "Running Sample Chop marker-helper declaration-order preflight..."
+if ! python3 - "$0" <<'PY_MARKER_HELPER_ORDER'
+import sys
+
+source = open(sys.argv[1], encoding="utf-8").read()
+sample_function = source.find("run_sample_chop_acceptance() {")
+if sample_function < 0:
+    raise SystemExit("run_sample_chop_acceptance() declaration is missing")
+for helper in (
+    "project_marker_timestamp_from_logs",
+    "project_marker_timestamp",
+    "wait_for_new_project_marker",
+):
+    definition = helper + "() {"
+    if source.count(definition) != 1:
+        raise SystemExit(f"{helper} must have exactly one definition")
+    if source.find(definition) > sample_function:
+        raise SystemExit(f"{helper} is declared after its first Sample Chop use")
+print("Sample Chop marker helpers are defined exactly once before use.")
+PY_MARKER_HELPER_ORDER
+then
+  echo "ERROR: Sample Chop marker helpers must be declared before their first use"
+  exit 1
+fi
+
 adb_bounded() {
   local seconds="$1"
   shift
@@ -12604,6 +12629,72 @@ for entry in entries:
 PY
 }
 
+project_marker_timestamp_from_logs() {
+  local marker="$1"
+  python3 -c '
+import re
+import sys
+from decimal import Decimal
+marker = sys.argv[1]
+timestamps = []
+for line in sys.stdin:
+    if marker not in line:
+        continue
+    match = re.match(r"^\s*\[?\s*([0-9]+(?:\.[0-9]+)?)", line)
+    if match:
+        timestamps.append(int(Decimal(match.group(1)) * 1_000_000))
+print(max(timestamps, default=0))
+' "$marker"
+}
+
+project_marker_timestamp() {
+  local marker="$1" timeout_seconds="${2:-5}" logs
+  # Logcat is a circular buffer. A match count is not monotonic: after
+  # rollover a new event can replace an old one while the count stays flat.
+  # Use threadtime so logcat emits a timestamp; brief omits timestamps and
+  # would make the monotonic parser return zero for every marker.
+  # Compare device-monotonic time to remain safe across rollover and clock changes.
+  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  project_marker_timestamp_from_logs "$marker" <<<"$logs"
+}
+
+wait_for_new_project_marker() {
+  local marker="$1" before="$2" timeout_seconds="${3:-45}"
+  local deadline=$((SECONDS + timeout_seconds)) remaining current_timestamp
+  local final_timestamp diagnostic_logs diagnostic_timestamp
+
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
+    current_timestamp="$(project_marker_timestamp "$marker" "$remaining")"
+    if [[ "$current_timestamp" =~ ^[0-9]+$ ]] && (( current_timestamp > before )); then return 0; fi
+    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
+  done
+
+  final_timestamp="$(project_marker_timestamp "$marker")"
+  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
+    echo "Observed fresh Android marker on final bounded timestamp read: $marker"
+    return 0
+  fi
+
+  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
+  printf '%s\\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
+  diagnostic_timestamp="$(project_marker_timestamp_from_logs "$marker" <<<"$diagnostic_logs")"
+  if [[ "$diagnostic_timestamp" =~ ^[0-9]+$ ]] && (( diagnostic_timestamp > before )); then
+    echo "Observed fresh Android marker in post-timeout diagnostic snapshot: $marker"
+    return 0
+  fi
+
+  sleep 0.25
+  final_timestamp="$(project_marker_timestamp "$marker")"
+  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
+    echo "Observed fresh Android marker on post-diagnostic timestamp recheck: $marker"
+    return 0
+  fi
+
+  echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker (baseline=$before current=$final_timestamp)"
+  return 1
+}
+
 run_sample_chop_acceptance() {
   if [[ "$#" -ne 6 ]]; then
     echo "ERROR: run_sample_chop_acceptance expected 6 arguments, got $#"
@@ -13606,36 +13697,6 @@ PROJECT_SHORTCUTS_TREE_UPTIME_BEFORE=0 PROJECT_SEQUENCE_TREE_UPTIME_BEFORE=0
 PROJECT_LEVELS_16_TREE_UPTIME_BEFORE=0 PROJECT_PAD_PERFORM_TREE_UPTIME_BEFORE=0
 PROJECT_SAMPLE_TREE_UPTIME_BEFORE=0
 
-project_marker_timestamp_from_logs() {
-  local marker="$1"
-  python3 -c '
-import re
-import sys
-from decimal import Decimal
-marker = sys.argv[1]
-timestamps = []
-for line in sys.stdin:
-    if marker not in line:
-        continue
-    match = re.match(r"^\s*\[?\s*([0-9]+(?:\.[0-9]+)?)", line)
-    if match:
-        timestamps.append(int(Decimal(match.group(1)) * 1_000_000))
-print(max(timestamps, default=0))
-' "$marker"
-}
-
-project_marker_timestamp() {
-  local marker="$1" timeout_seconds="${2:-5}" logs
-  # Logcat is a circular buffer. A match count is not monotonic: after
-  # rollover a new event can replace an old one while the count stays flat.
-  # Use threadtime so logcat emits a timestamp; brief omits timestamps and
-  # would make the monotonic parser return zero for every marker.
-  # Compare device-monotonic time to remain safe across rollover and clock changes.
-  logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
-  project_marker_timestamp_from_logs "$marker" <<<"$logs"
-}
-
-
 project_view_tree_uptime_from_xml() {
   local page="$1"
   python3 -c '
@@ -13907,42 +13968,7 @@ PY_PROJECT_APP_VIEW_TREE
   return 0
 }
 
-wait_for_new_project_marker() {
-  local marker="$1" before="$2" timeout_seconds="${3:-45}"
-  local deadline=$((SECONDS + timeout_seconds)) remaining current_timestamp
-  local final_timestamp diagnostic_logs diagnostic_timestamp
 
-  while [ "$SECONDS" -lt "$deadline" ]; do
-    remaining=$((deadline - SECONDS)); (( remaining > 0 )) || break
-    current_timestamp="$(project_marker_timestamp "$marker" "$remaining")"
-    if [[ "$current_timestamp" =~ ^[0-9]+$ ]] && (( current_timestamp > before )); then return 0; fi
-    remaining=$((deadline - SECONDS)); (( remaining > 0 )) && sleep 1
-  done
-
-  final_timestamp="$(project_marker_timestamp "$marker")"
-  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
-    echo "Observed fresh Android marker on final bounded timestamp read: $marker"
-    return 0
-  fi
-
-  diagnostic_logs="$(adb_bounded 5 shell logcat -d -t 4096 -v threadtime,monotonic -s MpcGroovebox:I 2>/dev/null || true)"
-  printf '%s\\n' "$diagnostic_logs" | grep -E 'MPC_MENU_|MPC_PROJECT_|PROJECT_SMOKE_VIEW_HIERARCHY_|MPC_SHELL_STATE_|PROJECT_(SAVE|OPEN|TEST|NEW_)|MPC_SHORTCUT_PREFERENCES_|STARTUP_COMPLETE' | tail -n 100 || true
-  diagnostic_timestamp="$(project_marker_timestamp_from_logs "$marker" <<<"$diagnostic_logs")"
-  if [[ "$diagnostic_timestamp" =~ ^[0-9]+$ ]] && (( diagnostic_timestamp > before )); then
-    echo "Observed fresh Android marker in post-timeout diagnostic snapshot: $marker"
-    return 0
-  fi
-
-  sleep 0.25
-  final_timestamp="$(project_marker_timestamp "$marker")"
-  if [[ "$final_timestamp" =~ ^[0-9]+$ ]] && (( final_timestamp > before )); then
-    echo "Observed fresh Android marker on post-diagnostic timestamp recheck: $marker"
-    return 0
-  fi
-
-  echo "ERROR: timed out after ${timeout_seconds}s waiting for new native UI marker: $marker (baseline=$before current=$final_timestamp)"
-  return 1
-}
 
 # Reuse a View tree that was freshly captured and validated by the immediately
 # preceding navigation helper. Requiring another pre-draw event without any UI

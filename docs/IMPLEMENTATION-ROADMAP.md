@@ -1,37 +1,35 @@
 # Implementation Roadmap
 
-> **Live execution status — 2026-11-07 16:28 CET:** PR #23 remains the primary product branch and is unchanged at exact head ac59c5e23f87680e69e311e25e2d45d7ab1b8f8d. The current isolated integration candidate is PR #139 on feature/firmware-informed-midi-list-edit-20261106, exact pre-fix head b693b02655306d2497f697d10090ac71a487bde6. Its latest exact-head Android Build #3791 / run 42382469230 failed only at emulator smoke step 56 after steps 1–55 passed; step 57 uploaded evidence. The latest checkpoint-base workflow #3800 / run 42387293216 is independently in progress on checkpoint HEAD ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3. GitHub Actions remains the only authoritative CI/CD and APK delivery path.
+> **Live execution status — 2026-11-11:** Repository `MiguelDuval/mpc-mk2-groovebox`; current integration candidate PR #139, Draft, branch `feature/firmware-informed-midi-list-edit-20261106`, exact HEAD `1fa503cedafa1ee5ab7635c74cccc93cc4346e43`, base `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`. The latest exact-head Android Build #3971 / run 43027176657 failed at emulator smoke step 56. Native/JVM tests, APK assembly and smoke preflight passed. The failure is traced to Sample Chop marker helpers being declared below their first use; SAMP-008 CROP had already passed. The forward source-order correction and preflight guard are recorded in `docs/SESSION-STATE.md`. GitHub Actions remains the only authoritative build/acceptance path.
 
-## CURRENT EXECUTION QUEUE — 2026-11-07
+## CURRENT EXECUTION QUEUE — 2026-11-11
 
-### P0 — finish exact-head Project persistence acceptance
+### P0 — finish the exact-head Project, Browser and Sample acceptance
 
-1. **Fix the final marker-poll boundary race in the existing tests/android_ui_smoke.sh.** Run #3791 timed out after 20s at 15:03:00.440, then the app emitted the fresh MAIN hierarchy marker at 15:03:00.516. The prior e277 change already bounded logcat to 5s and 4,096 entries; the remaining race was that the final logcat -d snapshot began before the marker and no post-deadline snapshot ran. This commit performs one final bounded marker-count read after the loop and still requires count > the original baseline.
-2. Run the full Android Build on the resulting exact PR #139 head. Verify every job/step; do not count the earlier #3791 APK as accepted.
-3. On the new run, require a fresh app-owned MAIN XML after Project Open: page=MAIN, source=android-view-tree, positive and newer generated-at-uptime-ms, non-empty nodes, unique visible Main toolbar. No cached-tree fallback or relaxed provenance.
-4. Continue the complete Project lifecycle on the same exact SHA: SAVE AS → mutate → OPEN; direct SAVE overwrite must change serialized SHA; force-stop/relaunch/OPEN must restore it; Cancel Save As/Open must preserve canonical state SHA; malformed load must preserve model/context; placement-free v1 through the real picker must yield the canonical two-Track/zero-placement domain.
-5. Keep Browser USER FOLDER and FAVORITE 1 as real DocumentsUI touch/SAF flows with exact WAV selection, permission grant, Browser indexing and process-restart restoration. Reconfirm SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 on the same exact SHA. SAMP-007 has no pass record in #3791 and remains open. SAMP-010's own checks passed there but no additional SAMP-010 scope is authorized before primary Browser/Project acceptance is green.
-6. Require full workflow SUCCESS and inspect the APK plus PNG/XML evidence from that same successful run. Compute the APK file SHA-256 separately from the artifact ZIP digest. Only then close this P0 gate.
+1. **Repair smoke helper declaration order without changing behavior.** Define `project_marker_timestamp_from_logs`, `project_marker_timestamp` and `wait_for_new_project_marker` before `run_sample_chop_acceptance`; preflight requires exactly one definition and verifies declaration order. Do not weaken freshness, monotonic timestamps, source provenance, timeout or native assertions.
+2. Run the complete Android Build on the resulting exact PR #139 HEAD. Inspect every job and step; an APK assembly/upload is not a pass.
+3. Preserve Project persistence acceptance on one exact SHA: Save As → mutate → Open; direct SAVE overwrite with changed serialized domain SHA; force-stop/relaunch/Open; Cancel Save As/Open invariance; malformed-load atomicity; placement-free v1 through the real SAF picker; fresh app-owned MAIN XML after Open with page/source/newer positive uptime/non-empty nodes and unique toolbar.
+4. Preserve Browser USER FOLDER and FAVORITE 1 as separate real DocumentsUI/SAF assignments with distinct persisted tree URIs, actual WAV selection, permission, indexed result, slot switching and process-restart restoration.
+5. Verify SAMP-007 cursor-in-region/advancing/idle lifecycle using independently fresh app-owned SAMPLE hierarchies. Reconfirm SAMP-008 CROP and SAMP-009 CH4/CH8/CH16 exact contiguous native PCM partitions plus output-stream restart. Keep SAMP-010 zoom/native Pad audition and sample-data invariants. #3971 proved SAMP-008 only; it did not reach CH4/8/16.
+6. Require one full exact-head workflow SUCCESS, including native/JVM, shell preflight, APK assembly/upload, emulator smoke and visual-evidence upload. Download/inspect the APK and PNG/XML evidence from that same run; calculate the APK's own SHA-256 separately from the artifact ZIP digest. Only then close P0.
 
-### P1 — complete MPC 3.9 visual and hardware fidelity
+### P1 — MPC 3.9 visual and physical-controller fidelity
 
-- VIS-050 was visually inspected from the actual local page-080 reference and both extracted figures. The reference shows Active, Type, Pad and (for Tune) Original Pad controls. Current Android touch implementation is a 4×4 fixed-velocity adaptation with source-Pad chooser, not a pixel-identical modal. Velocity values 7,15,23…127 are covered by native adapter tests; Tune/Filter/Layer/Attack/Decay remain RESERVED where their persistent musical-event semantics do not exist.
-- Continue the screen-by-screen VIS-001…VIS-082 audit only after P0 is green. Record exact reference asset and fresh screenshot/XML for each changed screen.
-- Physical Akai MPC Studio MkII validation remains NOT RUN; emulator and adapter tests do not substitute for the controller.
+- Continue the screen-by-screen VIS-001…VIS-082 audit only after P0 is green. Before every UI change, inspect the relevant catalog entry and actual local reference image, then record VIS IDs, source asset and fresh before/after PNG/XML evidence.
+- Physical Akai MPC Studio MkII validation remains **NOT RUN**. Emulator/native adapter checks do not certify USB-MIDI identity, pad velocity/aftertouch, LEDs/RGB SysEx, LCD, Jog Wheel or Touch Strip.
 
 ### P2 — remaining product slices
 
-- Keep the next roadmap items behind the P0 exact-head acceptance gate. Do not start unrelated UI or musical features while Project persistence acceptance is red.
-- BROW-013 modified-date display/persistence passed on exact SHA b693 in failed run #3791, but the full candidate is not accepted until the entire workflow is green.
+- Do not expand unrelated musical/UI features while the P0 acceptance candidate is red. In particular, keep Next Sequence performance-control expansion behind the exact-head Project/Browser/Sample gate.
+- The separate branch `feature/next-sequence-performance-controls-20261110` is not a newer integration base: its HEAD `803541960c1fe838a3bed907f95029b00ef77f4a` is an ancestor of the active PR #139 line, and its own Build #3961 / run 42863649391 failed. Do not switch branches merely because that branch name is newer.
+- BROW-013 modified-date display/persistence has been exercised on the integration candidate, but no feature is accepted from a workflow whose complete exact-head run failed.
 
 ### Engineering and branch guardrails
 
-- Primary PR #23 remains OPEN and untouched: feature/mpc-one-ui-fidelity → fix/ui-shell-format-width-startup. Never write to main.
-- PR #139 is 45 commits ahead / 10 behind the current checkpoint branch (merge base a029af66d423778d21607d6470b46bb8e4ca0b88; current checkpoint ref ec6a0d351c35adca46ac9a7efc30c8e4d89cd7c3). GitHub reports the PR not mergeable. Do not rebase, merge, force-push or rewrite history; keep this branch as an isolated validation candidate pending owner-approved base reconciliation.
-- Build #3800 is active on the checkpoint branch. Do not commit to that branch while it runs.
-- Keep cancel-in-progress: false. One writer per branch; no concurrent Cline/ChatGPT writes to the same branch/files.
-- Do not weaken source, native, UI, persistence, visual-evidence or physical-controller assertions to obtain a green build.
-
+- PR #139 is a separate validation candidate and GitHub currently reports it non-mergeable against its checkpoint base. Keep it Draft; do not rebase, merge, retarget, force-push, reset or rewrite history.
+- Primary product PR #23 remains separate and unchanged. `main` remains untouched.
+- GitHub Actions remains the only accepted CI/CD and APK delivery path. Keep `cancel-in-progress: false`; one writer per branch; do not overlap branch mutations.
+- Do not weaken product, native, UI, persistence, freshness, visual-evidence or physical-controller assertions to obtain a green build.
 
 ## Historical consolidation notes — 2026-10-30 (superseded by the live 2026-11-07 queue)
 

@@ -1,3 +1,31 @@
+# Live checkpoint — 2026-11-11, Sample Chop smoke helper-order repair
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox  
+**Integration PR:** #139 — Draft, branch `feature/firmware-informed-midi-list-edit-20261106`.  
+**Parent HEAD:** `1fa503cedafa1ee5ab7635c74cccc93cc4346e43`.  
+**Base:** `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`.
+
+## Latest exact-head Android Build #3971
+
+- Run [43027176657](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/43027176657) tested `1fa503cedafa1ee5ab7635c74cccc93cc4346e43` and failed in emulator smoke step 56; steps 1–55, including native/JVM, APK assembly/upload and smoke source preflight, passed.
+- The emulator log proves SAMP-008 CROP passed: 3,840 source frames, crop start 1,000, output PCM 2,840 frames, native region reset to 0..2,840.
+- The next CH4/CH8/CH16 setup failed before the native Chop action: `project_marker_timestamp: command not found` at the Sample Edit PLAY marker baseline. The corresponding wait helper was also declared below its first use.
+- Root cause was Bash function declaration order in `tests/android_ui_smoke.sh`, not AudioEngine, CROP or Chop behavior. No CH4/8/16 acceptance claim is made from #3971.
+
+## Forward correction in this checkpoint
+
+- Move `project_marker_timestamp_from_logs()`, `project_marker_timestamp()` and `wait_for_new_project_marker()` above the first Sample Chop function/call site. Their bodies, monotonic timestamp semantics, final diagnostic recheck and bounded ADB behavior stay unchanged.
+- Add a Python source-order preflight that requires exactly one definition of each helper and requires all three definitions to appear before `run_sample_chop_acceptance()`.
+- Keep the real Sample Edit PLAY marker, running-output-stream assertion, non-destructive overwrite protection, exact CH4/CH8/CH16 frame partition checks and existing timeout budgets unchanged.
+
+## Acceptance still open
+
+The next exact-HEAD Android Build must pass the full workflow. Verify Browser USER FOLDER/FAVORITE 1 SAF flows, full Project Save/Open/restart/cancel/malformed/v1 lifecycle, SAMP-007 fresh idle hierarchy and SAMP-008/009/010 evidence on that same SHA. Inspect the APK and visual-evidence archive from the exact successful run; APK creation alone is diagnostic.
+
+PR #139 remains Draft and non-mergeable. Do not merge, retarget, rebase, force-push, reset or rewrite history. PR #23 and `main` remain untouched. Physical MPC Studio MkII validation is **NOT RUN**.
+
+---
+
 # Live checkpoint — 2026-11-10, restore wait-helper boundary
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  
