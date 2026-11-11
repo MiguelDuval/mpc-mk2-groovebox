@@ -13899,6 +13899,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         setBottomStatus(result);
         refreshAllInspectorState();
         refreshSampleWaveform();
+        // Chop changes four Pad regions in native state. Publish a fresh
+        // SAMPLE hierarchy just like Crop/region edits so acceptance and
+        // accessibility observers never keep reading the pre-Chop snapshot.
+        scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
 
         // Record the actual post-mutation native projection for the bounded
         // Android acceptance. These getters are the same authoritative
