@@ -470,6 +470,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean uiOnlySmokeMode;
     private boolean uiAuditSmokeMode;
     private boolean projectPersistenceSmokeMode;
+    // Only the latest pending app-owned View-tree snapshot is useful.
+    private android.view.ViewTreeObserver projectPersistenceViewTreeCaptureObserver;
+    private android.view.ViewTreeObserver.OnPreDrawListener projectPersistenceViewTreeCaptureListener;
+    private String projectPersistenceViewTreeCapturePage;
     private final Runnable browserSmokeViewHierarchyCaptureRunnable =
             () -> captureProjectPersistenceViewHierarchyForSmoke("BROWSE");
     private boolean projectRecoveryExportSmokeMode;
@@ -12580,24 +12584,47 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " reason=decor-root-unavailable");
             return;
         }
-        // Observe the window root, not only the workspace child. State-only
-        // accessibility updates (notably SAMPLE playback returning to idle)
-        // do not always schedule a traversal for child invalidation alone.
-        final ViewTreeObserver observer = decor.getViewTreeObserver();
+        final android.view.ViewTreeObserver observer = decor.getViewTreeObserver();
         if (!observer.isAlive()) {
             Log.e(TAG, "PROJECT_SMOKE_VIEW_HIERARCHY_FAILED page=" + expectedPage
                     + " reason=ViewTreeObserver-unavailable");
             return;
         }
-        observer.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
+
+        // Refresh paths may request the same capture many times in one frame.
+        // Replace the previous pending listener instead of accumulating stale
+        // callbacks that all publish snapshots from one traversal.
+        final android.view.ViewTreeObserver previousObserver =
+                projectPersistenceViewTreeCaptureObserver;
+        final android.view.ViewTreeObserver.OnPreDrawListener previousListener =
+                projectPersistenceViewTreeCaptureListener;
+        if (previousListener != null && previousObserver != null
+                && previousObserver.isAlive()) {
+            previousObserver.removeOnPreDrawListener(previousListener);
+            Log.i(TAG, "PROJECT_SMOKE_VIEW_TREE_COALESCED page=" + expectedPage);
+        }
+
+        projectPersistenceViewTreeCaptureObserver = observer;
+        projectPersistenceViewTreeCapturePage = expectedPage;
+        final android.view.ViewTreeObserver.OnPreDrawListener listener =
+                new android.view.ViewTreeObserver.OnPreDrawListener() {
             @Override
             public boolean onPreDraw() {
                 if (observer.isAlive()) observer.removeOnPreDrawListener(this);
-                Log.i(TAG, "PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page=" + expectedPage);
-                captureProjectPersistenceViewHierarchyForSmoke(expectedPage);
+                final String capturePage = projectPersistenceViewTreeCapturePage;
+                if (projectPersistenceViewTreeCaptureListener == this) {
+                    projectPersistenceViewTreeCaptureListener = null;
+                    projectPersistenceViewTreeCaptureObserver = null;
+                    projectPersistenceViewTreeCapturePage = null;
+                }
+                if (capturePage == null) return true;
+                Log.i(TAG, "PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page=" + capturePage);
+                captureProjectPersistenceViewHierarchyForSmoke(capturePage);
                 return true;
             }
-        });
+        };
+        projectPersistenceViewTreeCaptureListener = listener;
+        observer.addOnPreDrawListener(listener);
         content.requestLayout();
         content.invalidate();
         decor.requestLayout();
@@ -13895,21 +13922,39 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         final long sourceStart = nativeAudioGetPadSampleRegionStart(sourcePad, sourceLayer);
         final long sourceEnd = nativeAudioGetPadSampleRegionEnd(sourcePad, sourceLayer);
         final long sourceFrames = nativeAudioGetPadSampleFrameCount(sourcePad, sourceLayer);
+        final String audioBefore = nativeAudioStatus();
+        final boolean streamWasRunning =
+                audioBefore != null && audioBefore.startsWith("Audio output ");
+        Log.i(TAG, "SAMPLE_CHOP_ACTION_BEGIN count=" + count
+                + " sourcePad=" + (sourcePad + 1)
+                + " sourceLayer=" + (sourceLayer + 1)
+                + " sourceStart=" + sourceStart
+                + " sourceEnd=" + sourceEnd
+                + " sourceFrames=" + sourceFrames
+                + " streamWasRunning=" + streamWasRunning);
         final String result = nativeAudioChopPadSampleToPads(sourcePad, sourceLayer, count);
         setBottomStatus(result);
         refreshAllInspectorState();
         refreshSampleWaveform();
-        // Chop changes four Pad regions in native state. Publish a fresh
-        // SAMPLE hierarchy just like Crop/region edits so acceptance and
-        // accessibility observers never keep reading the pre-Chop snapshot.
+        final String audioAfter = nativeAudioStatus();
+        final boolean streamRunningAfter =
+                audioAfter != null && audioAfter.startsWith("Audio output ");
+        final boolean committed = result != null
+                && result.startsWith("Chop complete:")
+                && !result.contains("restart failed");
+        Log.i(TAG, "SAMPLE_CHOP_ACTION_RESULT count=" + count
+                + " sourcePad=" + (sourcePad + 1)
+                + " sourceLayer=" + (sourceLayer + 1)
+                + " committed=" + committed
+                + " streamWasRunning=" + streamWasRunning
+                + " streamRunningAfter=" + streamRunningAfter
+                + " result=" + String.valueOf(result));
+
+        // A rejected Chop still updates the visible status; a successful Chop
+        // updates all destination Pad regions. Both publish one coalesced tree.
         scheduleProjectPersistenceViewHierarchyCapture("SAMPLE");
 
-        // Record the actual post-mutation native projection for the bounded
-        // Android acceptance. These getters are the same authoritative
-        // state consumed by the inspector; the marker is emitted only when
-        // the native operation reports success.
-        if (result != null && result.startsWith("Chop complete:")
-                && !result.contains("restart failed")) {
+        if (committed) {
             final StringBuilder destinations = new StringBuilder();
             for (int pad = 0; pad < count; pad++) {
                 if (pad > 0) destinations.append(',');
@@ -13926,6 +13971,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                     + " sourceEnd=" + sourceEnd
                     + " sourceFrames=" + sourceFrames
                     + " chopCount=" + count
+                    + " streamWasRunning=" + streamWasRunning
+                    + " streamRunningAfter=" + streamRunningAfter
                     + " destinations=" + destinations);
         }
     }

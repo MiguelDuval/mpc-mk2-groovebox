@@ -2290,6 +2290,8 @@ require_source_contains "$0" 'wait_for_sample_cursor_idle_view_tree()'
 require_source_contains "$0" 'if (( samp_cursor_seen == 1 && samp_cursor_progressed == 1 )); then'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.getViewTreeObserver()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PROJECT_SMOKE_VIEW_TREE_PRE_DRAW page='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'PROJECT_SMOKE_VIEW_TREE_COALESCED page='
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'projectPersistenceViewTreeCaptureListener'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'decor.postInvalidateOnAnimation()'
 echo "SAMP-007 idle-state acceptance uses fresh native Android View-tree evidence."
 
@@ -12570,6 +12572,8 @@ required = {
     "sourceEnd": str(expected_frames),
     "sourceFrames": str(expected_frames),
     "chopCount": str(expected_count),
+    "streamWasRunning": "true",
+    "streamRunningAfter": "true",
 }
 for name, expected in required.items():
     if fields.get(name) != expected:
@@ -12607,11 +12611,24 @@ run_sample_chop_acceptance() {
   fi
   local chop_count="$1" source_frames="$2" input_xml="$3"
   local screenshot="$4" host_xml="$5" remote_xml="$6"
-  local marker_before marker_line first_slice_end
+  local marker_before marker_line first_slice_end action_before action_line
   marker_before="$(sample_chop_marker_count)"
+  action_before="$(project_marker_timestamp "SAMPLE_CHOP_ACTION_RESULT count=$chop_count")"
   echo "Running SAMP-009 real-touch CH$chop_count assignment and exact per-pad native region verification..."
   if ! tap_ui_description "$input_xml" "Sample Edit chop into $chop_count slices"; then
     echo "ERROR: Sample Edit CH$chop_count control was not accessible/actionable"; return 1
+  fi
+  if ! wait_for_new_project_marker "SAMPLE_CHOP_ACTION_RESULT count=$chop_count" "$action_before" 15; then
+    echo "ERROR: CH$chop_count touch did not reach the native Chop handler"; return 1
+  fi
+  action_line="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+    | grep -F -- "SAMPLE_CHOP_ACTION_RESULT count=$chop_count" | tail -n 1 || true)"
+  if [[ "$action_line" != *"committed=true"* \
+      || "$action_line" != *"streamWasRunning=true"* \
+      || "$action_line" != *"streamRunningAfter=true"* ]]; then
+    echo "ERROR: CH$chop_count did not commit while preserving the running output stream"
+    echo "$action_line"
+    return 1
   fi
   if ! wait_for_sample_chop_marker "$marker_before" 20; then
     echo "ERROR: CH$chop_count did not emit its native post-mutation assignment evidence"; return 1
@@ -12646,6 +12663,16 @@ SAMPLE_CHOPPED_16_REMOTE="/sdcard/mpc-groovebox-sample-chop-16-slices-uiautomato
 # Scratch hierarchy for full-region resets; never overwrite the archived CH4/8/16 snapshots.
 SAMPLE_CHOP_NAV_XML="/tmp/sample-chop-navigation-uiautomator.xml"
 SAMPLE_CHOP_NAV_REMOTE="/sdcard/sample-chop-navigation-uiautomator.xml"
+
+echo "Starting the native output stream before CH4/CH8/CH16 restart acceptance..."
+SAMPLE_CHOP_AUDITION_MARKER_BEFORE="$(project_marker_timestamp "UI_SAMPLE_AUDITION_TRIGGERED")"
+if ! tap_ui_description "$SAMPLE_CROP_CROPPED_XML" "Sample Edit audition selected Pad"; then
+  echo "ERROR: could not trigger the cropped source Pad before Chop restart acceptance"; exit 1
+fi
+if ! wait_for_new_project_marker "UI_SAMPLE_AUDITION_TRIGGERED" "$SAMPLE_CHOP_AUDITION_MARKER_BEFORE" 10; then
+  echo "ERROR: real Sample Edit audition did not start before Chop restart acceptance"; exit 1
+fi
+echo "Native Pad audition started; the following real CH4 action must restart the running output stream."
 
 if ! run_sample_chop_acceptance 4 "$sample_crop_expected_frames" \
     "$SAMPLE_CROP_CROPPED_XML" "$SAMPLE_CHOPPED_PNG" \
@@ -15493,112 +15520,64 @@ fi
 echo "SAMP-008 Crop real-touch mutation passed: [$samp_crop_before_start,$samp_crop_before_end) of $samp_crop_before_total -> [0,$SAMP_CROP_EXPECTED_TOTAL) with $SAMP_CROP_EXPECTED_TOTAL frames; cursor idle."
 echo "SAMP-008 before/after evidence captured; the pre-Crop baseline is SAMP-007 stopped playback evidence."
 
-# SAMP-009: a real CH4 action must safely update every destination pad even
-# while the output stream is running; verify the authoritative region on pads 1-4.
-echo "Running SAMP-009 real-touch Chop-to-4 destination assignment acceptance..."
-SAMP_CHOP_SOURCE_TOTAL="$SAMP_CROP_EXPECTED_TOTAL"
-SAMP_CHOP_PAD1_PNG="/tmp/mpc-groovebox-sample-chop-pad-1.png"
-SAMP_CHOP_PAD1_XML="/tmp/mpc-groovebox-sample-chop-pad-1-uiautomator.xml"
-if (( SAMP_CHOP_SOURCE_TOTAL < 4 )); then
-  echo "ERROR: SAMP-009 cropped sample is too short for four slices"; exit 1
-fi
+# SAMP-009 overwrite protection: the earlier CH4/CH8/CH16 run populated Pads 1-16
+# with the first fixture. This cursor fixture is different PCM assigned to Pad 1.
+# A repeated CH4 must reject the conflicting occupied destination before mutation.
+echo "Running SAMP-009 real-touch destination-overwrite protection..."
+SAMP_CHOP_REJECTED_PNG="/tmp/mpc-groovebox-sample-chop-rejected.png"
+SAMP_CHOP_REJECTED_XML="/tmp/mpc-groovebox-sample-chop-rejected-uiautomator.xml"
+snapshot_project_view_tree_marker_baselines
+samp_chop_reject_before_uptime="$PROJECT_SAMPLE_TREE_UPTIME_BEFORE"
+samp_chop_reject_action_before="$(project_marker_timestamp "SAMPLE_CHOP_ACTION_RESULT count=4")"
 if ! tap_ui_text "$SAMP_CROP_AFTER_XML" "CH4"; then
-  echo "ERROR: Sample Edit CH4 action was not actionable"; exit 1
+  echo "ERROR: Sample Edit CH4 action was not actionable for overwrite-protection acceptance"; exit 1
 fi
-
-read_samp_chop_status() {
-  python3 - "$1" <<'PY'
+if ! wait_for_new_project_marker "SAMPLE_CHOP_ACTION_RESULT count=4" "$samp_chop_reject_action_before" 15; then
+  echo "ERROR: second CH4 touch did not reach the native Chop handler"; exit 1
+fi
+samp_chop_reject_action="$(adb_bounded 5 shell logcat -d -v brief -s MpcGroovebox:I 2>/dev/null \
+  | grep -F -- "SAMPLE_CHOP_ACTION_RESULT count=4" | tail -n 1 || true)"
+if [[ "$samp_chop_reject_action" != *"committed=false"* \
+    || "$samp_chop_reject_action" != *"Chop failed: destination pad 2 layer 1 is already assigned"* ]]; then
+  echo "ERROR: conflicting destination Pads were not rejected without mutation"
+  echo "$samp_chop_reject_action"; exit 1
+fi
+if ! wait_for_new_project_view_tree "SAMPLE" "$samp_chop_reject_before_uptime" 10; then
+  echo "ERROR: rejected Chop did not publish a fresh Sample status hierarchy"; exit 1
+fi
+if ! adb_bounded 5 shell run-as "$PACKAGE" cat cache/mpc-project-persistence-view-hierarchy.xml > "$SAMP_CHOP_REJECTED_XML"; then
+  echo "ERROR: could not pull the rejected-Chop Sample hierarchy"; exit 1
+fi
+if ! python3 - "$SAMP_CHOP_REJECTED_XML" <<'PY_SAMP_CHOP_REJECT'
+import re
 import sys
 import xml.etree.ElementTree as ET
 root = ET.parse(sys.argv[1]).getroot()
+if root.attrib.get("page") != "SAMPLE" or root.attrib.get("source") != "android-view-tree":
+    raise SystemExit("rejected Chop hierarchy provenance/page mismatch")
 texts = [node.attrib.get("text", "") for node in root.iter("node")]
-matching = [text for text in texts if "Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)" in text]
-if not matching:
-    raise SystemExit("the real-touch CH4 action did not report a completed four-pad assignment")
-if any("restart failed" in text.lower() for text in matching):
-    raise SystemExit("the output stream failed to restart after Chop")
-print(matching[0])
-PY
-}
-
-samp_chop_pad1_state=""
-samp_chop_confirmed=0
-for attempt in {1..15}; do
-  if ! capture_project_persistence_view_tree "SAMPLE" "$SAMP_CHOP_PAD1_XML" 10; then
-    echo "ERROR: SAMP-009 could not capture the post-CH4 source pad"; exit 1
-  fi
-  samp_chop_pad1_state="$(read_samp_cursor_region_state "$SAMP_CHOP_PAD1_XML" 2>/dev/null || true)"
-  if [[ -n "$samp_chop_pad1_state" ]]; then
-    read -r samp_chop_p1_start samp_chop_p1_end samp_chop_p1_total samp_chop_p1_cursor <<< "$samp_chop_pad1_state"
-    if (( samp_chop_p1_start == 0 \
-        && samp_chop_p1_end == SAMP_CHOP_SOURCE_TOTAL / 4 \
-        && samp_chop_p1_total == SAMP_CHOP_SOURCE_TOTAL \
-        && samp_chop_p1_cursor == -1 )); then
-      if read_samp_chop_status "$SAMP_CHOP_PAD1_XML" >/dev/null 2>&1; then
-        samp_chop_confirmed=1; break
-      fi
-    fi
-  fi
-  sleep 0.25
-done
-if [[ "$samp_chop_confirmed" != "1" ]]; then
-  echo "ERROR: CH4 did not commit the first slice and restart audio without leaving the cursor active"
-  echo "Expected=0 $((SAMP_CHOP_SOURCE_TOTAL / 4)) $SAMP_CHOP_SOURCE_TOTAL -1; actual=$samp_chop_pad1_state"; exit 1
+if not any("Chop failed: destination pad 2 layer 1 is already assigned" in text
+           for text in texts):
+    raise SystemExit("Sample Edit did not render the exact destination-conflict result")
+state = None
+for text in texts:
+    match = re.search(
+        r"Region\s+([0-9]+)\s*→\s*([0-9]+)\s*/\s*([0-9]+)\s*frames"
+        r"(?:\s+•\s+PLAYHEAD\s+([0-9]+))?", text)
+    if match:
+        state = tuple(int(value) if value is not None else -1 for value in match.groups())
+        break
+if state != (0, 110000, 110000, -1):
+    raise SystemExit(f"rejected Chop changed the source Pad region: {state!r}")
+print("Rejected Chop preserved the full source region and rendered the exact destination conflict.")
+PY_SAMP_CHOP_REJECT
+then
+  echo "ERROR: rejected Chop altered Pad 1 or failed to expose its exact conflict reason"; exit 1
 fi
-if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CHOP_PAD1_PNG"; then
-  echo "ERROR: could not capture the CH4 source-pad screenshot"; exit 1
+if ! adb_bounded 10 exec-out screencap -p > "$SAMP_CHOP_REJECTED_PNG"; then
+  echo "ERROR: could not capture rejected-Chop state"; exit 1
 fi
-echo "SAMP-009 Pad 1 first slice verified: [0,$((SAMP_CHOP_SOURCE_TOTAL / 4))) / $SAMP_CHOP_SOURCE_TOTAL."
-
-for samp_chop_pad in 2 3 4; do
-  if ! tap_project_toolbar_menu; then
-    echo "ERROR: could not open Menu to inspect chopped Pad $samp_chop_pad"; exit 1
-  fi
-  if ! tap_mpc_menu_tile 0 0; then
-    echo "ERROR: could not return to Main to inspect chopped Pad $samp_chop_pad"; exit 1
-  fi
-  if ! dump_device_ui "$DEVICE_DUMP" "$DUMP"; then
-    echo "ERROR: could not capture Main before inspecting chopped Pad $samp_chop_pad"; exit 1
-  fi
-  if ! tap_ui_description "$DUMP" "Main Mode pad $samp_chop_pad"; then
-    echo "ERROR: Main Mode Pad $samp_chop_pad was not actionable"; exit 1
-  fi
-  if ! tap_ui_text "$DUMP" "SAMPLE"; then
-    echo "ERROR: Main Sample Edit route failed for chopped Pad $samp_chop_pad"; exit 1
-  fi
-  samp_chop_pad_xml="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad-uiautomator.xml"
-  samp_chop_pad_png="/tmp/mpc-groovebox-sample-chop-pad-$samp_chop_pad.png"
-  if ! wait_for_ui_description "$samp_chop_pad_xml" "$SAMP_CURSOR_REMOTE" "Sample waveform editor" 20; then
-    echo "ERROR: Sample Edit did not open for chopped Pad $samp_chop_pad"; exit 1
-  fi
-  if ! capture_project_persistence_view_tree "SAMPLE" "$samp_chop_pad_xml" 10; then
-    echo "ERROR: could not capture chopped Pad $samp_chop_pad hierarchy"; exit 1; fi
-  samp_chop_pad_state="$(read_samp_cursor_region_state "$samp_chop_pad_xml" 2>/dev/null || true)"
-  if [[ -z "$samp_chop_pad_state" ]]; then
-    echo "ERROR: chopped Pad $samp_chop_pad region state is unavailable"; exit 1
-  fi
-  read -r samp_chop_start samp_chop_end samp_chop_total samp_chop_cursor <<< "$samp_chop_pad_state"
-  samp_chop_expected_start=$((SAMP_CHOP_SOURCE_TOTAL * (samp_chop_pad - 1) / 4))
-  samp_chop_expected_end=$((SAMP_CHOP_SOURCE_TOTAL * samp_chop_pad / 4))
-  if (( samp_chop_start != samp_chop_expected_start \
-      || samp_chop_end != samp_chop_expected_end \
-      || samp_chop_total != SAMP_CHOP_SOURCE_TOTAL \
-      || samp_chop_start >= samp_chop_end )); then
-    echo "ERROR: Chop destination Pad $samp_chop_pad has a missing/overlapping region"
-    echo "Expected=$samp_chop_expected_start $samp_chop_expected_end $SAMP_CHOP_SOURCE_TOTAL; actual=$samp_chop_pad_state"; exit 1
-  fi
-  if ! adb_bounded 10 exec-out screencap -p > "$samp_chop_pad_png"; then
-    echo "ERROR: could not capture chopped Pad $samp_chop_pad screenshot"; exit 1
-  fi
-  echo "SAMP-009 Pad $samp_chop_pad slice verified: [$samp_chop_start,$samp_chop_end) / $samp_chop_total."
-done
-if ! test -s /tmp/mpc-groovebox-sample-chop-pad-1.png; then echo "ERROR: missing SAMP-009 Pad 1 evidence"; exit 1; fi
-if ! test -s /tmp/mpc-groovebox-sample-chop-pad-2.png; then echo "ERROR: missing SAMP-009 Pad 2 evidence"; exit 1; fi
-if ! test -s /tmp/mpc-groovebox-sample-chop-pad-3.png; then echo "ERROR: missing SAMP-009 Pad 3 evidence"; exit 1; fi
-if ! test -s /tmp/mpc-groovebox-sample-chop-pad-4.png; then echo "ERROR: missing SAMP-009 Pad 4 evidence"; exit 1; fi
-echo "SAMP-009 CH4 verified every real destination pad plus an active-to-stopped output-stream restart."
-
-
+echo "SAMP-009 overwrite protection passed: conflicting Pad 2 assignment was preserved without mutation."
 
 # The app-view tree supplies measured bounds for in-app controls; reserve
 # Android UiAutomator for the native AlertDialog itself. This avoids redundant
