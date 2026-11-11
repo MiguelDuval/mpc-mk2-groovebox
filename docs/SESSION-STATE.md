@@ -589,3 +589,25 @@ All four builds compiled and assembled the APK successfully (steps 1-54 pass), b
 ### Remaining gates
 
 Run the complete exact-HEAD Android workflow with the timestamp format correction. Require emulator smoke SUCCESS and inspect exact-run APK plus complete visual-evidence artifact. Continue to keep PR #139 Draft; do not merge/rebase/force-push. Physical Akai MPC Studio MkII acceptance remains NOT RUN.
+
+
+---
+
+## Browser SAF file-picker acceptance — list-mode retry correction (2026-11-11)
+
+**Branch:** `feature/firmware-informed-midi-list-edit-20261106`  
+**Parent:** `4d1a752c962472d4ffd0a7d39a72505e4c0756bf`  
+**Build #3967:** [run 42905384984](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/42905384984) — **FAILURE in emulator smoke, step 56**.
+
+### Confirmed behavior
+
+- Steps 1–55 passed, including native/JVM suites, APK assembly/upload and Android smoke syntax/evidence preflight. The monotonic logcat timestamp fix is verified by the emulator advancing beyond the earlier Menu marker timeout.
+- Browser local WAV scan, selection, audition, assignment and BROW-013 modified-date acceptance passed before the SAF scenario.
+- The SAF test copied `Browser-Picker-Return.wav` into `/sdcard/Download`; the DocumentsUI hierarchy exposed its preview description, proving the file was present in Downloads.
+- The test did not accept that preview as a real row. The captured tree still advertised `List view` (meaning grid mode remained active), and did not expose filename text. UiAutomator also had a bounded dump timeout during the wait.
+- Forward fix: retry the measured `List view` touch at most twice, inspect the resulting fresh DocumentsUI hierarchy after each touch, and continue only after the provider advertises `Grid view` (the list-mode toggle action). Increase the file-row text wait to 30s with per-dump cap 8s. Keep the requirement for real filename text and selectable row; do not select the preview icon or bypass SAF.
+- This improves bounded recovery without weakening the acceptance condition.
+
+### Remaining gates
+
+Re-run the complete exact-head workflow. Require actual selectable filename row, successful Activity result and correct Pad/Layer assignment; then complete the remainder of Project save/load/relaunch/cancel/malformed/v1 tests. Require full workflow SUCCESS and inspect artifacts from that exact run. Keep PR #139 Draft; physical MPC Studio MkII acceptance remains NOT RUN.

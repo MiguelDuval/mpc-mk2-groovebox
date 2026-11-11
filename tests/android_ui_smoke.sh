@@ -11997,34 +11997,46 @@ if ! tap_ui_text "$PICKER_UI_XML" "Downloads"; then
   exit 1
 fi
 # Android 16 DocumentsUI grid cards may expose the filename only as
-# "Preview the file …" on a thumbnail control, not as node text. Switch to
-# the genuine selectable list-row mode first, then require the actual filename
-# text in a fresh hierarchy before selecting anything.
-if grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
-  if ! tap_ui_description "$PICKER_UI_XML" "List view"; then
-    echo "ERROR: could not switch DocumentsUI to its selectable list-row mode"
-    exit 1
-  fi
-  picker_list_mode=0
-  for list_attempt in {1..10}; do
-    if dump_device_ui "$PICKER_UI_REMOTE" "$PICKER_UI_XML" \
-        && grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
+# "Preview the file …" on a thumbnail control, not as node text. Normalize
+# the provider to its genuine selectable list-row mode and verify the toggle
+# from a fresh hierarchy. A click can be dropped while DocumentsUI is settling;
+# retry only while the same List view action remains visible.
+picker_list_mode=0
+if grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
+  picker_list_mode=1
+elif grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
+  for list_toggle_attempt in {1..2}; do
+    echo "Requesting DocumentsUI list mode (attempt $list_toggle_attempt/2)..."
+    if ! tap_ui_description "$PICKER_UI_XML" "List view"; then
+      echo "WARN: could not complete List view touch on attempt $list_toggle_attempt"
+      continue
+    fi
+    sleep 1
+    if ! dump_device_ui_retry "$PICKER_UI_REMOTE" "$PICKER_UI_XML" 8 2; then
+      echo "WARN: DocumentsUI hierarchy did not stabilize after list-mode touch $list_toggle_attempt"
+      continue
+    fi
+    if grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
       picker_list_mode=1
       break
     fi
-    sleep 1
+    if ! grep -Fq -- 'content-desc="List view"' "$PICKER_UI_XML"; then
+      echo "ERROR: DocumentsUI list-mode toggle exposed neither Grid view nor List view"
+      exit 1
+    fi
+    echo "WARN: DocumentsUI still advertises List view; the grid-to-list state did not change"
   done
-  if [[ "$picker_list_mode" != "1" ]]; then
-    echo "ERROR: DocumentsUI did not enter list mode after activating List view"
-    exit 1
-  fi
-elif ! grep -Fq -- 'content-desc="Grid view"' "$PICKER_UI_XML"; then
+else
   echo "ERROR: DocumentsUI exposes neither List view nor Grid view; cannot prove row selection"
+  exit 1
+fi
+if [[ "$picker_list_mode" != "1" ]]; then
+  echo "ERROR: DocumentsUI did not confirm selectable list-row mode after two measured touches"
   exit 1
 fi
 # The list view must expose a selectable row with the real filename as text;
 # a thumbnail's Preview content-description is deliberately insufficient.
-if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 15; then
+if ! wait_for_ui_text "$PICKER_UI_XML" "$PICKER_UI_REMOTE" "$PICKER_SAMPLE_NAME" 30 standard 8; then
   echo "ERROR: picker did not expose the prepared WAV as a selectable Downloads list row"
   exit 1
 fi
