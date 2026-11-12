@@ -1,3 +1,42 @@
+# Superseding live checkpoint — 2026-11-12, real MIDI output and SAMP-009 integration
+
+**This section supersedes the stale checkpoint immediately below.** Its APK size/hash, WSL test result, parent HEAD and "uncommitted" file list do not describe the current tree.
+
+- Repository: `MiguelDuval/mpc-mk2-groovebox`
+- Branch: `feature/firmware-informed-midi-list-edit-20261106`
+- Exact HEAD: `27a038b5a5179ebf70d94da606f998a4722ffcdd`
+- Local/remote: verified equal after `git fetch origin --prune`; working tree clean at checkpoint.
+- Push: ordinary non-force push succeeded. No rebase, reset or force-push. `main` and PR #23 untouched.
+- PR #139: Open, Draft, non-mergeable; do not merge.
+- GitHub Android Build #3974: [run 43324778133](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/43324778133), exact HEAD above, event=push. At checkpoint: in progress; 14 steps passed, focused Android policy tests running, no failed steps. Await exact-run emulator smoke and evidence upload.
+
+## Delivered in commits 04cb5450 and 27a038b5
+
+- Added `AndroidMidiOutputRouter`: Android MIDI output uses asynchronous `MidiManager.openDevice`, explicit device/port connection API, auto-connect to the first available non-MPC-Studio destination, device add/remove/reconnect handling, per-track MIDI channel mapping, note-on/off, sustain-off and all-notes-off.
+- Kept `AndroidMidiBridge` dedicated to MPC Studio MkII controller input/LED/SysEx; external MIDI output callbacks are separate from controller readiness.
+- Pad Perform VIS-051 UI remains in place. Chord notes are tracked per physical pad as a set, all chord tones receive note-off, duplicate record-on enqueue removed, and the MIDI router is closed in `onDestroy`.
+- MIDI Pad Perform is available only when an external MIDI output is connected. Keygroup/Plugin internal voice engines are still not implemented; Drum/Audio are not faked as note engines.
+- Recording queues note-on and note-off with physical pad index plus MIDI note override; MIDI track recording lifecycle and Replace-mode handling are included.
+- SAMP-009 preflight now checks both persisted `SampleId` and runtime sample-buffer identity before mutation. Source-region identity is passed as a trailing defaulted parameter to preserve existing native test call sites; different-region conflict regression is registered.
+- Native queue-full handling stays non-blocking; JNI uses C++-appropriate behavior (no Java `Log.w` call in C++).
+
+## Local verification at exact HEAD
+
+- Gradle 9.6.0: `:app:testDebugUnitTest :app:assembleDebug` — **BUILD SUCCESSFUL**, 48 tasks, 15 executed / 33 up-to-date, all four ABIs built.
+- APK: `android/app/build/outputs/apk/debug/app-debug.apk`, 11,826,456 bytes, SHA-256 `05661AA8D51214EAE88F884DAF5AF2E8C87A4B1B508058C0A06B0B55A00BF0E5`.
+- Installed on Pixel 2 API 31 x86_64 emulator using debug package `com.miguelduval.mpcmk2groovebox.debug`; MainActivity resumed (PID 2352), no app `FATAL EXCEPTION`. Router reported `No MIDI devices detected`, expected on emulator.
+- The first `monkey` launch used the non-debug package name and found no activity; corrected to the `.debug` application ID and launch succeeded.
+- Local host-native test execution was **not** completed: WSL2 returned `HCS_E_CONNECTION_TIMEOUT` when starting Ubuntu. The exact-head GitHub workflow includes the destination conflict policy test (step 23); do not claim local 12/12 pass.
+
+## Remaining gates
+
+1. Run #3974 must finish green, especially native tests, APK upload, full emulator smoke and visual-evidence upload.
+2. Inspect exact-run artifacts and confirm SAMP-009 plus the complete Project/Browser/SAF/P0 acceptance path.
+3. Physical Akai MPC Studio MkII and real external MIDI destination testing remain **NOT RUN**. Emulator success does not prove physical MIDI I/O.
+4. PR #139 stays Draft until full exact-head acceptance is green.
+
+---
+
 # Live checkpoint — 2026-11-12, Pad Perform real MIDI output implemented; SAMP-009 domain/runtime guard fixed; CI run #3973 failed at emulator smoke
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox
