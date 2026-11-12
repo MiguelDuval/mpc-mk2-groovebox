@@ -1,6 +1,7 @@
 #pragma once
 
 #include "MPC/Domain/MpcDomain.h"
+#include "MPC/Domain/SampleRegion.h"
 
 #include <array>
 #include <cstddef>
@@ -47,7 +48,8 @@ inline std::vector<ChopDestinationConflict> findChopDestinationConflicts(
         mpc::domain::SampleId sourceSampleId,
         std::size_t destinationCount,
         const ChopSampleGrid& padSamples,
-        const mpc::domain::DrumProgram& program) {
+        const mpc::domain::DrumProgram& program,
+        mpc::domain::SampleRegion sourceRegion = {}) {
     std::vector<ChopDestinationConflict> conflicts;
     const std::size_t sourcePad =
             static_cast<std::size_t>(sourcePadIndex);
@@ -77,8 +79,11 @@ inline std::vector<ChopDestinationConflict> findChopDestinationConflicts(
             }
         }
 
-        // Layer 1: reject a different assigned SampleId or a conflicting
-        // runtime buffer; allow the exact same source SampleId or buffer.
+        // Layer 1: SampleId is authoritative when present. Same SampleId +
+        // same region is allowed (rehydration-safe); same SampleId +
+        // different region is rejected; different SampleId is rejected
+        // regardless of region/pointer aliasing. Only when no domain
+        // identity exists do we fall back to runtime pointer equality.
         const auto& destinationLayer =
                 program.pad(destinationPad).layer(0);
         const bool domainAssigned = destinationLayer.sample.isAssigned();
@@ -87,15 +92,14 @@ inline std::vector<ChopDestinationConflict> findChopDestinationConflicts(
         if (!domainAssigned && !runtimeOccupied) {
             continue;
         }
-        // A persisted domain SampleId is authoritative when present:
-        // matching identity survives PCM rehydration even if pointers differ,
-        // while a different SampleId must never be hidden by pointer aliasing.
-        // Only when no domain identity exists do we fall back to runtime
-        // pointer identity.
         const bool domainConflict =
                 domainAssigned
                 && (!sourceSampleId.isAssigned()
-                    || destinationLayer.sample.value != sourceSampleId.value);
+                    || destinationLayer.sample.value != sourceSampleId.value
+                    || destinationLayer.region.startFrame
+                            != sourceRegion.startFrame
+                    || destinationLayer.region.endFrame
+                            != sourceRegion.endFrame);
         const bool runtimeConflict =
                 !domainAssigned && runtimeOccupied
                 && (sourceSample == nullptr

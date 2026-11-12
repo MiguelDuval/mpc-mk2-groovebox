@@ -65,7 +65,8 @@ import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class MainActivity extends Activity implements AndroidMidiBridge.Listener {
+public final class MainActivity extends Activity
+        implements AndroidMidiBridge.Listener, AndroidMidiOutputRouter.Listener {
 
     private enum MainNumericField {
         BPM,
@@ -181,6 +182,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     private AndroidMidiBridge midiBridge;
+    private AndroidMidiOutputRouter androidMidiOutputRouter;
     private AudioManager audioManager;
     private AudioDeviceCallback audioDeviceCallback;
     private Spinner outputDeviceSpinner;
@@ -687,6 +689,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private static native String nativeSequenceMovePlayheadTicks(long deltaTicks);
     private static native long nativeSequencePositionTicks();
     private static native boolean nativeSequenceIsPlaying();
+    private static native void nativeSequenceEnqueueRecordEvent(
+            int trackIndex, int padIndex, int velocity, int pressed,
+            int midiNoteOverride);
 
     // List Edit — pattern event CRUD
     private static native int nativePatternGetEventCount(int padIndex);
@@ -833,6 +838,15 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             } catch (Throwable error) {
                                 Log.e(TAG, "MIDI_BRIDGE_STARTUP_FAILED", error);
                                 setBottomStatus("MIDI unavailable • " + error.getClass().getSimpleName());
+                            }
+
+                            Log.i(TAG, "MIDI_OUTPUT_ROUTER_BEGIN");
+                            try {
+                                androidMidiOutputRouter =
+                                        new AndroidMidiOutputRouter(this, this);
+                                Log.i(TAG, "MIDI_OUTPUT_ROUTER_END");
+                            } catch (Throwable error) {
+                                Log.e(TAG, "MIDI_OUTPUT_ROUTER_STARTUP_FAILED", error);
                             }
 
                             // Native state and MIDI readiness changed while the
@@ -1698,6 +1712,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 && mode != MpcUiState.Mode.PAD_PERFORM) {
             clearPadPerformAftertouch();
             padPerformEditNoteMap = false;
+            stopAllPadPerformNotes();
         }
         if ("LEVELS_16".equals(currentPage)
                 && mode != MpcUiState.Mode.LEVELS_16) {
@@ -6175,10 +6190,104 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if (!"KEYGROUP".equals(t) && !"MIDI".equals(t) && !"PLUGIN".equals(t)) {
             return false;
         }
-        // No native note-output backend exists yet for Keygroup/MIDI/Plugin
-        // tracks. Keep Pad Perform visibly unavailable until a real note engine
-        // is implemented rather than faking it with Drum Pad sample triggers.
+        // MIDI tracks route through the Android MIDI output port; available
+        // only when the output router is connected to an external device.
+        if ("MIDI".equals(t)) {
+            return androidMidiOutputRouter != null
+                    && androidMidiOutputRouter.isConnected();
+        }
+        // Keygroup and Plugin require an internal voice engine that does not
+        // exist yet. Keep them visibly unavailable rather than faking with
+        // Drum Pad sample triggers.
         return false;
+    }
+
+    // Track active notes by track and physical pad. A pad may trigger a
+    // chord, so every note must receive its own note-off on release.
+    private final java.util.Map<Integer,
+            java.util.Map<Integer, java.util.Set<Integer>>> padPerformActiveNotes =
+                    new java.util.HashMap<>();
+
+    private void padPerformNoteOn(
+            int trackIndex, int physicalPad, int note, int velocity) {
+        padPerformActiveNotes
+                .computeIfAbsent(trackIndex, k -> new java.util.HashMap<>())
+                .computeIfAbsent(physicalPad, k -> new java.util.HashSet<>())
+                .add(note);
+        if ("MIDI".equals(nativeSequenceGetTrackType(trackIndex))
+                && androidMidiOutputRouter != null
+                && androidMidiOutputRouter.isConnected()) {
+            androidMidiOutputRouter.sendMidiNote(trackIndex, note, velocity, true);
+        }
+        if (nativeSequenceIsPlaying()
+                && nativeSequenceIsSelectedTrackArmed()) {
+            nativeSequenceEnqueueRecordEvent(
+                    trackIndex, physicalPad, velocity, 1, note);
+        }
+    }
+
+    private void padPerformNoteOff(int trackIndex, int physicalPad) {
+        final java.util.Map<Integer, java.util.Set<Integer>> notesByPad =
+                padPerformActiveNotes.get(trackIndex);
+        if (notesByPad == null) return;
+        final java.util.Set<Integer> notes = notesByPad.remove(physicalPad);
+        if (notesByPad.isEmpty()) {
+            padPerformActiveNotes.remove(trackIndex);
+        }
+        if (notes == null) return;
+
+        final boolean midiTrack =
+                "MIDI".equals(nativeSequenceGetTrackType(trackIndex));
+        final boolean recording =
+                nativeSequenceIsPlaying()
+                        && trackIndex == nativeSequenceGetSelectedTrack()
+                        && nativeSequenceIsSelectedTrackArmed();
+        for (final int note : notes) {
+            if (midiTrack && androidMidiOutputRouter != null
+                    && androidMidiOutputRouter.isConnected()) {
+                androidMidiOutputRouter.sendMidiNote(trackIndex, note, 0, false);
+            }
+            if (recording) {
+                // The pad index stays in 0..15; MIDI note is a separate override.
+                nativeSequenceEnqueueRecordEvent(
+                        trackIndex, physicalPad, 0, 0, note);
+            }
+        }
+    }
+
+    /** Silence every currently-sounding Pad Perform note on all tracks. */
+    private void stopAllPadPerformNotes() {
+        final boolean playing = nativeSequenceIsPlaying();
+        final int selectedTrack = nativeSequenceGetSelectedTrack();
+        final boolean selectedTrackArmed = nativeSequenceIsSelectedTrackArmed();
+        for (final java.util.Map.Entry<Integer,
+                java.util.Map<Integer, java.util.Set<Integer>>> trackEntry
+                : new java.util.ArrayList<>(padPerformActiveNotes.entrySet())) {
+            final int trackIndex = trackEntry.getKey();
+            final boolean recording =
+                    playing && trackIndex == selectedTrack && selectedTrackArmed;
+            for (final java.util.Map.Entry<Integer, java.util.Set<Integer>> padEntry
+                    : new java.util.ArrayList<>(trackEntry.getValue().entrySet())) {
+                final int physicalPad = padEntry.getKey();
+                for (final int note : padEntry.getValue()) {
+                    if ("MIDI".equals(nativeSequenceGetTrackType(trackIndex))
+                            && androidMidiOutputRouter != null
+                            && androidMidiOutputRouter.isConnected()) {
+                        androidMidiOutputRouter.sendMidiNote(
+                                trackIndex, note, 0, false);
+                    }
+                    if (recording) {
+                        nativeSequenceEnqueueRecordEvent(
+                                trackIndex, physicalPad, 0, 0, note);
+                    }
+                }
+            }
+        }
+        padPerformActiveNotes.clear();
+        if (androidMidiOutputRouter != null
+                && androidMidiOutputRouter.isConnected()) {
+            androidMidiOutputRouter.stopAllMidiNotes();
+        }
     }
 
     private void adjustPadPerformOctave(int delta) {
@@ -6270,6 +6379,8 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // as a substitute. Send each mapped note to the active track's instrument.
         final int track = Math.max(0, nativeSequenceGetSelectedTrack());
         final String trackType = nativeSequenceGetTrackType(track);
+
+        // Validate via native (rejects Drum/Audio, unimplemented Keygroup/Plugin).
         for (int noteIndex = 0; noteIndex < notes.length; noteIndex++) {
             final int note = notes[noteIndex];
             final String noteResult = nativeAudioSendNoteToTrack(
@@ -6280,6 +6391,23 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 return;
             }
         }
+
+        // MIDI tracks require a connected output port; Keygroup/Plugin have no
+        // internal voice engine yet and remain unavailable.
+        if ("MIDI".equals(trackType)) {
+            if (androidMidiOutputRouter == null
+                    || !androidMidiOutputRouter.isConnected()) {
+                setBottomStatus("PAD PERFORM • MIDI NOT CONNECTED");
+                return;
+            }
+        }
+
+        // Each mapped note is tracked and recorded by padPerformNoteOn();
+        // the matching note-off is emitted on the actual touch release.
+        for (int noteIndex = 0; noteIndex < notes.length; noteIndex++) {
+            padPerformNoteOn(track, physicalPad, notes[noteIndex], velocity);
+        }
+
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
         Log.i(TAG, "PAD_PERFORM_TRIGGER mode=" + padPerformMode.name()
                 + " physicalPad=" + physicalPad
@@ -6544,6 +6672,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         for (int rowIndex = 0; rowIndex < 4; rowIndex++) {
             for (int columnIndex = 0; columnIndex < 4; columnIndex++) {
                 final int physicalPad = (3 - rowIndex) * 4 + columnIndex;
+                final int track = Math.max(0, nativeSequenceGetSelectedTrack());
                 final int[] notes = MpcPadPerformPolicy.notesForPad(
                         padPerformMode,
                         physicalPad,
@@ -6581,10 +6710,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                             if (editNoteMap) {
                                 padPerformSelectedKey = physicalPad;
                                 showPadPerformPage();
-                            } else {
-                                playPadPerformKey(physicalPad);
                             }
                         });
+                performButton.setOnTouchListener((v, event) -> {
+                    if (editNoteMap) return false;
+                    final int action = event.getActionMasked();
+                    if (action == MotionEvent.ACTION_DOWN) {
+                        playPadPerformKey(physicalPad);
+                        return true;
+                    } else if (action == MotionEvent.ACTION_UP
+                            || action == MotionEvent.ACTION_CANCEL) {
+                        padPerformNoteOff(track, physicalPad);
+                        return true;
+                    }
+                    return false;
+                });
                 performButton.setTextSize(12);
                 performButton.setTypeface(Typeface.DEFAULT_BOLD);
                 performButton.setMinHeight(0);
@@ -19354,6 +19494,21 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     }
 
     @Override
+    public void onOutputDevicesChanged(String description) {
+        Log.i(TAG, "MIDI OUTPUT DEVICES " + description);
+    }
+
+    @Override
+    public void onOutputConnection(String description) {
+        runOnUiThread(() -> {
+            setBottomStatus(description);
+            if ("PAD_PERFORM".equals(currentPage)) {
+                showPadPerformPage();
+            }
+        });
+    }
+
+    @Override
     public void onDevicesChanged(String description) {
         if (midiState != null) {
             runOnUiThread(() -> {
@@ -20773,6 +20928,11 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             nativeAudioStop();
         }
 
+        if (androidMidiOutputRouter != null) {
+            androidMidiOutputRouter.stopAllMidiNotes();
+            androidMidiOutputRouter.close();
+            androidMidiOutputRouter = null;
+        }
         if (midiBridge != null) {
             midiBridge.close();
             midiBridge = null;

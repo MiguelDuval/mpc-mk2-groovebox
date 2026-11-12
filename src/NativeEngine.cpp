@@ -1196,9 +1196,16 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSendNoteToTrack(
                 "failed: track type does not support Pad Perform note output");
     }
 
-    // No real note engine / MIDI output backend exists yet for Keygroup,
-    // MIDI or Plugin tracks. Keep Pad Perform visibly unavailable rather than
-    // faking it with Drum Pad sample triggers.
+    // MIDI tracks route through the Android MIDI output port; the Java side
+    // handles the actual message send via AndroidMidiBridge.sendMidiNote().
+    // Returning null (success) tells the caller validation passed.
+    if (kind == mpc::domain::TrackKind::Midi) {
+        return nullptr;
+    }
+
+    // Keygroup and Plugin require an internal voice engine that does not
+    // exist yet. Keep them visibly unavailable rather than faking it with
+    // Drum Pad sample triggers.
     return toJString(env,
             "failed: note engine not implemented for track type");
 }
@@ -4451,6 +4458,31 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceIsSelectedTrackA
     return index < tracks.size() && tracks[index].recordArmed
             ? JNI_TRUE
             : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeSequenceEnqueueRecordEvent(
+        JNIEnv* env, jobject /* thiz */,
+        jint trackIndex, jint padIndex, jint velocity, jint pressed,
+        jint midiNoteOverride)
+{
+    auto& core = mpc::MpcCore::instance();
+    const auto tick = sequenceSession().positionTicks();
+    const bool enqueued =
+            core.sequenceRecordQueue().tryEnqueue(
+                    mpc::sequencer::SequenceRecordEvent{
+                            static_cast<std::int64_t>(tick),
+                            static_cast<std::uint8_t>(trackIndex),
+                            static_cast<std::uint8_t>(padIndex),
+                            static_cast<std::uint8_t>(velocity),
+                            static_cast<std::uint8_t>(pressed),
+                            static_cast<std::uint8_t>(midiNoteOverride),
+                            mpc::sequencer::kNoSequenceRecordKey});
+    if (!enqueued) {
+        // The bounded real-time queue is full; drop this event without
+        // blocking the audio/UI thread.
+        return;
+    }
 }
 
 extern "C" JNIEXPORT jstring JNICALL

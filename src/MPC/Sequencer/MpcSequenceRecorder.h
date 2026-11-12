@@ -47,13 +47,15 @@ public:
                     && index < replaceCleared_.size();
              ++index) {
             auto& track = state.activeSequence().tracks[index];
-            if (!track.recordArmed
-                    || track.kind != domain::TrackKind::Drum
-                    || track.patterns.empty()) {
+            if (!track.recordArmed || track.patterns.empty()) {
                 continue;
             }
 
-            if (mode_ == PatternRecordMode::Replace) {
+            // Drum and MIDI tracks are cleared in Replace mode; other types
+            // append to existing patterns (no destructive clear).
+            if (mode_ == PatternRecordMode::Replace
+                    && (track.kind == domain::TrackKind::Drum
+                        || track.kind == domain::TrackKind::Midi)) {
                 track.patterns.front().notes.clear();
                 replaceCleared_[index] = true;
             }
@@ -109,8 +111,10 @@ public:
             }
 
             auto& track = state.activeSequence().tracks[event.trackIndex];
+            const bool isMidiTrack =
+                    track.kind == domain::TrackKind::Midi;
             if (!track.recordArmed
-                    || track.kind != domain::TrackKind::Drum
+                    || (track.kind != domain::TrackKind::Drum && !isMidiTrack)
                     || track.patterns.empty()) {
                 continue;
             }
@@ -120,9 +124,15 @@ public:
             const auto recordKey = static_cast<std::size_t>(
                     event.recordKey == kNoSequenceRecordKey
                             ? event.padIndex : event.recordKey);
-            const auto* trackProgram = state.findDrumProgram(track.programId);
-            if (trackProgram == nullptr
-                    || trackProgram->type != domain::ProgramType::Drum) {
+
+            // MIDI tracks record note events via midiNoteOverride; no
+            // DrumProgram lookup is needed.
+            const auto* trackProgram = isMidiTrack
+                    ? nullptr
+                    : state.findDrumProgram(track.programId);
+            if (!isMidiTrack
+                    && (trackProgram == nullptr
+                        || trackProgram->type != domain::ProgramType::Drum)) {
                 continue;
             }
 
@@ -137,10 +147,16 @@ public:
                             : event.velocity;
                     // Snapshot the mapping at note-on so later track selection or
                     // program edits cannot redirect this held note at note-off.
+                    // MIDI tracks use midiNoteOverride directly; Drum tracks fall
+                    // back to the Drum Program Pad's midiNote.
                     startNotes_[trackIndex][recordKey] =
-                            event.midiNoteOverride == kNoMidiNoteOverride
-                                    ? trackProgram->pad(padIndex).midiNote
-                                    : event.midiNoteOverride;
+                            isMidiTrack
+                                    ? (event.midiNoteOverride == kNoMidiNoteOverride
+                                            ? static_cast<std::uint8_t>(60)
+                                            : event.midiNoteOverride)
+                                    : (event.midiNoteOverride == kNoMidiNoteOverride
+                                            ? trackProgram->pad(padIndex).midiNote
+                                            : event.midiNoteOverride);
                 }
                 continue;
             }
@@ -234,8 +250,10 @@ public:
                     && trackIndex < held_.size();
              ++trackIndex) {
             auto& track = state.activeSequence().tracks[trackIndex];
+            const bool isMidiTrack =
+                    track.kind == domain::TrackKind::Midi;
             if (!track.recordArmed
-                    || track.kind != domain::TrackKind::Drum
+                    || (track.kind != domain::TrackKind::Drum && !isMidiTrack)
                     || track.patterns.empty()) {
                 continue;
             }
@@ -366,7 +384,8 @@ private:
                 continue;
             }
             auto& track = tracks[trackIndex];
-            if (track.kind != domain::TrackKind::Drum
+            if ((track.kind != domain::TrackKind::Drum
+                    && track.kind != domain::TrackKind::Midi)
                     || track.patterns.empty()) {
                 continue;
             }

@@ -1219,7 +1219,7 @@ std::string AudioEngine::chopPadSampleToPads(
     const auto conflicts = findChopDestinationConflicts(
             sourcePadIndex, sourceLayerIndex, sourceSample, sourceSampleId,
             plan.count, padSamples_,
-            projectState_.activeDrumProgram());
+            projectState_.activeDrumProgram(), sourceRegion);
     if (!conflicts.empty()) {
         const auto& first = conflicts.front();
         if (first.layerIndex != 0) {

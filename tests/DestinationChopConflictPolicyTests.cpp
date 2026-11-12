@@ -57,6 +57,19 @@ void testSameSourceSampleIdNullRuntimeIsAllowed() {
 
 // Same source runtime buffer on the destination is allowed: first CH4 then
 // CH8/CH16 keep chopping onto pads that already reference the source buffer.
+void testSameSampleIdDifferentRegionIsRejected() {
+    mpc::domain::DrumProgram program{};
+    program.pad(1).layer(0).sample = sampleId(7);
+    program.pad(1).layer(0).region.startFrame = 120;
+    program.pad(1).layer(0).region.endFrame = 480;
+
+    const auto conflicts = findChopDestinationConflicts(
+            0, 0, nullptr, sampleId(7), 4, emptyGrid(), program);
+    assert(conflicts.size() == 1);
+    assert(conflicts[0].padIndex == 1);
+    assert(conflicts[0].layerIndex == 0);
+}
+
 void testSameSourceRuntimeBufferIsAllowed() {
     mpc::domain::DrumProgram program{};
     const auto source = std::make_shared<const mpc::audio::SampleBuffer>();
@@ -215,6 +228,7 @@ void testFreeDestinationsYieldNoConflicts() {
 int main() {
     testAssignedDomainSampleIdWithNullRuntimeIsRejected();
     testSameSourceSampleIdNullRuntimeIsAllowed();
+    testSameSampleIdDifferentRegionIsRejected();
     testSameSourceRuntimeBufferIsAllowed();
     testSameSampleIdDifferentRuntimeIsAllowed();
     testDifferentSampleIdSameRuntimeIsRejected();

@@ -210,6 +210,7 @@ public final class AndroidMidiBridge {
         }
     }
 
+
     public void testPadRed() {
         send(MpcStudioMk2MidiMessages.padRgb(0, 127, 0, 0));
     }
