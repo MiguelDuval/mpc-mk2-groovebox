@@ -844,6 +844,7 @@ public final class MainActivity extends Activity
                             try {
                                 androidMidiOutputRouter =
                                         new AndroidMidiOutputRouter(this, this);
+                                androidMidiOutputRouter.connectPreferred();
                                 Log.i(TAG, "MIDI_OUTPUT_ROUTER_END");
                             } catch (Throwable error) {
                                 Log.e(TAG, "MIDI_OUTPUT_ROUTER_STARTUP_FAILED", error);
