@@ -69,39 +69,6 @@ void testSameSourceRuntimeBufferIsAllowed() {
     assert(conflicts.empty());
 }
 
-// Matching domain SampleId remains the authoritative identity after PCM
-// rehydration, even if the destination and source hold different pointers.
-void testSameSampleIdAllowsRehydratedDifferentRuntimeBuffer() {
-    mpc::domain::DrumProgram program{};
-    program.pad(2).layer(0).sample = sampleId(7);
-    const auto source = std::make_shared<const mpc::audio::SampleBuffer>();
-    const auto rehydrated = std::make_shared<const mpc::audio::SampleBuffer>();
-
-    ChopSampleGrid grid = emptyGrid();
-    grid[2][0] = rehydrated;
-
-    const auto conflicts = findChopDestinationConflicts(
-            0, 0, source, sampleId(7), 4, grid, program);
-    assert(conflicts.empty());
-}
-
-// A matching runtime pointer must not mask a different persisted SampleId.
-void testDifferentSampleIdRejectsAliasedRuntimeBuffer() {
-    mpc::domain::DrumProgram program{};
-    program.pad(2).layer(0).sample = sampleId(9);
-    const auto source = std::make_shared<const mpc::audio::SampleBuffer>();
-
-    ChopSampleGrid grid = emptyGrid();
-    grid[2][0] = source;
-
-    const auto conflicts = findChopDestinationConflicts(
-            0, 0, source, sampleId(7), 4, grid, program);
-    assert(conflicts.size() == 1);
-    assert(conflicts[0].padIndex == 2);
-    assert(conflicts[0].layerIndex == 0);
-    assert(conflicts[0].domainSampleAssigned);
-    assert(conflicts[0].runtimeBufferOccupied);
-}
 
 // Different assigned domain SampleId with null runtime buffer is rejected:
 void testDifferentAssignedSampleIdIsRejected() {
@@ -198,6 +165,43 @@ void testAllConflictsAreCollectedBeforeMutation() {
     assert(conflicts[3].padIndex == 7 && conflicts[3].layerIndex == 0);
 }
 
+// Same domain SampleId with a different runtime pointer is allowed:
+// SampleId identity survives PCM rehydration even when buffers differ.
+void testSameSampleIdDifferentRuntimeIsAllowed() {
+    mpc::domain::DrumProgram program{};
+    program.pad(2).layer(0).sample = sampleId(42);
+
+    const auto source = std::make_shared<const mpc::audio::SampleBuffer>();
+    const auto dest = std::make_shared<const mpc::audio::SampleBuffer>();
+
+    ChopSampleGrid grid = emptyGrid();
+    grid[2][0] = dest;
+
+    const auto conflicts = findChopDestinationConflicts(
+            0, 0, source, sampleId(42), 4, grid, program);
+    assert(conflicts.empty());
+}
+
+// Different domain SampleId with the same runtime pointer is rejected:
+// domain SampleId is authoritative; pointer aliasing never hides a mismatch.
+void testDifferentSampleIdSameRuntimeIsRejected() {
+    mpc::domain::DrumProgram program{};
+    program.pad(2).layer(0).sample = sampleId(43);
+
+    const auto shared = std::make_shared<const mpc::audio::SampleBuffer>();
+
+    ChopSampleGrid grid = emptyGrid();
+    grid[2][0] = shared;
+
+    const auto conflicts = findChopDestinationConflicts(
+            0, 0, shared, sampleId(42), 4, grid, program);
+    assert(conflicts.size() == 1);
+    assert(conflicts[0].padIndex == 2);
+    assert(conflicts[0].layerIndex == 0);
+    assert(conflicts[0].domainSampleAssigned);
+    assert(conflicts[0].runtimeBufferOccupied);
+}
+
 // Fully free destination grid yields no conflicts.
 void testFreeDestinationsYieldNoConflicts() {
     mpc::domain::DrumProgram program{};
@@ -212,8 +216,8 @@ int main() {
     testAssignedDomainSampleIdWithNullRuntimeIsRejected();
     testSameSourceSampleIdNullRuntimeIsAllowed();
     testSameSourceRuntimeBufferIsAllowed();
-    testSameSampleIdAllowsRehydratedDifferentRuntimeBuffer();
-    testDifferentSampleIdRejectsAliasedRuntimeBuffer();
+    testSameSampleIdDifferentRuntimeIsAllowed();
+    testDifferentSampleIdSameRuntimeIsRejected();
     testDifferentAssignedSampleIdIsRejected();
     testConflictingRuntimeBufferIsRejected();
     testExactSourceLayerIsExcluded();
