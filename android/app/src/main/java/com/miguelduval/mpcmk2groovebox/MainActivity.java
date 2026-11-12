@@ -497,6 +497,10 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             int pad, int layer, String name);
     private static native void nativeAudioTriggerPad(int pad, int velocity);
     private static native void nativeAudioTriggerPadWithTuning(int pad, int velocity, int tuningMilliSemitones, int recordKey);
+    // Sends a MIDI note to the selected track's real instrument / note engine.
+    // Returns null on success, or an error string when the track type lacks a
+    // note-output backend (Pad Perform must not fall back to Drum Pad triggers).
+    private static native String nativeAudioSendNoteToTrack(int trackIndex, int note, int velocity);
     private static native void nativeAudioSetPadAftertouch(int pad, int pressure);
     private static native String nativeAudioSetPadTuning(int pad, float semitones);
     private static native float nativeAudioGetPadTuning(int pad);
@@ -6155,8 +6159,26 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private boolean padPerformTrackAvailable() {
         if (!startupComplete || navigationController == null) return false;
         final int track = Math.max(0, nativeSequenceGetSelectedTrack());
-        return MpcTrackProgramPolicy.supportsProgramSelect(
-                nativeSequenceGetTrackType(track));
+        final String trackType = nativeSequenceGetTrackType(track);
+        // MPC 3.9: Pad Perform works on Keygroup, MIDI, Plugin and CV tracks,
+        // not on Drum Track. A real note engine/MIDI output is required for the
+        // selected track type; Drum Pad sample triggering is never a substitute.
+        return MpcTrackProgramPolicy.supportsPadPerform(trackType)
+                && padPerformNoteEngineAvailable(trackType);
+    }
+
+    // Returns true only when the selected track type has a real note engine or
+    // MIDI output backend implemented. Drum Pad triggering is not a substitute.
+    private boolean padPerformNoteEngineAvailable(String trackType) {
+        if (trackType == null) return false;
+        final String t = trackType.trim().toUpperCase(Locale.ROOT);
+        if (!"KEYGROUP".equals(t) && !"MIDI".equals(t) && !"PLUGIN".equals(t)) {
+            return false;
+        }
+        // No native note-output backend exists yet for Keygroup/MIDI/Plugin
+        // tracks. Keep Pad Perform visibly unavailable until a real note engine
+        // is implemented rather than faking it with Drum Pad sample triggers.
+        return false;
     }
 
     private void adjustPadPerformOctave(int delta) {
@@ -6228,7 +6250,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                 padPerformProgression,
                 padPerformCustomNoteMap);
         if (!padPerformTrackAvailable()) {
-            setBottomStatus("PAD PERFORM • SELECT A DRUM TRACK");
+            setBottomStatus("PAD PERFORM • INSTRUMENT TRACK REQUIRED");
             return;
         }
         if (notes.length == 0) {
@@ -6243,36 +6265,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             return;
         }
 
-        // Every note/chord tone uses the selected Drum Pad sample with an
-        // ephemeral native pitch override. No persistent pad tuning is written.
-        final int sourceMidiNote = nativeAudioGetPadMidiNote(selectedPad);
-        final float sourcePadTuning = nativeAudioGetPadTuning(selectedPad);
-        if (sourceMidiNote < 0 || sourceMidiNote > 127) {
-            setBottomStatus("PAD PERFORM • SOURCE PAD MIDI NOTE UNAVAILABLE");
-            return;
-        }
+        // MPC 3.9: Pad Perform routes mapped notes to the selected track's real
+        // note engine / MIDI output. It must NOT pitch-shift a Drum Pad sample
+        // as a substitute. Send each mapped note to the active track's instrument.
+        final int track = Math.max(0, nativeSequenceGetSelectedTrack());
+        final String trackType = nativeSequenceGetTrackType(track);
         for (int noteIndex = 0; noteIndex < notes.length; noteIndex++) {
             final int note = notes[noteIndex];
-            // Four independent voice keys are reserved for each physical Pad.
-            // This lets the recorder preserve polyphonic chords from one source Pad.
-            final int recordKey = (physicalPad * 4) + noteIndex;
-            nativeAudioTriggerPadWithTuning(
-                    selectedPad,
-                    velocity,
-                    MpcPadPerformPolicy.tuningMilliSemitonesForNote(
-                            note, sourceMidiNote, sourcePadTuning),
-                    recordKey);
+            final String noteResult = nativeAudioSendNoteToTrack(
+                    track, note, velocity);
+            if (noteResult != null
+                    && noteResult.toLowerCase(Locale.ROOT).contains("failed")) {
+                setBottomStatus(noteResult);
+                return;
+            }
         }
         final String label = MpcPadPerformPolicy.noteName(notes[0]);
         Log.i(TAG, "PAD_PERFORM_TRIGGER mode=" + padPerformMode.name()
                 + " physicalPad=" + physicalPad
-                + " sourcePad=" + selectedPad
+                + " track=" + track
+                + " trackType=" + trackType
                 + " notes=" + Arrays.toString(notes)
-                + " velocity=" + velocity
-                + " firstRecordKey=" + (physicalPad * 4));
-        setBottomStatus("PAD PERFORM • SOURCE PAD " + (selectedPad + 1)
-                + " • " + label + (notes.length > 1
-                        ? " • " + notes.length + "-NOTE CHORD" : ""));
+                + " velocity=" + velocity);
+        setBottomStatus("PAD PERFORM • TRACK " + (track + 1)
+                + " • " + trackType + " • " + label
+                + (notes.length > 1 ? " • " + notes.length + "-NOTE CHORD" : ""));
     }
 
     private void showPadPerformPage() {

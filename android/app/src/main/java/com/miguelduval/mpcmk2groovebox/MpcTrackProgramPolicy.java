@@ -1,5 +1,7 @@
 package com.miguelduval.mpcmk2groovebox;
 
+import java.util.Locale;
+
 /**
  * Truth policy for Main's Track-owned Program context.
  *
@@ -14,6 +16,17 @@ final class MpcTrackProgramPolicy {
 
     static boolean supportsProgramSelect(String trackType) {
         return trackType != null && "DRUM".equalsIgnoreCase(trackType.trim());
+    }
+
+    // MPC 3.9 Pad Perform works on Keygroup, MIDI, Plugin and CV tracks — it
+    // does NOT work on Drum Track. Drum Pad sample triggering is a different
+    // contract and must never be used as a Pad Perform substitute.
+    static boolean supportsPadPerform(String trackType) {
+        if (trackType == null) return false;
+        final String t = trackType.trim().toUpperCase(Locale.ROOT);
+        return "KEYGROUP".equals(t)
+                || "MIDI".equals(t)
+                || "PLUGIN".equals(t);
     }
 
     static boolean selectorEnabled(boolean startupComplete, String trackType) {

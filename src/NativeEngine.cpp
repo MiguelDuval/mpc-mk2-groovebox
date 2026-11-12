@@ -1167,6 +1167,42 @@ Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioTriggerPadWithTunin
     }
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioSendNoteToTrack(
+        JNIEnv* env, jobject /* thiz */, jint trackIndex, jint note, jint velocity)
+{
+    if (env == nullptr) return nullptr;
+    if (trackIndex < 0 || note < 0 || note > 127 || velocity <= 0
+            || velocity > 127) {
+        return toJString(env, "failed: invalid note or track parameters");
+    }
+
+    auto& core = mpc::MpcCore::instance();
+    const auto& projectState = core.projectState();
+    const auto& sequence = projectState.activeSequence();
+    if (static_cast<std::size_t>(trackIndex) >= sequence.tracks.size()) {
+        return toJString(env, "failed: track index out of range");
+    }
+
+    const auto& track = sequence.tracks[static_cast<std::size_t>(trackIndex)];
+    const auto kind = track.kind;
+
+    // MPC 3.9: Pad Perform works on Keygroup, MIDI, Plugin and CV tracks.
+    // Drum and Audio tracks are not supported. Drum Pad sample triggering is
+    // never a substitute for a real note engine.
+    if (kind == mpc::domain::TrackKind::Drum
+            || kind == mpc::domain::TrackKind::Audio) {
+        return toJString(env,
+                "failed: track type does not support Pad Perform note output");
+    }
+
+    // No real note engine / MIDI output backend exists yet for Keygroup,
+    // MIDI or Plugin tracks. Keep Pad Perform visibly unavailable rather than
+    // faking it with Drum Pad sample triggers.
+    return toJString(env,
+            "failed: note engine not implemented for track type");
+}
+
 extern "C" JNIEXPORT jint JNICALL
 Java_com_miguelduval_mpcmk2groovebox_MainActivity_nativeAudioGetPadMidiNote(
         JNIEnv* /* env */, jobject /* thiz */, jint pad)
