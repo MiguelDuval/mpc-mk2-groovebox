@@ -1,3 +1,37 @@
+# Live checkpoint — 2026-11-12, Sample Chop preflight self-match correction
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox
+**Integration PR:** #139 — Draft, branch `feature/firmware-informed-midi-list-edit-20261106`.
+**Parent HEAD:** `a0cae5f77c0be3ea2079facbae659a0bdc9502d6`.
+**Base:** `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`.
+
+## Exact-head Android Build #3972
+
+- Run [43111673646](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/43111673646) passed native/JVM tests, debug APK assembly/upload and all source-contract checks up to the new Sample Chop helper-order preflight.
+- Emulator boot succeeded, but the preflight rejected `project_marker_timestamp_from_logs` as being declared after `run_sample_chop_acceptance`.
+- This was a false positive in the checker, not the function order: the helper definitions are at lines 12632, 12650 and 12661; `run_sample_chop_acceptance()` is at line 12698.
+- Root cause: `source.find("run_sample_chop_acceptance() {")` matched that same literal inside the Python preflight block before it reached the real function declaration.
+
+## Forward correction
+
+- Split the search literal across adjacent Python string fragments: `source.find("run_sample_chop_" + "acceptance() {")`. This preserves the actual source-order check while preventing it from matching its own checker implementation.
+- Keep exactly-one-definition checks, all helper bodies, monotonic marker semantics, diagnostic recheck, bounded ADB calls and CH4/CH8/CH16 assertions unchanged.
+- The local `tests/android_ui_smoke.sh` working copy is LF-normalized for WSL Bash; `.git/info/attributes` contains a local-only `*.sh text eol=lf` rule. No tracked line-ending policy change is intended.
+
+## Local environment verification
+
+- Local Android debug APK built successfully with Gradle 9.7.1 across arm64-v8a, armeabi-v7a, x86 and x86_64; SHA-256 `CB1080FB8CE903641321BBA7452ED682DC6A7D57B56A0C7A4C57544A4CB51BCC` (11,365,805 bytes).
+- JVM `:app:testDebugUnitTest` passed with Gradle 9.7.1.
+- All 44 native C++ workflow test blocks passed under WSL2/G++ 15.2.0.
+- Android SDK/NDK/CMake and exact Gradle 9.6.0 are installed; Pixel 2 API 31 x86_64 AVD created and WHPX acceleration is available.
+- Exact Gradle 9.6.0 `:app:testDebugUnitTest :app:assembleDebug` completed successfully: 48 tasks executed in 4m48s, all four native ABIs built, JVM tests passed.
+- The resulting 11,365,805-byte APK has SHA-256 `CB1080FB8CE903641321BBA7452ED682DC6A7D57B56A0C7A4C57544A4CB51BCC`; it installed and launched on the local Pixel 2 API 31 emulator, with MainActivity resumed and process PID 2344.
+
+## Acceptance still open
+
+The next exact-HEAD GitHub workflow must pass the full Android emulator smoke and visual-evidence upload. Build #3972 did not execute the product smoke body because the preflight stopped first. Browser SAF, Project persistence, SAMP-007 idle evidence and SAMP-008/009/010 are not accepted by #3972. PR #139 remains Draft; `main` and PR #23 remain untouched. Physical MPC Studio MkII validation is **NOT RUN**.
+
+---
 # Live checkpoint — 2026-11-11, Sample Chop smoke helper-order repair
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox  

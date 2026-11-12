@@ -2355,7 +2355,7 @@ if ! python3 - "$0" <<'PY_MARKER_HELPER_ORDER'
 import sys
 
 source = open(sys.argv[1], encoding="utf-8").read()
-sample_function = source.find("run_sample_chop_acceptance() {")
+sample_function = source.find("run_sample_chop_" + "acceptance() {")
 if sample_function < 0:
     raise SystemExit("run_sample_chop_acceptance() declaration is missing")
 for helper in (
