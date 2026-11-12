@@ -4,6 +4,7 @@
 #include "MPC/MpcPadAftertouchPolicy.h"
 #include "RecordingThreshold.h"
 #include "SampleChop.h"
+#include "DestinationChopConflictPolicy.h"
 #include "SampleLoopRegionPolicy.h"
 #include "SampleLayerParameters.h"
 #include "SampleCrop.h"
@@ -16,6 +17,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <type_traits>
 #include <utility>
 
 namespace {
@@ -1205,29 +1207,31 @@ std::string AudioEngine::chopPadSampleToPads(
         return "Chop failed: source region is too short";
     }
 
-    for (std::size_t destinationPad = 0;
-            destinationPad < plan.count;
-            ++destinationPad) {
-        for (std::size_t layer = 1;
-                layer < kSampleLayerCount;
-                ++layer) {
-            const bool isSourceLayer =
-                    destinationPad == sourcePadIndex
-                    && layer == sourceLayerIndex;
-            if (padSamples_[destinationPad][layer] != nullptr
-                    && !isSourceLayer) {
-                return "Chop failed: destination pad "
-                        + std::to_string(destinationPad + 1)
-                        + " has assigned extra layers";
-            }
-        }
+    static_assert(std::is_same_v<decltype(padSamples_), ChopSampleGrid>,
+            "DestinationChopConflictPolicy grid must match AudioEngine's pad "
+            "sample grid");
 
-        const auto& existing = padSamples_[destinationPad][0];
-        if (existing != nullptr && existing != sourceSample) {
+    // Validate every destination against BOTH domain SampleId identity
+    // (retained across Project Save/Open) and runtime PCM pointer identity
+    // before any mutation. The exact same source SampleId or buffer is
+    // allowed (CH4 then CH8/CH16 on pads already referencing the source);
+    // anything else conflicts. All checks finish before any state changes.
+    const auto conflicts = findChopDestinationConflicts(
+            sourcePadIndex, sourceLayerIndex, sourceSample, sourceSampleId,
+            plan.count, padSamples_,
+            projectState_.activeDrumProgram());
+    if (!conflicts.empty()) {
+        const auto& first = conflicts.front();
+        if (first.layerIndex != 0) {
             return "Chop failed: destination pad "
-                    + std::to_string(destinationPad + 1)
-                    + " layer 1 is already assigned";
+                    + std::to_string(first.padIndex + 1)
+                    + " layer "
+                    + std::to_string(first.layerIndex + 1)
+                    + " has assigned extra layers";
         }
+        return "Chop failed: destination pad "
+                + std::to_string(first.padIndex + 1)
+                + " layer 1 is already assigned";
     }
 
     // Validation is complete. Stop the output stream before replacing the

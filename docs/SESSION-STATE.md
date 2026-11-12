@@ -1,4 +1,43 @@
-# Live checkpoint — 2026-11-12, Sample Chop preflight self-match correction
+# Live checkpoint — 2026-11-12, SAMP-009 fix and Pad Perform VIS-051 alignment in progress; CI run #3973 failed at emulator smoke
+
+**Repository:** MiguelDuval/mpc-mk2-groovebox
+**Integration PR:** #139 — Draft, branch `feature/firmware-informed-midi-list-edit-20261106`.
+**Parent HEAD / live local HEAD:** `f4bca50b7221f4fb6cde9d7934929ae9d6c374cd` (verified against `git status`: clean before this session's edits; one writer only).
+**Base:** `checkpoint/mpc-ui-reference-and-product-20261030` at `a029af66d423778d21607d6470b46bb8e4ca0b88`.
+
+## CI gate status — BLOCKED on run #3973 (43129680399)
+
+- Android Build #3973 / run [43129680399](https://github.com/MiguelDuval/mpc-mk2-groovebox/actions/runs/43129680399) on HEAD `f4bca50b` **conclusion: failure**, job `android-debug` 130890405010.
+- Steps 1–55 succeeded (native/JVM tests, APK assembly/upload, smoke syntax/evidence contract) and step 57 (visual-evidence upload) succeeded; **step 56 "Run Android emulator smoke test" failed**. Step-56 log was supplied via GitHub MCP: `ERROR: conflicting destination Pads were not rejected without mutation`, immediately followed by `SAMPLE_CHOP_ACTION_RESULT count=4 sourcePad=1 sourceLayer=1 committed=true streamWasRunning=true streamRunningAfter=true result=Chop complete: Pad 1 layer 1 -> pads 1-4 (4 slices)`. Root cause: `AudioEngine::chopPadSampleToPads` preflight (src/Audio/AudioEngine.cpp) checks only the runtime `padSamples_` pointer occupancy, not the persisted DrumProgram layer `SampleId`. After Project Save/Open a destination pad can retain an assigned domain SampleId while its PCM runtime pointer is null, so the preflight passes and the chop commits `committed=true` instead of rejecting. Fix in progress: domain/runtime collision guard (`src/Audio/DestinationChopConflictPolicy.h`, header-only, no Oboe), called by the AudioEngine before any mutation, plus `tests/DestinationChopConflictPolicyTests.cpp` regression including the assigned-SampleId-plus-null-runtime-buffer Save/Open case and unchanged-state-on-rejection.
+- Per AGENTS.md rule 12 and the roadmap P0 gate, this failure is investigated before any push. No force-push/reset/rewrite; `main` and PR #23 untouched.
+
+## Pad Perform vertical slice — policy green, VIS-051 layout rework in progress
+
+**Policy layer:** complete and covered by tests (six modes, 4×4 note map, root/scale/octave, mode-specific controls, accessibility labels, MkII PAD_TRIGGER/PAD_AFTERTOUCH routing, transient tuning override with no persistent Drum Pad tuning mutation). `MpcPadPerformPolicyTest` 16/16 green; test `aftertouchNoteOffLeavesNoTargetPad` renamed to `aftertouchTargetPadFollowsPadPerformAndAftertouchToggle` because it did not test note-off.
+
+**UI (current, not yet acceptance-green):** the shipped page is materially misaligned with VIS-051 (§3, asset `pad-perform-custom-note-map-and-4-4-pad-interpretation-c523ff4e337b.png`): key/scale/octave controls live in the left rail, the bottom bar carries SOURCE −/+ / KEY −/+ / OCTAVE +, and custom note-map editing is reachable only through an undocumented long-press. Reworked `MainActivity.java` `showPadPerformPage()` to VIS-051: left column mode grid (2×3) → prominent EDIT NOTE MAP toggle → checked Use Aftertouch → SCALE & OCTAVE; right 4×4 grid with small A01–A16 IDs top-left and large centered note labels (rows top-to-bottom A13–A16 … A01–A04); bottom function bar CHROMATIC / NOTES / CHORDS / PROGRESSIONS chips + OCTAVE − / label / +; source-PAD routing and header unchanged; explicit custom note-map edit state replaces long-press only. `scheduleProjectPersistenceViewHierarchyCapture("PAD_PERFORM")` preserved.
+
+**Changes (this session, uncommitted):**
+- `src/Audio/DestinationChopConflictPolicy.h` — new pure header-only destination-conflict policy: domain `SampleId` identity AND runtime `padSamples_` pointer identity checked per destination before any mutation; same-source SampleId/buffer allowed (CH4 then CH8/CH16); exact source pad/layer excluded; assigned extra layers rejected; all conflicts collected before rejection.
+- `src/Audio/AudioEngine.cpp` — `chopPadSampleToPads` preflight now calls the policy and rejects before stream stop or mutation; grid type identity static_asserted.
+- `tests/DestinationChopConflictPolicyTests.cpp` — new host native regression (g++ -Isrc only, no Oboe): assigned SampleId + null runtime buffer rejected (Save/Open SAMP-009 case), same-source allowed, different assigned SampleId rejected, conflicting runtime buffer rejected, extra layers rejected, source layer excluded, all-conflicts-collected. Locally green under WSL2 g++ 15.2.0. CI step already present in `.github/workflows/android-build.yml`.
+- `android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MainActivity.java` — Pad Perform VIS-051 layout rework (see UI above).
+- `android/app/src/test/java/com/miguelduval/mpcmk2groovebox/MpcPadPerformPolicyTest.java` — renamed the misnamed aftertouch test.
+- `tests/android_ui_smoke.sh` — Pad Perform source preflight + emulator evidence: screenshot `mpc-groovebox-pad-perform.png`, app-owned hierarchy assertions for 16 pad IDs (A01–A16), 16 note labels, six-mode selector, Edit Note Map state, Aftertouch checked, bottom function bar chips + OCTAVE control.
+- `docs/MPC3-9-OS-KNOWLEDGE-BASE.md` — Pad Perform status truthfully restated (§4, §11): software path implemented, VIS-051 layout alignment and exact-SHA emulator acceptance pending, physical MkII NOT RUN.
+- `docs/MPC3-UI-SCREEN-BLUEPRINT.md` §15 — layout target restated to VIS-051 geometry.
+- `docs/MPC3-USER-ACTION-CATALOG.md` MENU-007 — status restated; unit-test coverage and pending acceptance recorded.
+
+**Local verification:** Gradle `:app:testDebugUnitTest` — full suite green, `MpcPadPerformPolicyTest` 16/16/0/0 including the renamed aftertouch test. `:app:assembleDebug` — green, APK `app-debug.apk` 14,155,602 bytes, SHA-256 `A8F64C313DFC79E6718CD1DD9C6107B536555052A71875DED64644AC65FE1E61`. Emulator smoke + visual-evidence execution and physical MPC Studio MkII acceptance remain pending (exact-SHA workflow verification via GitHub).
+
+## Visual-reference gate (recorded)
+- Section: catalog §3 Pad Perform; summary-table VIS-051 (all modes). Asset: `docs/MPC3-UI-REFERENCE-ASSETS/images/pad-perform-custom-note-map-and-4-4-pad-interpretation-c523ff4e337b.png` (manifest: downloaded, 90,347 bytes, sha256 `a0c34010d64520114c1eacc60f5cefb3b98d396b5dbffb652ffc1cf0f70defca`; source Akai support "How to Remap the MPC Pads", Custom mode with 4×4 note map, octave control and mode tabs).
+- Evidence gap: this agent cannot open image inputs; the asset was cross-checked via catalog text, INDEX.md and manifest.json only. The VIS-051 transcription in this checkpoint (title bar, 2×3 mode grid, A01–A16 IDs + note-label rows, Edit NOTE MAP, Aftertouch, bottom function bar) was implemented against that transcription. Before/after emulator screenshot + app-owned hierarchy evidence for Pad Perform is added to `tests/android_ui_smoke.sh` but has **not** been executed on a green build — visual acceptance remains pending until the exact-head workflow passes and the PNG/XML are inspected. Physical MPC Studio MkII acceptance remains NOT RUN.
+
+## Next task
+1. Finish local validation: green WSL2 native tests, green `:app:testDebugUnitTest`, green `:app:assembleDebug`; record new APK size and SHA-256.
+2. Commit on `feature/firmware-informed-midi-list-edit-20261106`, ordinary non-force push, then verify the new exact-head workflow SUCCESS (including emulator smoke and visual-evidence upload) before closing the slice. Do not push until SAMP-009 and the Pad Perform UI work are locally validated.
+3. Update this checkpoint with the commit SHA, APK size/SHA-256 and new run URL once GitHub confirms the workflow.
 
 **Repository:** MiguelDuval/mpc-mk2-groovebox
 **Integration PR:** #139 — Draft, branch `feature/firmware-informed-midi-list-edit-20261106`.

@@ -103,7 +103,7 @@ MpcShell.java still names the 210dp host contextArea; it is now interpreted as t
 | Channel Mixer | Menu/shortcut | previous | mixer control | RESERVED | track mixer backend |
 | Pad Mixer | Menu/shortcut | Main/Back | Level/Pan/Tune | PARTIAL | FX/routing |
 | 16 Levels | Menu | Main/Back | performance | RESERVED | semantic implementation |
-| Pad Perform | Menu | Main/Back | performance | RESERVED | notes/chords/scales |
+| Pad Perform | Menu | Main/Back | performance | PARTIAL (software path); VIS-051 layout alignment and exact-SHA emulator acceptance pending; physical MkII NOT RUN |
 | Next Sequence | Menu/shortcut | Main/Back | sequence/launcher | PARTIAL | polish/depth |
 | List Edit | Menu | Main/Back | event | RESERVED | editor backend |
 | Project | Menu | Back | project item | PARTIAL (native codec only) | Android Save/Open route, SAF integration and sample-asset restoration |
@@ -133,7 +133,7 @@ Main → TRANSPOSE: visible explicit unavailable value; no false setter.
 
 Available entries currently route to Main, Track View, Browser, Grid, Step, Track Edit, Sample Edit, Sampler, Pad Mixer, Next Sequence and Arrange.
 Shell routes: Preferences → Audio Settings subset; MIDI / Control → MIDI page.
-Reserved entries: Channel Mixer, 16 Levels, Pad Perform, List Edit, Project and taxonomy-only Sounds/XYFX/Looper.
+Reserved entries: Channel Mixer, 16 Levels, List Edit, Project and taxonomy-only Sounds/XYFX/Looper.
 Acceptance: a reserved Menu tile may report RESERVED/UNAVAILABLE, but must not open an unrelated working screen.
 
 ## 7. Browser routing matrix
@@ -169,7 +169,7 @@ Sampler real subset: Record, Stop, Assign, Monitor On/Off, Threshold, waveform a
 | Function | MPC3 | Our implementation |
 |---|---|---|
 | 16 Levels | dedicated performance context | RESERVED |
-| Pad Perform | performance mapping | RESERVED |
+| Pad Perform | performance mapping | PARTIAL (software path); VIS-051 layout alignment and exact-SHA emulator acceptance pending; physical MkII NOT RUN |
 | Track Mute | live mute | PARTIAL / real Main + Track View |
 | Next Sequence | live launcher | PARTIAL |
 | Q-Link | macro control | RESERVED |

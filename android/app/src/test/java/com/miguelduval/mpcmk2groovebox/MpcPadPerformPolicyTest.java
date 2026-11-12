@@ -4,6 +4,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public final class MpcPadPerformPolicyTest {
     @Test
@@ -119,6 +120,25 @@ public final class MpcPadPerformPolicyTest {
         assertEquals("C#", MpcPadPerformPolicy.rootName(13));
     }
 
+    @Test
+    public void chromaticMapClampsToMidiBoundariesAtZeroAnd127() {
+        assertArrayEquals(new int[]{127}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC, 15, 11, 5,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{127}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC, 8, 11, 5,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{12}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC, 0, 0, -3,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+    }
+
     private static int[] map(MpcPadPerformPolicy.Mode mode, int pad) {
         return MpcPadPerformPolicy.notesForPad(
                 mode, pad, 0, 0, MpcPadPerformPolicy.Scale.MAJOR,
@@ -162,5 +182,142 @@ public final class MpcPadPerformPolicyTest {
                 MpcPadPerformPolicy.ChordQuality.MAJOR,
                 MpcPadPerformPolicy.Progression.I_V_VI_IV,
                 null);
+    }
+
+    @Test
+    public void customNoteMapClampsEachSlotToMidiRangeAndFallsBackWhenMalformed() {
+        int[] custom = MpcPadPerformPolicy.defaultCustomNoteMap(48);
+        custom[0] = 0;
+        custom[1] = 127;
+        custom[2] = 200;
+        custom[15] = -5;
+        assertArrayEquals(new int[]{0}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 0, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, custom));
+        assertArrayEquals(new int[]{127}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 1, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, custom));
+        assertArrayEquals(new int[]{127}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 2, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, custom));
+        assertArrayEquals(new int[]{0}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 15, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, custom));
+        // A null or wrong-length map falls back to chromatic-from-base.
+        assertArrayEquals(new int[]{48}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 0, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        int[] shortMap = new int[]{60, 62};
+        assertArrayEquals(new int[]{50}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CUSTOM, 2, 0, 0,
+                MpcPadPerformPolicy.Scale.MINOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, shortMap));
+    }
+
+    @Test
+    public void chordAndProgressionVoicingsStayInsideMidiRange() {
+        // Chromatic Chords at the top of the range: root clamps to 127 and so
+        // does every tone of the voicing.
+        assertArrayEquals(new int[]{127, 127, 127}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS, 15, 11, 5,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{119, 123, 126}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS, 0, 11, 5,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        // Progressions cycle four chord slots; high pads apply inversions.
+        assertArrayEquals(new int[]{48, 52, 55}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.PROGRESSIONS, 12, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{53, 57, 60}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.PROGRESSIONS, 15, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+        assertArrayEquals(new int[]{60, 65, 69}, MpcPadPerformPolicy.notesForPad(
+                MpcPadPerformPolicy.Mode.PROGRESSIONS, 11, 0, 0,
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR,
+                MpcPadPerformPolicy.Progression.I_V_VI_IV, null));
+    }
+
+    @Test
+    public void everyModeKeepsAllSixteenPadsInsideMidiRange() {
+        MpcPadPerformPolicy.Mode[] modes = MpcPadPerformPolicy.Mode.values();
+        assertEquals(6, modes.length);
+        int[][] extremes = new int[][]{
+                {0, 0, 0},
+                {11, 5, 15},
+                {0, -3, 0}
+        };
+        for (MpcPadPerformPolicy.Mode mode : modes) {
+            for (int[] extreme : extremes) {
+                int[] notes = MpcPadPerformPolicy.notesForPad(
+                        mode, extreme[2], extreme[0], extreme[1],
+                        MpcPadPerformPolicy.Scale.MAJOR,
+                        MpcPadPerformPolicy.ChordQuality.MAJOR,
+                        MpcPadPerformPolicy.Progression.I_V_VI_IV, null);
+                assertTrue("mode=" + mode + " pad=" + extreme[2],
+                        notes.length > 0);
+                for (int note : notes) {
+                    assertTrue("mode=" + mode + " pad=" + extreme[2] + " note=" + note,
+                            note >= 0 && note <= 127);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void aftertouchTargetPadFollowsPadPerformAndAftertouchToggle() {
+        // Pressure released or aftertouch disabled: no pad owns aftertouch.
+        assertEquals(-1, MpcPadPerformPolicy.aftertouchTargetPad(true, false, 5, 12));
+        // Outside Pad Perform the physical pad is addressed regardless of the
+        // Pad Perform aftertouch toggle.
+        assertEquals(12, MpcPadPerformPolicy.aftertouchTargetPad(false, false, 5, 12));
+        // Enabled in Pad Perform: aftertouch targets the source Drum Pad, not
+        // the physical pad that moved.
+        assertEquals(5, MpcPadPerformPolicy.aftertouchTargetPad(true, true, 5, 12));
+        // Enabled outside Pad Perform: aftertouch targets the physical pad.
+        assertEquals(12, MpcPadPerformPolicy.aftertouchTargetPad(false, true, 5, 12));
+        // Pad indexes are clamped to the 16-pad map.
+        assertEquals(15, MpcPadPerformPolicy.aftertouchTargetPad(true, true, 20, 5));
+        assertEquals(0, MpcPadPerformPolicy.aftertouchTargetPad(true, true, -5, 5));
+    }
+
+    @Test
+    public void padLabelsShowModeRootAndAccessibilityFallbacks() {
+        assertEquals("C0", MpcPadPerformPolicy.padLabel(
+                MpcPadPerformPolicy.Mode.CHROMATIC, new int[]{48},
+                MpcPadPerformPolicy.Scale.MAJOR, null));
+        assertEquals("C0\nMAJ", MpcPadPerformPolicy.padLabel(
+                MpcPadPerformPolicy.Mode.CHORDS, new int[]{48, 52, 55},
+                MpcPadPerformPolicy.Scale.MAJOR, null));
+        assertEquals("C0\nMAJ", MpcPadPerformPolicy.padLabel(
+                MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS, new int[]{48, 52, 55},
+                MpcPadPerformPolicy.Scale.MAJOR,
+                MpcPadPerformPolicy.ChordQuality.MAJOR));
+        assertEquals("C0\nCHORD", MpcPadPerformPolicy.padLabel(
+                MpcPadPerformPolicy.Mode.PROGRESSIONS, new int[]{48, 52, 55},
+                MpcPadPerformPolicy.Scale.MAJOR, null));
+        assertEquals("C1", MpcPadPerformPolicy.padLabel(
+                MpcPadPerformPolicy.Mode.NOTES, new int[]{60},
+                MpcPadPerformPolicy.Scale.MINOR, null));
+        assertEquals("—", MpcPadPerformPolicy.padLabel(null, new int[0], null, null));
     }
 }

@@ -845,16 +845,19 @@ The current semantic implementation already defines the velocity mapping; the mi
 
 Current supported target:
 
-- Notes;
-- future Chords;
-- future Scales.
+- Chromatic, Notes, Chords, Chromatic Chords, Progressions and Custom — all six Pad Perform mapping modes, selected through a left 2-column × 3-row mode grid;
+- Right-hand 4×4 note map: rows top-to-bottom A13–A16, A09–A12, A05–A08, A01–A04; small pad IDs (A01–A16) top-left of each cell, large centered note labels; root/scale/octave in the SCALE & OCTAVE section below the mode grid;
+- Below the mode grid: prominent EDIT NOTE MAP toggle (explicit custom note-map edit state, replaces long-press-only editing) and the checked Use Aftertouch control;
+- Bottom function bar: CHROMATIC / NOTES / CHORDS / PROGRESSIONS mode chips plus OCTAVE − / label / +; source Pad selection stays in the page header.
 
 Display must answer:
 
-- what pads mean;
+- what pads mean (IDs + note labels);
 - current bank/range;
 - current octave/range;
-- active mode.
+- active mode;
+- whether Edit Note Map is active and which custom pad is selected;
+- whether Aftertouch is enabled.
 
 Do not expose "Pad Perform" as a hidden mode whose pad interpretation cannot be inferred from the screen.
 

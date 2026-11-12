@@ -416,6 +416,9 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
     private int padPerformSelectedKey;
     private boolean padPerformUseAftertouch = true;
     private int padPerformAftertouchTargetPad = -1;
+    // Explicit custom note-map edit state (replaces undocumented long-press
+    // editing). Active only in CUSTOM mode: grid taps select a pad to remap.
+    private boolean padPerformEditNoteMap = false;
     private MpcLevels16Policy.Type levels16Type = MpcLevels16Policy.Type.VELOCITY;
     private boolean levels16Active = true;
     private int levels16AftertouchTargetPad = -1;
@@ -1690,6 +1693,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         if ("PAD_PERFORM".equals(currentPage)
                 && mode != MpcUiState.Mode.PAD_PERFORM) {
             clearPadPerformAftertouch();
+            padPerformEditNoteMap = false;
         }
         if ("LEVELS_16".equals(currentPage)
                 && mode != MpcUiState.Mode.LEVELS_16) {
@@ -2478,19 +2482,42 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
 
             case PAD_PERFORM: {
                 final boolean drumTrack = padPerformTrackAvailable();
-                addFunction("SOURCE −", drumTrack && selectedPad > 0, v -> {
-                    selectedPad = Math.max(0, selectedPad - 1);
-                    navigationController.setSelectedPad(selectedPad);
-                    showPadPerformPage();
-                });
-                addFunction("SOURCE +", drumTrack && selectedPad < 15, v -> {
-                    selectedPad = Math.min(15, selectedPad + 1);
-                    navigationController.setSelectedPad(selectedPad);
-                    showPadPerformPage();
-                });
-                addFunction("KEY −", drumTrack, v -> adjustPadPerformRoot(-1));
-                addFunction("KEY +", drumTrack, v -> adjustPadPerformRoot(1));
-                addFunction("OCTAVE +", drumTrack, v -> adjustPadPerformOctave(1));
+                final MpcPadPerformPolicy.Mode[] functionBarModes = {
+                        MpcPadPerformPolicy.Mode.CHROMATIC,
+                        MpcPadPerformPolicy.Mode.NOTES,
+                        MpcPadPerformPolicy.Mode.CHORDS,
+                        MpcPadPerformPolicy.Mode.PROGRESSIONS};
+                for (final MpcPadPerformPolicy.Mode functionMode : functionBarModes) {
+                    final boolean selected = padPerformMode == functionMode;
+                    Button modeChip = actionButton(functionMode.label(), v -> {
+                        padPerformMode = functionMode;
+                        padPerformEditNoteMap = false;
+                        showPadPerformPage();
+                    });
+                    modeChip.setTextSize(9);
+                    modeChip.setSelected(selected);
+                    modeChip.setTextColor(selected ? ACCENT : TEXT);
+                    modeChip.setBackground(strokeBackground(
+                            selected ? Color.rgb(82, 91, 117) : MPC_PANEL_DARK,
+                            selected ? ACCENT : MPC_PANEL_BORDER,
+                            MPC_FLAT_RADIUS_DP));
+                    modeChip.setTypeface(Typeface.DEFAULT_BOLD);
+                    functionBar.addView(modeChip, new LinearLayout.LayoutParams(
+                            0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+                }
+                Button octaveDown = actionButton("OCT −", v -> adjustPadPerformOctave(-1));
+                octaveDown.setContentDescription("MPC Pad Perform octave down");
+                functionBar.addView(octaveDown, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+                TextView octaveValue = label("OCT " + padPerformOctave, 10, ACCENT);
+                octaveValue.setGravity(Gravity.CENTER);
+                functionBar.addView(octaveValue, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+                Button octaveUp = actionButton("OCT +", v -> adjustPadPerformOctave(1));
+                octaveUp.setContentDescription("MPC Pad Perform octave up");
+                functionBar.addView(octaveUp, new LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+                normalizeMpcFunctionBarLayout();
                 break;
             }
 
@@ -6301,6 +6328,7 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
             final MpcPadPerformPolicy.Mode mode = modes[i];
             Button modeButton = actionButton(mode.label(), v -> {
                 padPerformMode = mode;
+                padPerformEditNoteMap = false;
                 showPadPerformPage();
             });
             modeButton.setTextSize(9);
@@ -6327,6 +6355,51 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         // Three 36dp rows plus 2dp vertical margins on each row.
         controls.addView(modeGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(120)));
+
+        // Prominent EDIT NOTE MAP toggle: explicit custom note-map edit
+        // state instead of undocumented long-press editing. Active in
+        // CUSTOM mode only; grid taps then select a pad to remap.
+        final boolean editNoteMap =
+                padPerformMode == MpcPadPerformPolicy.Mode.CUSTOM
+                        && padPerformEditNoteMap;
+        Button editNoteMapToggle = actionButton("EDIT NOTE MAP", v -> {
+            if (padPerformMode != MpcPadPerformPolicy.Mode.CUSTOM) {
+                padPerformMode = MpcPadPerformPolicy.Mode.CUSTOM;
+                padPerformEditNoteMap = true;
+            } else {
+                padPerformEditNoteMap = !padPerformEditNoteMap;
+            }
+            showPadPerformPage();
+        });
+        editNoteMapToggle.setTextSize(9);
+        editNoteMapToggle.setSelected(editNoteMap);
+        editNoteMapToggle.setTextColor(editNoteMap ? ACCENT : TEXT);
+        editNoteMapToggle.setBackground(strokeBackground(
+                editNoteMap ? Color.rgb(82, 91, 117) : SURFACE_2,
+                editNoteMap ? ACCENT : LINE,
+                5));
+        editNoteMapToggle.setContentDescription("MPC Pad Perform Edit Note Map "
+                + (editNoteMap ? "enabled" : "disabled"));
+        controls.addView(editNoteMapToggle, compactHeight());
+
+        final android.widget.CheckBox aftertouchToggle =
+                new android.widget.CheckBox(this);
+        aftertouchToggle.setText("Use Aftertouch");
+        aftertouchToggle.setTextSize(10);
+        aftertouchToggle.setTextColor(TEXT);
+        aftertouchToggle.setChecked(padPerformUseAftertouch);
+        aftertouchToggle.setContentDescription(
+                "MPC Pad Perform Use Aftertouch "
+                        + (padPerformUseAftertouch ? "enabled" : "disabled"));
+        aftertouchToggle.setOnCheckedChangeListener((button, checked) -> {
+            padPerformUseAftertouch = checked;
+            if (!checked) clearPadPerformAftertouch();
+            aftertouchToggle.setContentDescription(
+                    "MPC Pad Perform Use Aftertouch "
+                            + (checked ? "enabled" : "disabled"));
+        });
+        controls.addView(aftertouchToggle, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
 
         TextView scaleLabel = sectionLabel("SCALE & OCTAVE");
         scaleLabel.setPadding(dp(4), dp(5), dp(4), 0);
@@ -6365,25 +6438,6 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         controls.addView(octaveRow, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
 
-        final android.widget.CheckBox aftertouchToggle =
-                new android.widget.CheckBox(this);
-        aftertouchToggle.setText("Use Aftertouch");
-        aftertouchToggle.setTextSize(10);
-        aftertouchToggle.setTextColor(TEXT);
-        aftertouchToggle.setChecked(padPerformUseAftertouch);
-        aftertouchToggle.setContentDescription(
-                "MPC Pad Perform Use Aftertouch "
-                        + (padPerformUseAftertouch ? "enabled" : "disabled"));
-        aftertouchToggle.setOnCheckedChangeListener((button, checked) -> {
-            padPerformUseAftertouch = checked;
-            if (!checked) clearPadPerformAftertouch();
-            aftertouchToggle.setContentDescription(
-                    "MPC Pad Perform Use Aftertouch "
-                            + (checked ? "enabled" : "disabled"));
-        });
-        controls.addView(aftertouchToggle, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(34)));
-
         if (padPerformMode == MpcPadPerformPolicy.Mode.CHROMATIC_CHORDS) {
             Button chordType = actionButton(
                     "CHORD " + padPerformChordQuality.label(),
@@ -6415,27 +6469,31 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
         }
 
         if (padPerformMode == MpcPadPerformPolicy.Mode.CUSTOM) {
-            TextView customMapHeader = sectionLabel(
-                    "CUSTOM PAD " + String.format(Locale.ROOT, "%02d",
-                            padPerformSelectedKey + 1));
-            controls.addView(customMapHeader, compactHeight());
-            final LinearLayout editRow = row();
-            Button noteDown = actionButton("NOTE −", v -> adjustPadPerformCustomNote(-1));
-            noteDown.setContentDescription("MPC Pad Perform custom note down");
-            editRow.addView(noteDown, new LinearLayout.LayoutParams(0, dp(36), 1));
-            Button noteUp = actionButton("NOTE +", v -> adjustPadPerformCustomNote(1));
-            noteUp.setContentDescription("MPC Pad Perform custom note up");
-            editRow.addView(noteUp, new LinearLayout.LayoutParams(0, dp(36), 1));
-            controls.addView(editRow, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
-            Button resetMap = actionButton("RESET MAP", v -> resetPadPerformCustomMap());
-            resetMap.setContentDescription("MPC Pad Perform reset custom note map");
-            controls.addView(resetMap, compactHeight());
-            TextView editHint = label("Long-press a pad to select its mapping.",
-                    9, MUTED);
-            editHint.setPadding(dp(4), dp(2), dp(4), dp(2));
-            controls.addView(editHint, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(32)));
+            if (editNoteMap) {
+                TextView customMapHeader = sectionLabel(
+                        "CUSTOM PAD " + String.format(Locale.ROOT, "%02d",
+                                padPerformSelectedKey + 1) + " — EDIT NOTE MAP");
+                controls.addView(customMapHeader, compactHeight());
+                final LinearLayout editRow = row();
+                Button noteDown = actionButton("NOTE −", v -> adjustPadPerformCustomNote(-1));
+                noteDown.setContentDescription("MPC Pad Perform custom note down");
+                editRow.addView(noteDown, new LinearLayout.LayoutParams(0, dp(36), 1));
+                Button noteUp = actionButton("NOTE +", v -> adjustPadPerformCustomNote(1));
+                noteUp.setContentDescription("MPC Pad Perform custom note up");
+                editRow.addView(noteUp, new LinearLayout.LayoutParams(0, dp(36), 1));
+                controls.addView(editRow, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(38)));
+                Button resetMap = actionButton("RESET MAP", v -> resetPadPerformCustomMap());
+                resetMap.setContentDescription("MPC Pad Perform reset custom note map");
+                controls.addView(resetMap, compactHeight());
+            } else {
+                TextView mappingHint = label(
+                        "Tap EDIT NOTE MAP to remap the selected pad.",
+                        9, MUTED);
+                mappingHint.setPadding(dp(4), dp(4), dp(4), 0);
+                controls.addView(mappingHint, new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
+            }
         } else {
             TextView mappingHint = label(
                     padPerformMode == MpcPadPerformPolicy.Mode.CHORDS
@@ -6483,7 +6541,33 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         notes,
                         padPerformScale,
                         padPerformChordQuality);
-                Button performButton = actionButton(label, v -> playPadPerformKey(physicalPad));
+                final LinearLayout cell = new LinearLayout(this);
+                cell.setOrientation(LinearLayout.VERTICAL);
+                cell.setGravity(Gravity.CENTER_HORIZONTAL);
+                final TextView padId = new TextView(this);
+                padId.setText(String.format(Locale.ROOT, "A%02d", physicalPad + 1));
+                padId.setTextSize(8);
+                padId.setTextColor(MUTED);
+                padId.setGravity(Gravity.CENTER);
+                padId.setContentDescription("MPC Pad Perform pad id "
+                        + String.format(Locale.ROOT, "A%02d", physicalPad + 1));
+                LinearLayout.LayoutParams idParams =
+                        new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.WRAP_CONTENT,
+                                ViewGroup.LayoutParams.WRAP_CONTENT);
+                idParams.topMargin = dp(1);
+                idParams.bottomMargin = dp(1);
+                cell.addView(padId, idParams);
+
+                Button performButton = actionButton(label,
+                        v -> {
+                            if (editNoteMap) {
+                                padPerformSelectedKey = physicalPad;
+                                showPadPerformPage();
+                            } else {
+                                playPadPerformKey(physicalPad);
+                            }
+                        });
                 performButton.setTextSize(12);
                 performButton.setTypeface(Typeface.DEFAULT_BOLD);
                 performButton.setMinHeight(0);
@@ -6504,19 +6588,18 @@ public final class MainActivity extends Activity implements AndroidMidiBridge.Li
                         Locale.ROOT,
                         "MPC Pad Perform physical Pad %02d • %s • notes %s",
                         physicalPad + 1, label.replace('\n', ' '), notesDescription));
-                performButton.setOnLongClickListener(v -> {
-                    if (padPerformMode != MpcPadPerformPolicy.Mode.CUSTOM) return false;
-                    padPerformSelectedKey = physicalPad;
-                    showPadPerformPage();
-                    return true;
-                });
+                LinearLayout.LayoutParams buttonParams =
+                        new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+                cell.addView(performButton, buttonParams);
+
                 GridLayout.LayoutParams padParams = new GridLayout.LayoutParams();
                 padParams.width = 0;
                 padParams.height = 0;
                 padParams.columnSpec = GridLayout.spec(columnIndex, 1f);
                 padParams.rowSpec = GridLayout.spec(rowIndex, 1f);
                 padParams.setMargins(dp(3), dp(3), dp(3), dp(3));
-                padGrid.addView(performButton, padParams);
+                padGrid.addView(cell, padParams);
             }
         }
         body.addView(padGrid, new LinearLayout.LayoutParams(

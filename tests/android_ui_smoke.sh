@@ -2239,6 +2239,9 @@ PAD_PERFORM_POLICY_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groov
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'CHROMATIC_CHORDS'
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'notesForPad'
 require_source_contains "$PAD_PERFORM_POLICY_SOURCE" 'tuningMilliSemitonesForNote'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'padPerformEditNoteMap'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'EDIT NOTE MAP'
+require_source_contains "$MAIN_ACTIVITY_SOURCE" 'MPC Pad Perform pad id'
 CHANNEL_MIXER_VIEW_SOURCE="android/app/src/main/java/com/miguelduval/mpcmk2groovebox/MpcChannelMixerView.java"
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'private void showChannelMixerPage()'
 require_source_contains "$MAIN_ACTIVITY_SOURCE" 'private void refreshChannelMixerPage()'
@@ -2413,6 +2416,7 @@ capture_ui_screenshot() {
     mpc-groovebox-16levels-velocity.png|\
     mpc-groovebox-16levels-tune.png|\
     mpc-groovebox-16levels-filter.png|\
+    mpc-groovebox-pad-perform.png|\
     mpc-groovebox-pad-perform-chords.png|\
     mpc-groovebox-step-touch-before.png|\
     mpc-groovebox-step-touch-after-add.png|\
@@ -13928,6 +13932,45 @@ elif page == "PAD_PERFORM":
     for node in pads:
         if node.attrib.get("clickable") != "true" or node.attrib.get("enabled") != "true":
             raise SystemExit(f"Pad Perform pad is not actionable: {node.attrib!r}")
+    pad_ids = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith("MPC Pad Perform pad id ")]
+    if len(pad_ids) != 16:
+        raise SystemExit(f"Pad Perform must expose sixteen pad IDs, got {len(pad_ids)}")
+    expected_ids = ["A{index:02d}".format(index=index) for index in range(1, 17)]
+    actual_ids = sorted(
+            node.attrib.get("content-desc", "").rsplit(" ", 1)[-1]
+            for node in pad_ids)
+    if actual_ids != expected_ids:
+        raise SystemExit(f"Pad Perform pad IDs must be A01-A16, got {actual_ids}")
+    pad_labels = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith(
+                    "MPC Pad Perform physical Pad ")]
+    if len(pad_labels) != 16:
+        raise SystemExit(f"Pad Perform must expose sixteen pad note labels, "
+                         f"got {len(pad_labels)}")
+    for node in pad_labels:
+        if not node.attrib.get("text", "").strip():
+            raise SystemExit(f"Pad Perform pad note label is empty: {node.attrib!r}")
+    edit_map_nodes = [node for node in nodes
+            if node.attrib.get("content-desc", "").startswith(
+                    "MPC Pad Perform Edit Note Map ")]
+    if len(edit_map_nodes) != 1:
+        raise SystemExit(f"Pad Perform must expose one Edit Note Map state, "
+                         f"got {len(edit_map_nodes)}")
+    aftertouch_nodes = [node for node in nodes
+            if node.attrib.get("content-desc", "")
+            == "MPC Pad Perform Use Aftertouch enabled"]
+    if len(aftertouch_nodes) != 1:
+        raise SystemExit("Pad Perform Use Aftertouch must be present and checked")
+    if aftertouch_nodes[0].attrib.get("checked") != "true":
+        raise SystemExit("Pad Perform Use Aftertouch must be checked on entry")
+    function_texts = [node.attrib.get("text", "") for node in nodes
+            if node.attrib.get("class", "").endswith(".Button")]
+    for required_text in ("CHROMATIC", "NOTES", "CHORDS", "PROGRESSIONS"):
+        if required_text not in function_texts:
+            raise SystemExit(f"Pad Perform function bar is missing {required_text}")
+    if not any(text.startswith("OCT ") for text in function_texts):
+        raise SystemExit("Pad Perform function bar is missing OCTAVE control")
 print(f"Verified fresh page={page} Android View tree: {len(nodes)} views.")
 PY_PROJECT_APP_VIEW_TREE
   then
@@ -14325,6 +14368,7 @@ if ! tap_project_toolbar_menu; then echo "ERROR: Menu exit from 16 Levels failed
 if ! tap_mpc_menu_tile 2 3; then echo "ERROR: measured Menu PAD PERFORM touch failed"; exit 1; fi
 PAD_PERFORM_CHROMATIC_XML="/tmp/mpc-groovebox-pad-perform-chromatic-uiautomator.xml"
 if ! cp -f -- "$PROJECT_CURRENT_APP_XML" "$PAD_PERFORM_CHROMATIC_XML"; then exit 1; fi
+if ! capture_ui_screenshot "/tmp/mpc-groovebox-pad-perform.png" 10; then exit 1; fi
 PROJECT_PAD_PERFORM_TREE_MARKER_BEFORE="$(project_marker_timestamp "PROJECT_SMOKE_VIEW_HIERARCHY_READY page=PAD_PERFORM")"
 if ! tap_visible_description_early "$PAD_PERFORM_CHROMATIC_XML" "MPC Pad Perform mode CHORDS"; then
   echo "ERROR: Pad Perform CHORDS selector was not actionable"; exit 1

@@ -244,6 +244,14 @@ jobs:
           g++ -std=c++20 -Wall -Wextra -Werror             -Isrc             tests/SampleChopTests.cpp             -o build/native-tests/sample_chop_tests
           build/native-tests/sample_chop_tests
 
+      - name: Test sample chop destination conflict policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/native-tests
+          g++ -std=c++20 -Wall -Wextra -Werror -Isrc tests/DestinationChopConflictPolicyTests.cpp -o build/native-tests/destination_chop_conflict_policy_tests
+          build/native-tests/destination_chop_conflict_policy_tests
+
       - name: Test recording threshold
         shell: bash
         run: |
